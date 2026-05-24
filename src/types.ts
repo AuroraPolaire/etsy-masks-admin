@@ -27,6 +27,26 @@ export type ActivityType =
   | 'archive-exported'
   | 'error';
 
+export type AddActivity = (type: ActivityType, level: ActivityLevel, message: string) => void;
+
+export type BusyAction =
+  | 'uploading'
+  | 'brief-generation'
+  | 'image-generation'
+  | 'pdfs'
+  | 'previews'
+  | 'archive'
+  | 'project-json'
+  | 'import'
+  | null;
+
+export type BusyActionName = Exclude<BusyAction, null>;
+
+export type RunBusyAction = <Result>(
+  action: BusyActionName,
+  task: () => Result | Promise<Result>,
+) => Promise<Result>;
+
 export type ImageMetadata = {
   width: number;
   height: number;
@@ -76,6 +96,11 @@ export type Project = {
   nestedEtsyUploadZipSizeBytes?: number;
 };
 
+export type ProjectDraft = {
+  settings: ProjectSettings;
+  subjects: SubjectItem[];
+};
+
 export type ManagedFile = {
   id: string;
   file: File;
@@ -114,6 +139,24 @@ export type QAResult = {
   status: 'etsy-ready' | 'needs-review';
   checks: QACheck[];
   criticalPassed: boolean;
+};
+
+export type EtsySeoCheck = {
+  id: string;
+  label: string;
+  passed: boolean;
+  details: string;
+};
+
+export type EtsySeoAnalysis = {
+  titleWordCount: number;
+  firstTitleSegment: string;
+  tags: string[];
+  repeatedTitleWords: string[];
+  suggestedTitle: string;
+  suggestedTags: string[];
+  suggestedDescription: string;
+  checks: EtsySeoCheck[];
 };
 
 export type ActivityItem = {

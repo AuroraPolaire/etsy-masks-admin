@@ -1,3 +1,4 @@
+import { getOpenAIImageCostComparison, formatUsdEstimate } from '../lib/openaiImageCosts';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -9,6 +10,7 @@ import type { OpenAIImageSettings } from '../types';
 type OpenAIImagePanelProps = {
   settings: OpenAIImageSettings;
   missingImageCount: number;
+  subjectCount: number;
   busy: boolean;
   onChange: (settings: OpenAIImageSettings) => void;
   onGenerateMissingImages: () => void;
@@ -17,6 +19,7 @@ type OpenAIImagePanelProps = {
 export const OpenAIImagePanel = ({
   settings,
   missingImageCount,
+  subjectCount,
   busy,
   onChange,
   onGenerateMissingImages,
@@ -28,10 +31,19 @@ export const OpenAIImagePanel = ({
     onChange({ ...settings, [key]: value });
   };
   const hasApiKey = settings.apiKey.trim().length > 0;
-  const transparentReady =
-    settings.model !== 'gpt-image-2' &&
+  const transparentUnsupported =
     settings.background === 'transparent' &&
-    (settings.outputFormat === 'png' || settings.outputFormat === 'webp');
+    (settings.model === 'gpt-image-2' ||
+      (settings.outputFormat !== 'png' && settings.outputFormat !== 'webp'));
+  const costComparison = getOpenAIImageCostComparison(
+    settings.quality,
+    settings.size,
+    missingImageCount,
+    subjectCount,
+  );
+  const hasCostFallbackAssumption = costComparison.some(
+    (estimate) => estimate.usesFallbackAssumption,
+  );
 
   return (
     <Card>
@@ -40,7 +52,8 @@ export const OpenAIImagePanel = ({
           <div>
             <h2 className="text-lg font-bold text-slate-950">OpenAI image generation</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Paste an API key for this browser session, generate masks, then review before export.
+              Test one mask from a topic card, or generate the remaining bundle here. Review and
+              approve every image before export.
             </p>
           </div>
           <Badge tone={hasApiKey ? 'success' : 'warning'}>
@@ -55,7 +68,7 @@ export const OpenAIImagePanel = ({
           type="password"
           autoComplete="off"
           value={settings.apiKey}
-          helperText="Stored only in React state. It is not saved to localStorage, project JSON, manifests, or ZIP files."
+          helperText="Stored only in React state. Reused for AI brief drafting and image generation. It is not saved to localStorage, project JSON, manifests, or ZIP files."
           onChange={(event) => update('apiKey', event.target.value)}
         />
         <div className="grid gap-4 md:grid-cols-2">
@@ -64,7 +77,7 @@ export const OpenAIImagePanel = ({
             name="openaiModel"
             value={settings.model}
             options={[
-              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (transparent PNG recommended)' },
+              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (print mask recommended)' },
               { value: 'gpt-image-1', label: 'gpt-image-1' },
               { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
               { value: 'gpt-image-2', label: 'gpt-image-2 (no transparent background)' },
@@ -104,8 +117,8 @@ export const OpenAIImagePanel = ({
             name="openaiBackground"
             value={settings.background}
             options={[
-              { value: 'transparent', label: 'Transparent' },
-              { value: 'opaque', label: 'Opaque' },
+              { value: 'opaque', label: 'Opaque white print background' },
+              { value: 'transparent', label: 'Transparent cutout' },
               { value: 'auto', label: 'Auto' },
             ]}
             onChange={(event) =>
@@ -126,19 +139,64 @@ export const OpenAIImagePanel = ({
             }
           />
         </div>
-        {!transparentReady ? (
+        {transparentUnsupported ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             Transparent mask assets require a GPT Image 1.x model with PNG or WEBP output. For
             `gpt-image-2`, this app sends an opaque background request.
           </p>
         ) : null}
+        <div className="rounded-lg border border-white/70 bg-white/50 p-4 shadow-sm backdrop-blur-md">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-950">Approximate generation cost</h3>
+              <p className="mt-1 text-xs text-slate-600">
+                Estimated from selected quality and size. Actual API billing can vary with token
+                usage and OpenAI pricing changes. Switch the selected model above before generating.
+              </p>
+            </div>
+            <Badge tone="neutral">
+              {settings.quality} / {settings.size}
+            </Badge>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {costComparison.map((estimate) => (
+              <div
+                key={estimate.model}
+                className="rounded-md border border-white/70 bg-white/55 p-3 text-sm"
+              >
+                <p className="font-semibold text-slate-950">{estimate.model}</p>
+                <dl className="mt-2 grid gap-1 text-slate-700">
+                  <div className="flex justify-between gap-4">
+                    <dt>One mask</dt>
+                    <dd className="font-semibold">{formatUsdEstimate(estimate.oneImageUsd)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Missing set ({missingImageCount})</dt>
+                    <dd className="font-semibold">
+                      {formatUsdEstimate(estimate.missingImagesUsd)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Full bundle ({subjectCount})</dt>
+                    <dd className="font-semibold">{formatUsdEstimate(estimate.fullBundleUsd)}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))}
+          </div>
+          {hasCostFallbackAssumption ? (
+            <p className="mt-3 text-xs text-slate-500">
+              Auto settings are estimated as medium quality at 1024 x 1024.
+            </p>
+          ) : null}
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Button
             variant="primary"
             disabled={!hasApiKey || missingImageCount === 0 || busy}
             onClick={onGenerateMissingImages}
           >
-            Generate missing images
+            Generate remaining bundle
           </Button>
           <p className="text-sm text-slate-600">
             {missingImageCount} topic{missingImageCount === 1 ? '' : 's'} missing a usable image.

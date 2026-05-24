@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getExpectedFilename, groupFilesForExport } from '../files';
+import { createPromptItems, getExpectedFilename, groupFilesForExport } from '../files';
 
 import type { SubjectItem, ManagedFile } from '../../types';
 
@@ -37,6 +37,19 @@ const makeFile = (
 describe('file helpers', () => {
   it('builds expected filenames from subject names', () => {
     expect(getExpectedFilename('Snow Owl')).toBe('snow-owl.png');
+  });
+
+  it('builds print-ready prompts that match the target mask output constraints', () => {
+    const [prompt] = createPromptItems([{ id: 'turtle', name: 'Turtle' }], {
+      style: 'realistic mask for kids with eye holes and white background, front view, no shadows',
+    });
+
+    expect(prompt?.expectedFilename).toBe('turtle.png');
+    expect(prompt?.prompt).toContain('white background');
+    expect(prompt?.prompt).toContain('front view');
+    expect(prompt?.prompt).toContain('no shadows');
+    expect(prompt?.prompt).toContain('Clearly cut human eye holes');
+    expect(prompt?.negativeRequirements).toContain('no multiple masks');
   });
 
   it('groups files for export', () => {

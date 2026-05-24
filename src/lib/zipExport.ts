@@ -5,6 +5,7 @@ import {
   createPngBlobFromImage,
   fileToText,
   formatBytes,
+  createPromptItems,
   getExpectedFilename,
   getSourceFiles,
   groupFilesForExport,
@@ -40,7 +41,7 @@ export const createListingCopy = (project: Project): string => {
     '',
     'What is included:',
     `- ${project.subjects.length} printable mask designs`,
-    '- Transparent PNG mask files',
+    '- Printable PNG mask files',
     project.pdfSettings.generateA4 ? '- A4 printable PDF' : '',
     project.pdfSettings.generateUSLetter ? '- US Letter printable PDF' : '',
     '- Printing and cutting instructions',
@@ -84,13 +85,13 @@ const createReadMeFirst = (project: Project): string =>
   ].join('\n');
 
 const createPromptText = (project: Project): string =>
-  project.subjects
-    .map((subject) =>
+  createPromptItems(project.subjects, project.settings)
+    .map((prompt) =>
       [
-        subject.name,
-        `Filename: ${getExpectedFilename(subject.name)}`,
-        `Prompt: Front-facing printable paper mask design inspired by ${subject.name.toLowerCase()}, child-friendly, symmetrical composition, centered on transparent background, clear human eye holes, high resolution craft asset, clean cut outline, no text, no watermark, no background, original artwork.`,
-        'Negative requirements: no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no background, no distorted face',
+        prompt.subjectName,
+        `Filename: ${prompt.expectedFilename}`,
+        `Prompt: ${prompt.prompt}`,
+        `Negative requirements: ${prompt.negativeRequirements}`,
       ].join('\n'),
     )
     .join('\n\n');
@@ -241,12 +242,11 @@ export const exportArchive = async (
   zip.file(
     `${basePath}/02_Image_Prompts/image_prompts.json`,
     JSON.stringify(
-      project.subjects.map((subject) => ({
-        subject: subject.name,
-        expectedFilename: getExpectedFilename(subject.name),
-        prompt: `Front-facing printable paper mask design inspired by ${subject.name.toLowerCase()}, child-friendly, symmetrical composition, centered on transparent background, clear human eye holes, high resolution craft asset, clean cut outline, no text, no watermark, no background, original artwork.`,
-        negativeRequirements:
-          'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no background, no distorted face',
+      createPromptItems(project.subjects, project.settings).map((prompt) => ({
+        subject: prompt.subjectName,
+        expectedFilename: prompt.expectedFilename,
+        prompt: prompt.prompt,
+        negativeRequirements: prompt.negativeRequirements,
       })),
       null,
       2,

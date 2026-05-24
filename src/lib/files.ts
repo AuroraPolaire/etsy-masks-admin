@@ -1,8 +1,18 @@
-import { ACCEPTED_FILE_EXTENSIONS } from '../constants';
+import {
+  ACCEPTED_FILE_EXTENSIONS,
+  DEFAULT_MASK_PROMPT_STYLE,
+  PROMPT_NEGATIVE_REQUIREMENTS,
+} from '../constants';
 import { readImageMetadata } from './imageMetadata';
 import { slugify } from './slugify';
 
-import type { FileExportGroups, ManagedFile, PromptItem, SubjectItem } from '../types';
+import type {
+  FileExportGroups,
+  ManagedFile,
+  ProjectSettings,
+  PromptItem,
+  SubjectItem,
+} from '../types';
 
 export const getExpectedFilename = (subjectName: string): string => `${slugify(subjectName)}.png`;
 
@@ -155,14 +165,36 @@ export const dedupeIncomingFiles = (
   return { accepted, duplicates, unsupported };
 };
 
-export const createPromptItems = (subjects: SubjectItem[]): PromptItem[] =>
+const cleanPromptStyle = (style: string | undefined): string => {
+  const cleanedStyle = style
+    ?.replace(/\s+/g, ' ')
+    .replace(/[.?!]+$/g, '')
+    .trim();
+  return cleanedStyle && cleanedStyle.length > 0 ? cleanedStyle : DEFAULT_MASK_PROMPT_STYLE;
+};
+
+const createMaskPrompt = (subjectName: string, settings?: Pick<ProjectSettings, 'style'>): string =>
+  [
+    cleanPromptStyle(settings?.style),
+    `Subject: ${subjectName}.`,
+    'One standalone printable paper mask only.',
+    'Front view, centered composition, symmetrical design, child-friendly expression.',
+    'Clearly cut human eye holes with enough space for a child to see through.',
+    'Plain white background, no shadows, no scene, no props, no hands.',
+    'Clean cut outline, high-resolution printable craft asset, original artwork.',
+    'No text, no watermark.',
+  ].join(' ');
+
+export const createPromptItems = (
+  subjects: SubjectItem[],
+  settings?: Pick<ProjectSettings, 'style'>,
+): PromptItem[] =>
   subjects.map((subject) => ({
     subjectId: subject.id,
     subjectName: subject.name,
     expectedFilename: getExpectedFilename(subject.name),
-    prompt: `Front-facing printable paper mask design inspired by ${subject.name.toLowerCase()}, child-friendly, symmetrical composition, centered on transparent background, clear human eye holes, high resolution craft asset, clean cut outline, no text, no watermark, no background, original artwork.`,
-    negativeRequirements:
-      'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no background, no distorted face',
+    prompt: createMaskPrompt(subject.name, settings),
+    negativeRequirements: PROMPT_NEGATIVE_REQUIREMENTS,
   }));
 
 export const getFileForSubject = (

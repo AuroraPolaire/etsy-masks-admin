@@ -212,7 +212,7 @@ export const generateMarketplacePreviewImages = async (
           context,
           [
             `${approvedFiles.length} printable mask designs`,
-            'Transparent PNG mask files',
+            'Printable PNG mask files',
             'A4 printable PDF',
             'US Letter printable PDF',
             'Printing and cutting instructions',

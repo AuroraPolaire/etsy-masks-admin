@@ -1,6 +1,6 @@
 import { DEFAULT_SETTINGS, DEFAULT_SUBJECTS } from '../constants';
 
-import type { SubjectItem, ProjectSettings } from '../types';
+import type { ProjectDraft } from '../types';
 
 const KNOWN_SUBJECTS = [
   'robot',
@@ -150,9 +150,23 @@ const inferAudience = (idea: string): string => {
   return DEFAULT_SETTINGS.audience;
 };
 
-export const createProjectDraftFromInitialPrompt = (
-  initialPrompt: string,
-): { settings: ProjectSettings; subjects: SubjectItem[] } => {
+const inferStyle = (idea: string): string => {
+  if (/watercolor/i.test(idea)) {
+    return DEFAULT_SETTINGS.style.replace('Realistic', 'Watercolor');
+  }
+
+  if (/cartoon|cute|kawaii/i.test(idea)) {
+    return DEFAULT_SETTINGS.style.replace('Realistic', 'Cute illustrated');
+  }
+
+  if (/fantasy|dragon|unicorn|fairy|wizard/i.test(idea)) {
+    return DEFAULT_SETTINGS.style.replace('Realistic', 'Detailed fantasy');
+  }
+
+  return DEFAULT_SETTINGS.style;
+};
+
+export const createProjectDraftFromInitialPrompt = (initialPrompt: string): ProjectDraft => {
   const cleaned = cleanIdea(initialPrompt);
   const theme = inferTheme(cleaned);
   const subjects = extractSubjectNames(cleaned);
@@ -185,7 +199,7 @@ export const createProjectDraftFromInitialPrompt = (
       title,
       theme,
       audience: inferAudience(cleaned),
-      style: cleaned || DEFAULT_SETTINGS.style,
+      style: inferStyle(cleaned),
       description: `Create fun themed activities with this printable ${theme.toLowerCase()} bundle for kids. Perfect for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume activities. This is a digital download only. No physical item will be shipped.`,
       tags,
     },

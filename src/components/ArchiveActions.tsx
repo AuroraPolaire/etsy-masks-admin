@@ -2,12 +2,12 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 
-import type { QAResult } from '../types';
+import type { BusyAction, QAResult } from '../types';
 import type { ChangeEvent } from 'react';
 
 type ArchiveActionsProps = {
   qaResult: QAResult;
-  busyAction: string | null;
+  busyAction: BusyAction;
   onGeneratePdfs: () => void;
   onGeneratePreviews: () => void;
   onExportArchive: () => void;

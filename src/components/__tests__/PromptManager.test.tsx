@@ -28,6 +28,7 @@ describe('PromptManager', () => {
     );
 
     expect(screen.getByText('lion.png')).toBeInTheDocument();
+    expect(screen.getByText(/white background/i)).toBeInTheDocument();
   });
 });
 

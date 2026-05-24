@@ -7,9 +7,13 @@ browser app: no backend, no database, no Etsy integration, and no stored secrets
 
 - Product brief editor for title, theme, audience, marketplace, style, description, tags, safety
   note, printing instructions, license, and refund policy.
-- Optional initial idea prompt that drafts the listing fields and mask topic list locally.
+- Optional initial idea prompt that drafts the listing fields and mask topic list with OpenAI when
+  a session key is pasted, or with a local fallback when no key is present.
 - Mask topic list and copyable AI image prompts with expected filenames.
+- Default prompts target realistic, front-view printable masks with clear eye holes, a white
+  background, and no shadows.
 - Direct browser-side OpenAI Images API generation with a session-only pasted API key.
+- Approximate OpenAI image cost estimates for one mask, missing images, and the full bundle.
 - Drag-and-drop multi-file upload for PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON.
 - Image preview, dimension reading, approval/rejection, review notes, and topic mapping.
 - Browser-only PDF generation with jsPDF for A4 and US Letter printable files.
@@ -22,7 +26,9 @@ browser app: no backend, no database, no Etsy integration, and no stored secrets
 ## Privacy
 
 Most processing happens in your browser. Uploaded files are not sent anywhere unless you explicitly
-click OpenAI image generation, which sends the generated text prompt to OpenAI's Images API.
+click OpenAI image generation, which sends the generated text prompt to OpenAI's Images API. The
+initial product brief prompt is also sent to OpenAI when you fill the brief with a pasted session
+key.
 
 The OpenAI API key is stored only in React state for the current tab session. It is not saved to
 localStorage, project JSON, ZIP manifests, or exports. The app uses no backend services, no Firebase,
@@ -89,9 +95,10 @@ Change that value if you deploy the app from a differently named repository.
 
 ## Image Generation Workflow
 
-1. Optionally paste an initial bundle idea and fill the product brief.
-2. Edit the product brief and mask topic list.
-3. Paste an OpenAI API key for the current session.
+1. Optionally paste an OpenAI API key for the current session.
+2. Paste an initial bundle idea and fill the product brief with AI, or use the local fallback
+   without a key.
+3. Edit the product brief and mask topic list.
 4. Generate one topic image or generate all missing images.
 5. Review generated files, repair mappings if needed, and approve or reject each image.
 6. Add review notes or explicitly confirm reviewed images.
@@ -116,8 +123,12 @@ You can still upload externally generated files manually and map them to topics.
 - Large browser ZIP/PDF generation can be slow or fail if source files are very large.
 - Etsy upload ZIPs over 20MB are marked as a blocking QA issue and may need manual splitting or
   smaller source images.
-- `gpt-image-2` currently does not support transparent backgrounds; use GPT Image 1.x models for
-  transparent PNG or WEBP mask assets.
+- The default OpenAI background mode is opaque/white because it tends to match print-ready mask
+  examples. Switch to transparent only when you specifically need cutout PNG or WEBP mask assets.
+- OpenAI image costs shown in the app are approximate estimates based on common size/quality
+  combinations. Actual billing can vary with token usage and pricing changes.
+- `gpt-image-2` currently does not support transparent backgrounds; use GPT Image 1.x models when
+  transparent output is required.
 - Image dimensions below 2000x2000 are warned because they may print poorly.
 - Generated previews are utility marketplace graphics and should still be reviewed manually.
 - The app does not validate Etsy policy compliance beyond the included checklist and blocked-term

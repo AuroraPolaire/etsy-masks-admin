@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { ActivityLog } from './components/ActivityLog';
 import { ArchiveActions } from './components/ArchiveActions';
 import { BrowserSupportWarning } from './components/BrowserSupportWarning';
+import { EtsySeoPanel } from './components/EtsySeoPanel';
 import { FileReviewGrid } from './components/FileReviewGrid';
 import { FileUploader } from './components/FileUploader';
 import { Header } from './components/Header';
@@ -17,554 +18,183 @@ import { QAPanel } from './components/QAPanel';
 import { Button } from './components/ui/Button';
 import { Card, CardBody } from './components/ui/Card';
 import { WorkflowStatus } from './components/WorkflowStatus';
-import { APP_VERSION, DEFAULT_OPENAI_IMAGE_SETTINGS } from './constants';
+import { useActivityLog } from './hooks/useActivityLog';
+import { useBusyAction } from './hooks/useBusyAction';
+import { useExportActions } from './hooks/useExportActions';
+import { useManagedFiles } from './hooks/useManagedFiles';
+import { useOpenAIImageGeneration } from './hooks/useOpenAIImageGeneration';
+import { useProjectState } from './hooks/useProjectState';
+import { createProjectDraftFromInitialPrompt } from './lib/brief';
 import { checkBrowserSupport } from './lib/browserSupport';
-import {
-  createManagedFile,
-  createPromptItems,
-  dedupeIncomingFiles,
-  downloadBlob,
-  fileToText,
-  getExpectedFilename,
-  getFileForSubject,
-  groupFilesForExport,
-  replaceGeneratedFiles,
-} from './lib/files';
+import { createPromptItems, getFileForSubject } from './lib/files';
 import { runQA } from './lib/qa';
-import { slugify } from './lib/slugify';
-import { createProjectBackup, loadProject, parseProjectBackup, saveProject } from './lib/storage';
 
-import type {
-  ActivityItem,
-  ActivityLevel,
-  ActivityType,
-  SubjectItem,
-  ManagedFile,
-  OpenAIImageSettings,
-  Project,
-  ProjectSettings,
-  PdfSettings,
-} from './types';
+import type { ProjectDraft } from './types';
 
-type BusyAction =
-  | 'uploading'
-  | 'image-generation'
-  | 'pdfs'
-  | 'previews'
-  | 'archive'
-  | 'project-json'
-  | 'import'
-  | null;
-
-const nowIso = () => new Date().toISOString();
-
-const clearMappedSubject = (file: ManagedFile): ManagedFile => {
-  const nextFile = { ...file };
-  delete nextFile.mappedSubjectId;
-  return nextFile;
-};
-
-const withMappedSubject = (file: ManagedFile, subjectId: string | undefined): ManagedFile => {
-  if (!subjectId) {
-    return clearMappedSubject(file);
-  }
-
-  return {
-    ...file,
-    mappedSubjectId: subjectId,
-  };
-};
-
-const revokeObjectUrl = (file: ManagedFile): void => {
-  if (file.objectUrl) {
-    URL.revokeObjectURL(file.objectUrl);
-  }
-};
-
-const makeUniqueFile = (file: File, existingFiles: ManagedFile[]): File => {
-  const existingNames = new Set(existingFiles.map((managedFile) => managedFile.name.toLowerCase()));
-  if (!existingNames.has(file.name.toLowerCase())) {
-    return file;
-  }
-
-  const extension = file.name.split('.').pop() ?? 'png';
-  const baseName = file.name.replace(new RegExp(`\\.${extension}$`, 'i'), '');
-  let counter = 2;
-  let nextName = `${baseName}-${counter}.${extension}`;
-
-  while (existingNames.has(nextName.toLowerCase())) {
-    counter += 1;
-    nextName = `${baseName}-${counter}.${extension}`;
-  }
-
-  return new File([file], nextName, { type: file.type || 'image/png' });
-};
+const getErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error ? error.message : fallback;
 
 export const App = () => {
-  const [project, setProject] = useState<Project>(() => loadProject());
-  const [files, setFiles] = useState<ManagedFile[]>([]);
-  const filesRef = useRef<ManagedFile[]>([]);
-  const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
-  const [busyAction, setBusyAction] = useState<BusyAction>(null);
-  const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);
-  const [openAISettings, setOpenAISettings] = useState<OpenAIImageSettings>(
-    DEFAULT_OPENAI_IMAGE_SETTINGS,
-  );
   const browserSupport = useMemo(() => checkBrowserSupport(), []);
-  const prompts = useMemo(() => createPromptItems(project.subjects), [project.subjects]);
+  const { activityLog, addActivity } = useActivityLog();
+  const {
+    project,
+    updateProject,
+    replaceProject,
+    updateSettings,
+    updatePdfSettings,
+    applyInitialDraft,
+    addSubject,
+    removeSubject,
+    markImageApproved,
+  } = useProjectState();
+  const {
+    files,
+    filesRef,
+    appendFiles,
+    uploadFiles,
+    approveFile,
+    rejectFile,
+    deleteFile,
+    mapFile,
+    updateNotes,
+    confirmReview,
+    clearAllMappings,
+    clearSubjectMapping,
+    clearFiles,
+    replaceGeneratedFilesByKind,
+  } = useManagedFiles({
+    subjects: project.subjects,
+    addActivity,
+    onImageApproved: markImageApproved,
+  });
+  const { busyAction, runBusyAction } = useBusyAction();
+  const prompts = useMemo(
+    () => createPromptItems(project.subjects, project.settings),
+    [project.settings, project.subjects],
+  );
   const qaResult = useMemo(() => runQA(project, files), [project, files]);
   const missingImagePrompts = useMemo(
     () => prompts.filter((prompt) => !getFileForSubject(files, prompt.subjectId)),
     [files, prompts],
   );
-
-  const addActivity = useCallback((type: ActivityType, level: ActivityLevel, message: string) => {
-    setActivityLog((items) =>
-      [
-        {
-          id: crypto.randomUUID(),
-          type,
-          level,
-          message,
-          createdAt: nowIso(),
-        },
-        ...items,
-      ].slice(0, 80),
-    );
-  }, []);
-
-  const updateProject = useCallback((updater: (project: Project) => Project) => {
-    setProject((currentProject) => {
-      const updated = updater(currentProject);
-      return {
-        ...updated,
-        updatedAt: nowIso(),
-      };
+  const {
+    openAISettings,
+    setOpenAISettings,
+    generatingSubjectId,
+    generateSubjectImage,
+    generateMissingSubjectImages,
+  } = useOpenAIImageGeneration({
+    subjects: project.subjects,
+    prompts,
+    missingImagePrompts,
+    filesRef,
+    appendFiles,
+    addActivity,
+  });
+  const { generatePdfs, generatePreviews, exportProjectJson, importProjectJson, exportArchive } =
+    useExportActions({
+      project,
+      files,
+      updateProject,
+      replaceProject,
+      replaceGeneratedFilesByKind,
+      clearFiles,
+      addActivity,
+      runBusyAction,
     });
-  }, []);
 
-  useEffect(() => {
-    saveProject(project);
-  }, [project]);
-
-  useEffect(() => {
-    filesRef.current = files;
-  }, [files]);
-
-  useEffect(() => () => filesRef.current.forEach(revokeObjectUrl), []);
-
-  const handleSettingsChange = (settings: ProjectSettings) => {
-    updateProject((currentProject) => ({ ...currentProject, settings }));
-  };
-
-  const handlePdfSettingsChange = (pdfSettings: PdfSettings) => {
-    updateProject((currentProject) => ({ ...currentProject, pdfSettings }));
-  };
-
-  const handleApplyInitialDraft = (draft: {
-    settings: ProjectSettings;
-    subjects: SubjectItem[];
-  }) => {
-    if (files.length > 0) {
-      const shouldApply = window.confirm(
-        'Applying a new initial prompt replaces the mask topic list and clears existing image mappings. Continue?',
-      );
-      if (!shouldApply) {
-        return;
-      }
-    }
-
-    updateProject((currentProject) => ({
-      ...currentProject,
-      settings: draft.settings,
-      subjects: draft.subjects,
-    }));
-    setFiles((currentFiles) => currentFiles.map(clearMappedSubject));
-    addActivity(
-      'project-imported',
-      'success',
-      `Filled product brief from initial prompt with ${draft.subjects.length} topics.`,
-    );
-  };
-
-  const handleAddSubject = (name: string) => {
-    updateProject((currentProject) => ({
-      ...currentProject,
-      subjects: [...currentProject.subjects, { id: crypto.randomUUID(), name }],
-    }));
-    addActivity('file-added', 'info', `Added topic ${name}.`);
-  };
-
-  const handleRemoveSubject = (subjectId: string) => {
-    const subjectName =
-      project.subjects.find((subject) => subject.id === subjectId)?.name ?? 'subject';
-    updateProject((currentProject) => ({
-      ...currentProject,
-      subjects: currentProject.subjects.filter((subject) => subject.id !== subjectId),
-    }));
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.mappedSubjectId === subjectId ? clearMappedSubject(file) : file,
-      ),
-    );
-    addActivity('file-removed', 'warning', `Removed ${subjectName} and cleared related mappings.`);
-  };
-
-  const handleFilesSelected = async (incomingFiles: File[]) => {
-    setBusyAction('uploading');
-
-    try {
-      const { accepted, duplicates, unsupported } = dedupeIncomingFiles(files, incomingFiles);
-      duplicates.forEach((name) =>
-        addActivity('file-added', 'warning', `Skipped duplicate file ${name}.`),
-      );
-      unsupported.forEach((name) =>
-        addActivity('file-added', 'warning', `Skipped unsupported file ${name}.`),
-      );
-
-      const managedFiles: ManagedFile[] = [];
-      for (const file of accepted) {
-        try {
-          managedFiles.push(await createManagedFile(file, project.subjects));
-        } catch (error) {
-          addActivity(
-            'error',
-            'error',
-            error instanceof Error ? error.message : `Could not read ${file.name}.`,
-          );
-        }
-      }
-
-      if (managedFiles.length > 0) {
-        setFiles((currentFiles) => [...currentFiles, ...managedFiles]);
-        addActivity('file-added', 'success', `Added ${managedFiles.length} file(s).`);
-      }
-    } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'File upload failed.');
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const updateFile = (fileId: string, updater: (file: ManagedFile) => ManagedFile) => {
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === fileId ? updater(file) : file)),
-    );
-  };
-
-  const handleApprove = (fileId: string) => {
-    updateFile(fileId, (file) => ({
-      ...file,
-      reviewState: 'approved',
-      explicitlyConfirmed: true,
-    }));
-    updateProject((currentProject) => ({
-      ...currentProject,
-      lastImageApprovalAt: nowIso(),
-    }));
-    addActivity('image-approved', 'success', 'Approved image.');
-  };
-
-  const handleReject = (fileId: string) => {
-    updateFile(fileId, (file) => ({
-      ...file,
-      reviewState: 'rejected',
-    }));
-    addActivity('image-rejected', 'warning', 'Rejected image.');
-  };
-
-  const handleDelete = (fileId: string) => {
-    const file = files.find((item) => item.id === fileId);
-    if (file) {
-      revokeObjectUrl(file);
-    }
-
-    setFiles((currentFiles) => currentFiles.filter((item) => item.id !== fileId));
-    addActivity('file-removed', 'warning', `Removed ${file?.name ?? 'file'}.`);
-  };
-
-  const handleMap = (fileId: string, subjectId: string | undefined) => {
-    updateFile(fileId, (file) => withMappedSubject(file, subjectId));
-    const subjectName =
-      project.subjects.find((subject) => subject.id === subjectId)?.name ?? 'unmapped';
-    addActivity('image-mapped', 'info', `Updated image mapping to ${subjectName}.`);
-  };
-
-  const handleNotesChange = (fileId: string, notes: string) => {
-    updateFile(fileId, (file) => ({
-      ...file,
-      reviewNotes: notes,
-    }));
-  };
-
-  const handleConfirmReview = (fileId: string) => {
-    updateFile(fileId, (file) => ({
-      ...file,
-      explicitlyConfirmed: true,
-    }));
-    addActivity('notes-updated', 'success', 'Confirmed manual review for image.');
-  };
-
-  const handleGenerateSubjectImage = async (subjectId: string) => {
-    const prompt = prompts.find((item) => item.subjectId === subjectId);
-    if (!prompt) {
-      return;
-    }
-
-    setBusyAction('image-generation');
-    setGeneratingSubjectId(subjectId);
-
-    try {
-      const { generateImageWithOpenAI } = await import('./lib/openaiImages');
-      const generatedFile = await generateImageWithOpenAI(openAISettings, prompt);
-      const uniqueFile = makeUniqueFile(generatedFile, filesRef.current);
-      const managedFile = await createManagedFile(uniqueFile, project.subjects);
-      const mappedFile: ManagedFile = {
-        ...managedFile,
-        mappedSubjectId: subjectId,
-        reviewNotes: `Generated with OpenAI ${openAISettings.model}. Review before approval.`,
-      };
-      setFiles((currentFiles) => [...currentFiles, mappedFile]);
-      addActivity(
-        'image-generated',
-        'success',
-        `Generated ${getExpectedFilename(prompt.subjectName)}.`,
-      );
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error
-          ? error.message
-          : `Image generation failed for ${prompt.subjectName}.`,
-      );
-    } finally {
-      setGeneratingSubjectId(null);
-      setBusyAction(null);
-    }
-  };
-
-  const handleGenerateMissingSubjectImages = async () => {
-    if (missingImagePrompts.length === 0) {
-      return;
-    }
-
-    setBusyAction('image-generation');
-
-    try {
-      const { generateImageWithOpenAI } = await import('./lib/openaiImages');
-      const generatedManagedFiles: ManagedFile[] = [];
-      let workingFiles = filesRef.current;
-
-      for (const prompt of missingImagePrompts) {
-        setGeneratingSubjectId(prompt.subjectId);
-        const generatedFile = await generateImageWithOpenAI(openAISettings, prompt);
-        const uniqueFile = makeUniqueFile(generatedFile, [
-          ...workingFiles,
-          ...generatedManagedFiles,
-        ]);
-        const managedFile = await createManagedFile(uniqueFile, project.subjects);
-        const mappedFile: ManagedFile = {
-          ...managedFile,
-          mappedSubjectId: prompt.subjectId,
-          reviewNotes: `Generated with OpenAI ${openAISettings.model}. Review before approval.`,
-        };
-        generatedManagedFiles.push(mappedFile);
-        workingFiles = [...workingFiles, mappedFile];
-        addActivity('image-generated', 'success', `Generated image for ${prompt.subjectName}.`);
-      }
-
-      if (generatedManagedFiles.length > 0) {
-        setFiles((currentFiles) => [...currentFiles, ...generatedManagedFiles]);
-      }
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'Image generation failed.',
-      );
-    } finally {
-      setGeneratingSubjectId(null);
-      setBusyAction(null);
-    }
-  };
-
-  const handleGeneratePdfs = async () => {
-    setBusyAction('pdfs');
-
-    try {
-      const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
-      if (approvedFiles.length === 0) {
-        addActivity(
-          'error',
-          'warning',
-          'Approve and map at least one image before generating PDFs.',
+  const applyDraftToProject = useCallback(
+    (draft: ProjectDraft, activityMessage: string) => {
+      if (files.length > 0) {
+        const shouldApply = window.confirm(
+          'Applying a new initial prompt replaces the mask topic list and clears existing image mappings. Continue?',
         );
-        return;
-      }
-
-      const { generatePrintablePdfs } = await import('./lib/pdf');
-      const generatedFiles = await generatePrintablePdfs(project, approvedFiles);
-      setFiles((currentFiles) => {
-        currentFiles.filter((file) => file.kind === 'generated-pdf').forEach(revokeObjectUrl);
-        return replaceGeneratedFiles(currentFiles, generatedFiles, 'generated-pdf');
-      });
-      updateProject((currentProject) => ({
-        ...currentProject,
-        lastPdfGeneratedAt: nowIso(),
-      }));
-      addActivity(
-        'pdf-generated',
-        'success',
-        `Generated ${generatedFiles.length} printable PDF(s).`,
-      );
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'PDF generation failed.',
-      );
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleGeneratePreviews = async () => {
-    setBusyAction('previews');
-
-    try {
-      const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
-      if (approvedFiles.length === 0) {
-        addActivity(
-          'error',
-          'warning',
-          'Approve and map at least one image before generating previews.',
-        );
-        return;
-      }
-
-      const { generateMarketplacePreviewImages } = await import('./lib/previewImages');
-      const generatedFiles = await generateMarketplacePreviewImages(project, approvedFiles);
-      setFiles((currentFiles) => {
-        currentFiles.filter((file) => file.kind === 'generated-preview').forEach(revokeObjectUrl);
-        return replaceGeneratedFiles(currentFiles, generatedFiles, 'generated-preview');
-      });
-      updateProject((currentProject) => ({
-        ...currentProject,
-        lastPreviewGeneratedAt: nowIso(),
-      }));
-      addActivity(
-        'preview-generated',
-        'success',
-        `Generated ${generatedFiles.length} preview image(s).`,
-      );
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'Preview generation failed.',
-      );
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleExportProjectJson = () => {
-    setBusyAction('project-json');
-
-    try {
-      const exportedAt = nowIso();
-      const nextProject = {
-        ...project,
-        lastProjectJsonExportAt: exportedAt,
-        updatedAt: exportedAt,
-      };
-      const backup = createProjectBackup(nextProject);
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-      downloadBlob(blob, `${slugify(project.settings.theme)}_project_backup.json`);
-      setProject(nextProject);
-      addActivity('project-exported', 'success', 'Exported project JSON metadata backup.');
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'Project JSON export failed.',
-      );
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleImportProjectJson = async (file: File) => {
-    setBusyAction('import');
-
-    try {
-      const rawJson = await fileToText(file);
-      const importedProject = parseProjectBackup(rawJson);
-      files.forEach(revokeObjectUrl);
-      setFiles([]);
-      setProject(importedProject);
-      addActivity(
-        'project-imported',
-        'warning',
-        'Imported project metadata. Uploaded files are not part of JSON backups and must be re-uploaded.',
-      );
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'Project import failed.',
-      );
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
-  const handleExportArchive = async () => {
-    setBusyAction('archive');
-
-    try {
-      const { exportArchive } = await import('./lib/zipExport');
-      const result = await exportArchive(project, files);
-      const exportedAt = nowIso();
-      const nextProject = {
-        ...project,
-        lastArchiveExportAt: exportedAt,
-        nestedEtsyUploadZipSizeBytes: result.nestedEtsyUploadZipSizeBytes,
-        updatedAt: exportedAt,
-      };
-      setProject(nextProject);
-
-      if (result.needsReview) {
-        const shouldDownload = window.confirm(
-          'This archive is marked needs review. Critical QA checks or Etsy size checks need attention. Download anyway?',
-        );
-        if (!shouldDownload) {
-          addActivity(
-            'archive-exported',
-            'warning',
-            'Archive export was generated but download was cancelled.',
-          );
+        if (!shouldApply) {
           return;
         }
       }
 
-      downloadBlob(result.blob, result.fileName);
+      applyInitialDraft(draft);
+      clearAllMappings();
+      addActivity('project-imported', 'success', activityMessage);
+    },
+    [addActivity, applyInitialDraft, clearAllMappings, files.length],
+  );
+
+  const handleFillProductBrief = useCallback(
+    (initialPrompt: string) => {
+      void runBusyAction('brief-generation', async () => {
+        const apiKey = openAISettings.apiKey.trim();
+
+        if (!apiKey) {
+          const draft = createProjectDraftFromInitialPrompt(initialPrompt);
+          applyDraftToProject(
+            draft,
+            `Filled product brief locally with ${draft.subjects.length} topics.`,
+          );
+          return;
+        }
+
+        try {
+          const { generateProjectDraftWithOpenAI } = await import('./lib/openaiBrief');
+          const draft = await generateProjectDraftWithOpenAI({ apiKey, initialPrompt });
+          applyDraftToProject(
+            draft,
+            `Filled product brief with OpenAI using ${draft.subjects.length} topics.`,
+          );
+        } catch (error) {
+          addActivity(
+            'error',
+            'error',
+            getErrorMessage(error, 'OpenAI product brief generation failed.'),
+          );
+        }
+      });
+    },
+    [addActivity, applyDraftToProject, openAISettings.apiKey, runBusyAction],
+  );
+
+  const handleAddSubject = useCallback(
+    (name: string) => {
+      addSubject(name);
+      addActivity('file-added', 'info', `Added topic ${name}.`);
+    },
+    [addActivity, addSubject],
+  );
+
+  const handleRemoveSubject = useCallback(
+    (subjectId: string) => {
+      const subjectName =
+        project.subjects.find((subject) => subject.id === subjectId)?.name ?? 'subject';
+      removeSubject(subjectId);
+      clearSubjectMapping(subjectId);
       addActivity(
-        'archive-exported',
-        result.needsReview ? 'warning' : 'success',
-        `Exported ${result.fileName} with app version ${APP_VERSION}.`,
+        'file-removed',
+        'warning',
+        `Removed ${subjectName} and cleared related mappings.`,
       );
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'Archive export failed.',
-      );
-    } finally {
-      setBusyAction(null);
-    }
-  };
+    },
+    [addActivity, clearSubjectMapping, project.subjects, removeSubject],
+  );
+
+  const handleFilesSelected = useCallback(
+    (incomingFiles: File[]) => {
+      void runBusyAction('uploading', () => uploadFiles(incomingFiles));
+    },
+    [runBusyAction, uploadFiles],
+  );
+
+  const handleGenerateSubjectImage = useCallback(
+    (subjectId: string) => {
+      void runBusyAction('image-generation', () => generateSubjectImage(subjectId));
+    },
+    [generateSubjectImage, runBusyAction],
+  );
+
+  const handleGenerateMissingSubjectImages = useCallback(() => {
+    void runBusyAction('image-generation', generateMissingSubjectImages);
+  }, [generateMissingSubjectImages, runBusyAction]);
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -581,16 +211,23 @@ export const App = () => {
               </p>
             </CardBody>
           </Card>
-          <InitialPromptPanel onApplyDraft={handleApplyInitialDraft} />
-          <ProductBriefForm settings={project.settings} onChange={handleSettingsChange} />
           <OpenAIImagePanel
             settings={openAISettings}
             missingImageCount={missingImagePrompts.length}
+            subjectCount={project.subjects.length}
             busy={busyAction !== null}
             onChange={setOpenAISettings}
             onGenerateMissingImages={handleGenerateMissingSubjectImages}
           />
-          <PdfSettingsPanel settings={project.pdfSettings} onChange={handlePdfSettingsChange} />
+          <InitialPromptPanel
+            hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+            disabled={busyAction !== null}
+            isGenerating={busyAction === 'brief-generation'}
+            onFillBrief={handleFillProductBrief}
+          />
+          <ProductBriefForm settings={project.settings} onChange={updateSettings} />
+          <EtsySeoPanel project={project} onChange={updateSettings} />
+          <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
           <PromptManager
             subjects={project.subjects}
             prompts={prompts}
@@ -606,12 +243,12 @@ export const App = () => {
           <FileReviewGrid
             files={files}
             subjects={project.subjects}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onDelete={handleDelete}
-            onMap={handleMap}
-            onNotesChange={handleNotesChange}
-            onConfirmReview={handleConfirmReview}
+            onApprove={approveFile}
+            onReject={rejectFile}
+            onDelete={deleteFile}
+            onMap={mapFile}
+            onNotesChange={updateNotes}
+            onConfirmReview={confirmReview}
           />
         </div>
         <aside className="space-y-6 lg:sticky lg:top-6">
@@ -624,11 +261,11 @@ export const App = () => {
           <ArchiveActions
             qaResult={qaResult}
             busyAction={busyAction}
-            onGeneratePdfs={handleGeneratePdfs}
-            onGeneratePreviews={handleGeneratePreviews}
-            onExportArchive={handleExportArchive}
-            onExportProjectJson={handleExportProjectJson}
-            onImportProjectJson={handleImportProjectJson}
+            onGeneratePdfs={generatePdfs}
+            onGeneratePreviews={generatePreviews}
+            onExportArchive={exportArchive}
+            onExportProjectJson={exportProjectJson}
+            onImportProjectJson={importProjectJson}
           />
           <QAPanel result={qaResult} />
           <HowToUse />
@@ -636,11 +273,7 @@ export const App = () => {
           <Button
             className="w-full"
             variant="ghost"
-            onClick={() => {
-              files.forEach(revokeObjectUrl);
-              setFiles([]);
-              addActivity('file-removed', 'warning', 'Cleared in-memory files.');
-            }}
+            onClick={() => clearFiles('Cleared in-memory files.')}
           >
             Clear uploaded/generated files
           </Button>

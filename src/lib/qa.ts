@@ -1,4 +1,5 @@
 import { BLOCKED_IP_TERMS, MAX_ETSY_FILE_BYTES, MAX_TOTAL_SOURCE_BYTES } from '../constants';
+import { analyzeEtsySeo } from './etsySeo';
 import {
   getExpectedFilename,
   getFileForSubject,
@@ -56,6 +57,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     project.settings.tags,
     project.settings.license,
   ]);
+  const etsySeo = analyzeEtsySeo(project);
   const sourceFiles = getSourceFiles(files);
   const sourceTotalSize = sourceFiles.reduce((total, file) => total + file.size, 0);
   const groups = groupFilesForExport(files, project.subjects);
@@ -97,6 +99,23 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     Boolean(
       project.lastPdfGeneratedAt && project.lastPdfGeneratedAt >= project.lastImageApprovalAt,
     );
+  const getEtsyCheck = (id: string) => etsySeo.checks.find((check) => check.id === id);
+  const etsyTitleWordCount = getEtsyCheck('title-word-count');
+  const etsyTitleFrontLoaded = getEtsyCheck('title-front-loaded');
+  const etsyTitleReadable = getEtsyCheck('title-readable');
+  const etsyTagsCount = getEtsyCheck('tags-count');
+  const etsyTagsLength = getEtsyCheck('tags-length');
+  const etsyTagsDiverse = getEtsyCheck('tags-diverse');
+  const etsyDescriptionLead = getEtsyCheck('description-lead');
+  const etsyDescriptionDepth = getEtsyCheck('description-depth');
+  const etsyDescriptionStructure = getEtsyCheck('description-structure');
+  const etsyDescriptionKeywords = getEtsyCheck('description-keywords');
+  const etsyTagsValid = Boolean(etsyTagsLength?.passed && etsyTagsDiverse?.passed);
+  const etsyDescriptionUseful = Boolean(
+    etsyDescriptionDepth?.passed &&
+    etsyDescriptionStructure?.passed &&
+    etsyDescriptionKeywords?.passed,
+  );
 
   const checks: QACheck[] = [
     createCheck(
@@ -217,6 +236,61 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       hasText(project.settings.license) && hasText(project.settings.refundPolicy),
       'License and refund policy are present',
       'Both fields should be included in the exported listing copy.',
+    ),
+    createCheck(
+      'etsy-title-concise',
+      'warning',
+      etsyTitleWordCount?.passed ?? false,
+      'Etsy title is concise and readable',
+      etsyTitleWordCount?.details ?? 'Check title length.',
+    ),
+    createCheck(
+      'etsy-title-front-loaded',
+      'warning',
+      etsyTitleFrontLoaded?.passed ?? false,
+      'Etsy title front-loads the product',
+      etsyTitleFrontLoaded?.details ?? 'Put the product phrase first.',
+    ),
+    createCheck(
+      'etsy-title-readable',
+      'warning',
+      etsyTitleReadable?.passed ?? false,
+      'Etsy title avoids keyword stuffing',
+      etsyTitleReadable?.details ?? 'Avoid repeated keyword chains.',
+    ),
+    createCheck(
+      'etsy-tags-count',
+      'warning',
+      etsyTagsCount?.passed ?? false,
+      'Etsy listing uses all 13 tags',
+      etsyTagsCount?.details ?? 'Use all available tag slots.',
+    ),
+    createCheck(
+      'etsy-tags-valid',
+      'warning',
+      etsyTagsValid,
+      'Etsy tags are valid and diverse',
+      [etsyTagsLength?.details, etsyTagsDiverse?.details].filter(Boolean).join(' '),
+    ),
+    createCheck(
+      'etsy-description-lead',
+      'warning',
+      etsyDescriptionLead?.passed ?? false,
+      'Description opens with clear product copy',
+      etsyDescriptionLead?.details ?? 'Make the first sentence describe the product.',
+    ),
+    createCheck(
+      'etsy-description-useful',
+      'warning',
+      etsyDescriptionUseful,
+      'Description is detailed and organized',
+      [
+        etsyDescriptionDepth?.details,
+        etsyDescriptionStructure?.details,
+        etsyDescriptionKeywords?.details,
+      ]
+        .filter(Boolean)
+        .join(' '),
     ),
     createCheck(
       'image-min-size',
