@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+
 import { createDefaultProject } from '../../constants';
-import type { ManagedFile } from '../../types';
 import { detectBlockedTerms, runQA } from '../qa';
+
+import type { ManagedFile } from '../../types';
 
 const makeFile = (name: string, mappedAnimalId: string): ManagedFile => {
   const file = new File(['image'], name, { type: 'image/png' });

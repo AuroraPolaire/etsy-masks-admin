@@ -1,5 +1,6 @@
-import type { ManagedFile, Project } from '../types';
 import { createGeneratedFile, fileToDataUrl } from './files';
+
+import type { ManagedFile, Project } from '../types';
 
 type CanvasContext = {
   canvas: HTMLCanvasElement;
@@ -8,7 +9,7 @@ type CanvasContext = {
 
 type PreviewDefinition = {
   name: string;
-  draw: (canvasContext: CanvasContext) => Promise<void>;
+  draw: (canvasContext: CanvasContext) => Promise<void> | void;
 };
 
 const CANVAS_SIZE = 2000;
@@ -127,7 +128,13 @@ const drawImageFit = (
     drawWidth = drawHeight * ratio;
   }
 
-  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+  context.drawImage(
+    image,
+    x + (width - drawWidth) / 2,
+    y + (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
 };
 
 const drawBulletList = (
@@ -152,7 +159,10 @@ const drawBulletList = (
   });
 };
 
-const getPreviewImages = async (files: ManagedFile[], limit: number): Promise<HTMLImageElement[]> => {
+const getPreviewImages = async (
+  files: ManagedFile[],
+  limit: number,
+): Promise<HTMLImageElement[]> => {
   const selected = files.slice(0, limit);
   return Promise.all(selected.map((file) => loadImage(file.file)));
 };
@@ -179,7 +189,14 @@ export const generateMarketplacePreviewImages = async (
           const column = index % columns;
           const row = Math.floor(index / columns);
           drawRoundedPanel(context, startX + column * cellSize, startY + row * cellSize, 300, 300);
-          drawImageFit(context, image, startX + column * cellSize + 24, startY + row * cellSize + 24, 252, 252);
+          drawImageFit(
+            context,
+            image,
+            startX + column * cellSize + 24,
+            startY + row * cellSize + 24,
+            252,
+            252,
+          );
         });
         context.fillStyle = '#0f766e';
         context.font = '700 58px Arial, sans-serif';
@@ -189,7 +206,7 @@ export const generateMarketplacePreviewImages = async (
     },
     {
       name: 'included_files_preview.png',
-      draw: async ({ context }) => {
+      draw: ({ context }) => {
         drawTitle(context, 'What is included');
         drawBulletList(
           context,
@@ -209,7 +226,7 @@ export const generateMarketplacePreviewImages = async (
     },
     {
       name: 'print_cut_wear_preview.png',
-      draw: async ({ context }) => {
+      draw: ({ context }) => {
         drawTitle(context, 'Print • Cut • Wear');
         const columns = [
           ['Print', 'Print at 100%'],
@@ -246,7 +263,7 @@ export const generateMarketplacePreviewImages = async (
     },
     {
       name: 'safety_digital_download_preview.png',
-      draw: async ({ context }) => {
+      draw: ({ context }) => {
         drawTitle(context, 'Digital Download');
         drawBulletList(
           context,
@@ -264,7 +281,7 @@ export const generateMarketplacePreviewImages = async (
     },
     {
       name: 'full_animal_list_preview.png',
-      draw: async ({ context }) => {
+      draw: ({ context }) => {
         drawTitle(context, 'Animal mask list');
         context.fillStyle = '#243042';
         context.font = '600 48px Arial, sans-serif';

@@ -1,7 +1,8 @@
 import { ACCEPTED_FILE_EXTENSIONS } from '../constants';
-import type { AnimalItem, FileExportGroups, ManagedFile, PromptItem } from '../types';
 import { readImageMetadata } from './imageMetadata';
 import { slugify } from './slugify';
+
+import type { AnimalItem, FileExportGroups, ManagedFile, PromptItem } from '../types';
 
 export const getExpectedFilename = (animalName: string): string => `${slugify(animalName)}.png`;
 
@@ -31,7 +32,14 @@ export const formatBytes = (bytes: number): string => {
 export const fileToDataUrl = async (file: File | Blob): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error('Could not read file data as a data URL'));
+    };
     reader.onerror = () => reject(new Error('Could not read file data'));
     reader.readAsDataURL(file);
   });
@@ -39,7 +47,14 @@ export const fileToDataUrl = async (file: File | Blob): Promise<string> =>
 export const fileToText = async (file: File | Blob): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error('Could not read file as text'));
+    };
     reader.onerror = () => reject(new Error('Could not read text file'));
     reader.readAsText(file);
   });
@@ -82,7 +97,10 @@ export const createGeneratedFile = (
   };
 };
 
-export const createManagedFile = async (file: File, animals: AnimalItem[]): Promise<ManagedFile> => {
+export const createManagedFile = async (
+  file: File,
+  animals: AnimalItem[],
+): Promise<ManagedFile> => {
   const now = new Date().toISOString();
   const imageMetadata = isImageFile(file) ? await readImageMetadata(file) : undefined;
   const matchingAnimal = animals.find(
@@ -160,27 +178,28 @@ export const getFileForAnimal = (
       file.reviewState === state,
   );
 
-export const groupFilesForExport = (files: ManagedFile[], animals: AnimalItem[]): FileExportGroups => {
+export const groupFilesForExport = (
+  files: ManagedFile[],
+  animals: AnimalItem[],
+): FileExportGroups => {
   const validAnimalIds = new Set(animals.map((animal) => animal.id));
   const usedAnimalIds = new Set<string>();
 
-  const approvedMapped = files.filter(
-    (file) => {
-      if (
-        file.kind !== 'uploaded' ||
-        !isImageFile(file) ||
-        file.reviewState !== 'approved' ||
-        !file.mappedAnimalId ||
-        !validAnimalIds.has(file.mappedAnimalId) ||
-        usedAnimalIds.has(file.mappedAnimalId)
-      ) {
-        return false;
-      }
+  const approvedMapped = files.filter((file) => {
+    if (
+      file.kind !== 'uploaded' ||
+      !isImageFile(file) ||
+      file.reviewState !== 'approved' ||
+      !file.mappedAnimalId ||
+      !validAnimalIds.has(file.mappedAnimalId) ||
+      usedAnimalIds.has(file.mappedAnimalId)
+    ) {
+      return false;
+    }
 
-      usedAnimalIds.add(file.mappedAnimalId);
-      return true;
-    },
-  );
+    usedAnimalIds.add(file.mappedAnimalId);
+    return true;
+  });
 
   const approvedIds = new Set(approvedMapped.map((file) => file.id));
   const rejected = files.filter(

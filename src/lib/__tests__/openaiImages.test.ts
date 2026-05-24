@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { OpenAIImageSettings, PromptItem } from '../../types';
+
 import { buildOpenAIImageRequestBody, canUseTransparentBackground } from '../openaiImages';
+
+import type { OpenAIImageSettings, PromptItem } from '../../types';
 
 const promptItem: PromptItem = {
   animalId: 'lion',

@@ -1,4 +1,5 @@
 import { APP_VERSION, STORAGE_KEY, createDefaultProject } from '../constants';
+
 import type { Project, ProjectJsonBackup } from '../types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -37,7 +38,7 @@ export const loadProject = (): Project => {
         }))
         .filter((animal) => animal.name.trim().length > 0),
       updatedAt: new Date().toISOString(),
-    } as Project;
+    };
   } catch {
     return fallback;
   }

@@ -33,7 +33,9 @@ export class ErrorBoundary extends Component<Props, State> {
               available, but uploaded files need to be re-uploaded after refresh.
             </p>
             {this.state.message ? (
-              <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-900">{this.state.message}</p>
+              <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-900">
+                {this.state.message}
+              </p>
             ) : null}
           </section>
         </main>

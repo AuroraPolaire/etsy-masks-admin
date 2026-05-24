@@ -6,7 +6,14 @@ type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   helperText?: string;
 };
 
-export const Select = ({ label, options, helperText, id, className = '', ...props }: SelectProps) => {
+export const Select = ({
+  label,
+  options,
+  helperText,
+  id,
+  className = '',
+  ...props
+}: SelectProps) => {
   const selectId = id ?? props.name ?? label.toLowerCase().replace(/\s+/g, '-');
 
   return (

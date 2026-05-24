@@ -1,8 +1,9 @@
-import type { ChangeEvent } from 'react';
-import type { QAResult } from '../types';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
+
+import type { QAResult } from '../types';
+import type { ChangeEvent } from 'react';
 
 type ArchiveActionsProps = {
   qaResult: QAResult;
@@ -45,7 +46,12 @@ export const ArchiveActions = ({
         <Button className="w-full" variant="primary" disabled={disabled} onClick={onGeneratePdfs}>
           Generate A4 + US Letter PDFs
         </Button>
-        <Button className="w-full" variant="primary" disabled={disabled} onClick={onGeneratePreviews}>
+        <Button
+          className="w-full"
+          variant="primary"
+          disabled={disabled}
+          onClick={onGeneratePreviews}
+        >
           Generate marketplace preview images
         </Button>
         <Button className="w-full" disabled={disabled} onClick={onExportProjectJson}>
@@ -53,7 +59,12 @@ export const ArchiveActions = ({
         </Button>
         <label className="block">
           <span className="sr-only">Import project JSON</span>
-          <input className="sr-only" type="file" accept=".json,application/json" onChange={handleImport} />
+          <input
+            className="sr-only"
+            type="file"
+            accept=".json,application/json"
+            onChange={handleImport}
+          />
           <span className="inline-flex min-h-10 w-full cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
             Import project JSON
           </span>
@@ -68,7 +79,8 @@ export const ArchiveActions = ({
         </Button>
         {qaResult.status !== 'etsy-ready' ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            Export is allowed, but the archive will be marked needs review until critical QA checks pass.
+            Export is allowed, but the archive will be marked needs review until critical QA checks
+            pass.
           </p>
         ) : null}
       </CardBody>

@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from '../constants';
+
 import type { AnimalItem, ProjectSettings } from '../types';
 
 const KNOWN_ANIMALS = [
@@ -65,7 +66,7 @@ const extractAnimalNames = (idea: string): string[] => {
     return [...new Set(matched.map(titleCase))].slice(0, 20);
   }
 
-  const listMatch = idea.match(/(?:animals?|masks?|include|with)\s*:\s*([^.;]+)/i);
+  const listMatch = /(?:animals?|masks?|include|with)\s*:\s*([^.;]+)/i.exec(idea);
   if (!listMatch?.[1]) {
     return [];
   }
@@ -115,7 +116,20 @@ export const createProjectDraftFromInitialPrompt = (
   const animalNames =
     animals.length > 0
       ? animals
-      : ['Lion', 'Tiger', 'Elephant', 'Giraffe', 'Zebra', 'Panda', 'Fox', 'Wolf', 'Bear', 'Rabbit', 'Deer', 'Owl'];
+      : [
+          'Lion',
+          'Tiger',
+          'Elephant',
+          'Giraffe',
+          'Zebra',
+          'Panda',
+          'Fox',
+          'Wolf',
+          'Bear',
+          'Rabbit',
+          'Deer',
+          'Owl',
+        ];
   const maskCount = animalNames.length;
   const title =
     `${theme} Printable Bundle for Kids, ${maskCount} PNG Paper Masks, Party Craft, Classroom Activity, Digital Download`

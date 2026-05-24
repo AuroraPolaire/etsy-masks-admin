@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import type { AnimalItem, ManagedFile, PromptItem } from '../types';
+
 import { getFileForAnimal } from '../lib/files';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Input } from './ui/Input';
+
+import type { AnimalItem, ManagedFile, PromptItem } from '../types';
 
 type PromptManagerProps = {
   animals: AnimalItem[];
@@ -108,7 +110,9 @@ export const PromptManager = ({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="text-base font-bold text-slate-950">{prompt.animalName}</h3>
-                      <p className="mt-1 font-mono text-sm text-slate-700">{prompt.expectedFilename}</p>
+                      <p className="mt-1 font-mono text-sm text-slate-700">
+                        {prompt.expectedFilename}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge tone={matchingFile ? 'success' : 'neutral'}>
@@ -122,7 +126,9 @@ export const PromptManager = ({
                   <div className="mt-4 space-y-3">
                     <div>
                       <p className="text-xs font-semibold uppercase text-slate-500">Prompt</p>
-                      <p className="mt-1 rounded-md bg-white p-3 text-sm text-slate-700">{prompt.prompt}</p>
+                      <p className="mt-1 rounded-md bg-white p-3 text-sm text-slate-700">
+                        {prompt.prompt}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase text-slate-500">

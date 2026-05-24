@@ -1,11 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
 import { DEFAULT_SETTINGS } from '../../constants';
-import type { AnimalItem, ProjectSettings, QAResult } from '../../types';
 import { createPromptItems } from '../../lib/files';
 import { ProductBriefForm } from '../ProductBriefForm';
 import { PromptManager } from '../PromptManager';
 import { QAPanel } from '../QAPanel';
+
+import type { AnimalItem, ProjectSettings, QAResult } from '../../types';
 
 const animals: AnimalItem[] = [{ id: 'lion', name: 'Lion' }];
 

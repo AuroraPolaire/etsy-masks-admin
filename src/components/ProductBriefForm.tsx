@@ -1,8 +1,9 @@
-import type { ProjectSettings } from '../types';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Textarea } from './ui/Textarea';
+
+import type { ProjectSettings } from '../types';
 
 type ProductBriefFormProps = {
   settings: ProjectSettings;
@@ -52,7 +53,9 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
               { value: 'Etsy', label: 'Etsy' },
               { value: 'Other', label: 'Other' },
             ]}
-            onChange={(event) => update('marketplace', event.target.value as ProjectSettings['marketplace'])}
+            onChange={(event) =>
+              update('marketplace', event.target.value as ProjectSettings['marketplace'])
+            }
           />
           <Input
             label="Style"

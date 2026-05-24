@@ -1,10 +1,11 @@
 import { MAX_ETSY_FILE_BYTES } from '../constants';
-import type { AnimalItem, ManagedFile } from '../types';
 import { formatBytes, getExpectedFilename, isImageFile } from '../lib/files';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { Textarea } from './ui/Textarea';
+
+import type { AnimalItem, ManagedFile } from '../types';
 
 type FilePreviewCardProps = {
   file: ManagedFile;
@@ -51,13 +52,13 @@ export const FilePreviewCard = ({
       <div className="flex aspect-square items-center justify-center bg-slate-100">
         {image && file.objectUrl ? (
           <img
-            className="h-full w-full object-contain p-3"
+            className="size-full object-contain p-3"
             src={file.objectUrl}
             alt={`Preview of ${file.name}`}
           />
         ) : (
           <div className="text-center text-sm text-slate-600">
-            <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-md bg-white text-2xl shadow-sm">
+            <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-md bg-white text-2xl shadow-sm">
               {file.name.split('.').pop()?.toUpperCase() ?? 'FILE'}
             </div>
             Non-image file

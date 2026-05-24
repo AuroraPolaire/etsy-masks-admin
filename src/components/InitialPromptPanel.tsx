@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import type { AnimalItem, ProjectSettings } from '../types';
+
 import { createProjectDraftFromInitialPrompt } from '../lib/brief';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Textarea } from './ui/Textarea';
+
+import type { AnimalItem, ProjectSettings } from '../types';
 
 type InitialPromptPanelProps = {
   onApplyDraft: (draft: { settings: ProjectSettings; animals: AnimalItem[] }) => void;

@@ -1,8 +1,9 @@
 import { MAX_TOTAL_SOURCE_BYTES } from '../constants';
-import type { AnimalItem, ManagedFile } from '../types';
+import { FilePreviewCard } from './FilePreviewCard';
 import { formatBytes, getSourceFiles } from '../lib/files';
 import { Card, CardBody, CardHeader } from './ui/Card';
-import { FilePreviewCard } from './FilePreviewCard';
+
+import type { AnimalItem, ManagedFile } from '../types';
 
 type FileReviewGridProps = {
   files: ManagedFile[];
@@ -52,8 +53,8 @@ export const FileReviewGrid = ({
         ) : null}
         {files.length === 0 ? (
           <p className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
-            Upload generated masks to start reviewing. Filename matches are mapped automatically, and
-            mismatches can be repaired with the animal dropdown.
+            Upload generated masks to start reviewing. Filename matches are mapped automatically,
+            and mismatches can be repaired with the animal dropdown.
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

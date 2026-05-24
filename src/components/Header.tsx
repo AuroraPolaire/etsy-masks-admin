@@ -1,5 +1,6 @@
-import type { QAResult } from '../types';
 import { Badge } from './ui/Badge';
+
+import type { QAResult } from '../types';
 
 type HeaderProps = {
   qaResult: QAResult;
@@ -14,8 +15,8 @@ export const Header = ({ qaResult }: HeaderProps) => (
         </p>
         <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">Mask Bundle Admin</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          Prepare prompts, review uploaded masks, generate printable PDFs, create preview images, and
-          export a ready-to-review archive without a backend.
+          Prepare prompts, review uploaded masks, generate printable PDFs, create preview images,
+          and export a ready-to-review archive without a backend.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

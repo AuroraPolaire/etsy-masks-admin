@@ -1,7 +1,8 @@
-import type { ManagedFile, Project, QAResult } from '../types';
 import { getFileForAnimal } from '../lib/files';
 import { Badge } from './ui/Badge';
 import { Card, CardBody, CardHeader } from './ui/Card';
+
+import type { ManagedFile, Project, QAResult } from '../types';
 
 type WorkflowStatusProps = {
   project: Project;
@@ -11,7 +12,9 @@ type WorkflowStatusProps = {
 };
 
 export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: WorkflowStatusProps) => {
-  const approvedCount = project.animals.filter((animal) => getFileForAnimal(files, animal.id)).length;
+  const approvedCount = project.animals.filter((animal) =>
+    getFileForAnimal(files, animal.id),
+  ).length;
   const pdfCount = files.filter((file) => file.kind === 'generated-pdf').length;
   const previewCount = files.filter((file) => file.kind === 'generated-preview').length;
   const nextStep = !hasOpenAIKey

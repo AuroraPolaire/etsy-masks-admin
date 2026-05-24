@@ -53,6 +53,7 @@ The app is static and must work from the built `dist` folder.
 
 ```bash
 npm run lint
+npm run format:check
 npm run typecheck
 npm run test
 ```
@@ -75,13 +76,13 @@ https://<USERNAME>.github.io/<REPO>/
 set:
 
 ```yaml
-VITE_BASE_PATH: "/<REPO>/"
+VITE_BASE_PATH: '/<REPO>/'
 ```
 
 The workflow currently uses:
 
 ```yaml
-VITE_BASE_PATH: "/etsy-masks-admin/"
+VITE_BASE_PATH: '/etsy-masks-admin/'
 ```
 
 Change that value if you deploy the app from a differently named repository.

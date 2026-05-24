@@ -30,8 +30,7 @@ export const DEFAULT_SETTINGS: ProjectSettings = {
   style: 'Front-facing realistic printable paper masks',
   description:
     'Create fun animal-themed activities with this printable realistic animal mask bundle for kids. Perfect for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume activities. This is a digital download only. No physical item will be shipped.',
-  tags:
-    'animal masks, printable masks, kids party masks, zoo animal masks, safari masks, classroom craft, paper masks, birthday party, teacher resources, animal costume, digital download, kids activity, wildlife masks',
+  tags: 'animal masks, printable masks, kids party masks, zoo animal masks, safari masks, classroom craft, paper masks, birthday party, teacher resources, animal costume, digital download, kids activity, wildlife masks',
   safetyNote:
     'Adult supervision is required for printing, cutting, and use. Not intended for children under 3 years old. Use child-safe scissors where appropriate. Do not use strings, elastic, or cords with young children without supervision.',
   printingInstructions:

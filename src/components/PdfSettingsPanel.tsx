@@ -1,7 +1,8 @@
-import type { PdfSettings } from '../types';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+
+import type { PdfSettings } from '../types';
 
 type PdfSettingsPanelProps = {
   settings: PdfSettings;
@@ -71,7 +72,9 @@ export const PdfSettingsPanel = ({ settings, onChange }: PdfSettingsPanelProps) 
               { value: 'medium', label: 'Medium' },
               { value: 'large', label: 'Large' },
             ]}
-            onChange={(event) => update('maskScale', event.target.value as PdfSettings['maskScale'])}
+            onChange={(event) =>
+              update('maskScale', event.target.value as PdfSettings['maskScale'])
+            }
           />
           <Input
             label="Page margin in mm"

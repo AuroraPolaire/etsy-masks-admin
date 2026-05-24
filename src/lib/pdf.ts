@@ -1,8 +1,10 @@
 import { jsPDF } from 'jspdf';
+
 import { PRINT_FOOTER } from '../constants';
-import type { ManagedFile, Project } from '../types';
 import { createGeneratedFile, createPngBlobFromImage, fileToDataUrl } from './files';
 import { slugify } from './slugify';
+
+import type { ManagedFile, Project } from '../types';
 
 type PdfFormat = {
   label: 'A4' | 'US_Letter';

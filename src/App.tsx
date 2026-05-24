@@ -1,18 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { APP_VERSION, DEFAULT_OPENAI_IMAGE_SETTINGS } from './constants';
-import type {
-  ActivityItem,
-  ActivityLevel,
-  ActivityType,
-  AnimalItem,
-  ManagedFile,
-  OpenAIImageSettings,
-  Project,
-  ProjectSettings,
-  PdfSettings,
-} from './types';
-import { ArchiveActions } from './components/ArchiveActions';
+
 import { ActivityLog } from './components/ActivityLog';
+import { ArchiveActions } from './components/ArchiveActions';
 import { BrowserSupportWarning } from './components/BrowserSupportWarning';
 import { FileReviewGrid } from './components/FileReviewGrid';
 import { FileUploader } from './components/FileUploader';
@@ -25,9 +14,10 @@ import { PrivacyNotice } from './components/PrivacyNotice';
 import { ProductBriefForm } from './components/ProductBriefForm';
 import { PromptManager } from './components/PromptManager';
 import { QAPanel } from './components/QAPanel';
-import { WorkflowStatus } from './components/WorkflowStatus';
 import { Button } from './components/ui/Button';
 import { Card, CardBody } from './components/ui/Card';
+import { WorkflowStatus } from './components/WorkflowStatus';
+import { APP_VERSION, DEFAULT_OPENAI_IMAGE_SETTINGS } from './constants';
 import { checkBrowserSupport } from './lib/browserSupport';
 import {
   createManagedFile,
@@ -41,8 +31,20 @@ import {
   replaceGeneratedFiles,
 } from './lib/files';
 import { runQA } from './lib/qa';
-import { createProjectBackup, loadProject, parseProjectBackup, saveProject } from './lib/storage';
 import { slugify } from './lib/slugify';
+import { createProjectBackup, loadProject, parseProjectBackup, saveProject } from './lib/storage';
+
+import type {
+  ActivityItem,
+  ActivityLevel,
+  ActivityType,
+  AnimalItem,
+  ManagedFile,
+  OpenAIImageSettings,
+  Project,
+  ProjectSettings,
+  PdfSettings,
+} from './types';
 
 type BusyAction =
   | 'uploading'
@@ -116,9 +118,9 @@ export const App = () => {
     [files, prompts],
   );
 
-  const addActivity = useCallback(
-    (type: ActivityType, level: ActivityLevel, message: string) => {
-      setActivityLog((items) => [
+  const addActivity = useCallback((type: ActivityType, level: ActivityLevel, message: string) => {
+    setActivityLog((items) =>
+      [
         {
           id: crypto.randomUUID(),
           type,
@@ -127,10 +129,9 @@ export const App = () => {
           createdAt: nowIso(),
         },
         ...items,
-      ].slice(0, 80));
-    },
-    [],
-  );
+      ].slice(0, 80),
+    );
+  }, []);
 
   const updateProject = useCallback((updater: (project: Project) => Project) => {
     setProject((currentProject) => {
@@ -198,7 +199,9 @@ export const App = () => {
       animals: currentProject.animals.filter((animal) => animal.id !== animalId),
     }));
     setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.mappedAnimalId === animalId ? clearMappedAnimal(file) : file)),
+      currentFiles.map((file) =>
+        file.mappedAnimalId === animalId ? clearMappedAnimal(file) : file,
+      ),
     );
     addActivity('file-removed', 'warning', `Removed ${animalName} and cleared related mappings.`);
   };
@@ -208,8 +211,12 @@ export const App = () => {
 
     try {
       const { accepted, duplicates, unsupported } = dedupeIncomingFiles(files, incomingFiles);
-      duplicates.forEach((name) => addActivity('file-added', 'warning', `Skipped duplicate file ${name}.`));
-      unsupported.forEach((name) => addActivity('file-added', 'warning', `Skipped unsupported file ${name}.`));
+      duplicates.forEach((name) =>
+        addActivity('file-added', 'warning', `Skipped duplicate file ${name}.`),
+      );
+      unsupported.forEach((name) =>
+        addActivity('file-added', 'warning', `Skipped unsupported file ${name}.`),
+      );
 
       const managedFiles: ManagedFile[] = [];
       for (const file of accepted) {
@@ -236,7 +243,9 @@ export const App = () => {
   };
 
   const updateFile = (fileId: string, updater: (file: ManagedFile) => ManagedFile) => {
-    setFiles((currentFiles) => currentFiles.map((file) => (file.id === fileId ? updater(file) : file)));
+    setFiles((currentFiles) =>
+      currentFiles.map((file) => (file.id === fileId ? updater(file) : file)),
+    );
   };
 
   const handleApprove = (fileId: string) => {
@@ -311,12 +320,18 @@ export const App = () => {
         reviewNotes: `Generated with OpenAI ${openAISettings.model}. Review before approval.`,
       };
       setFiles((currentFiles) => [...currentFiles, mappedFile]);
-      addActivity('image-generated', 'success', `Generated ${getExpectedFilename(prompt.animalName)}.`);
+      addActivity(
+        'image-generated',
+        'success',
+        `Generated ${getExpectedFilename(prompt.animalName)}.`,
+      );
     } catch (error) {
       addActivity(
         'error',
         'error',
-        error instanceof Error ? error.message : `Image generation failed for ${prompt.animalName}.`,
+        error instanceof Error
+          ? error.message
+          : `Image generation failed for ${prompt.animalName}.`,
       );
     } finally {
       setGeneratingAnimalId(null);
@@ -339,7 +354,10 @@ export const App = () => {
       for (const prompt of missingImagePrompts) {
         setGeneratingAnimalId(prompt.animalId);
         const generatedFile = await generateImageWithOpenAI(openAISettings, prompt);
-        const uniqueFile = makeUniqueFile(generatedFile, [...workingFiles, ...generatedManagedFiles]);
+        const uniqueFile = makeUniqueFile(generatedFile, [
+          ...workingFiles,
+          ...generatedManagedFiles,
+        ]);
         const managedFile = await createManagedFile(uniqueFile, project.animals);
         const mappedFile: ManagedFile = {
           ...managedFile,
@@ -355,7 +373,11 @@ export const App = () => {
         setFiles((currentFiles) => [...currentFiles, ...generatedManagedFiles]);
       }
     } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'Image generation failed.');
+      addActivity(
+        'error',
+        'error',
+        error instanceof Error ? error.message : 'Image generation failed.',
+      );
     } finally {
       setGeneratingAnimalId(null);
       setBusyAction(null);
@@ -368,7 +390,11 @@ export const App = () => {
     try {
       const approvedFiles = groupFilesForExport(files, project.animals).approvedMapped;
       if (approvedFiles.length === 0) {
-        addActivity('error', 'warning', 'Approve and map at least one image before generating PDFs.');
+        addActivity(
+          'error',
+          'warning',
+          'Approve and map at least one image before generating PDFs.',
+        );
         return;
       }
 
@@ -382,9 +408,17 @@ export const App = () => {
         ...currentProject,
         lastPdfGeneratedAt: nowIso(),
       }));
-      addActivity('pdf-generated', 'success', `Generated ${generatedFiles.length} printable PDF(s).`);
+      addActivity(
+        'pdf-generated',
+        'success',
+        `Generated ${generatedFiles.length} printable PDF(s).`,
+      );
     } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'PDF generation failed.');
+      addActivity(
+        'error',
+        'error',
+        error instanceof Error ? error.message : 'PDF generation failed.',
+      );
     } finally {
       setBusyAction(null);
     }
@@ -396,7 +430,11 @@ export const App = () => {
     try {
       const approvedFiles = groupFilesForExport(files, project.animals).approvedMapped;
       if (approvedFiles.length === 0) {
-        addActivity('error', 'warning', 'Approve and map at least one image before generating previews.');
+        addActivity(
+          'error',
+          'warning',
+          'Approve and map at least one image before generating previews.',
+        );
         return;
       }
 
@@ -410,9 +448,17 @@ export const App = () => {
         ...currentProject,
         lastPreviewGeneratedAt: nowIso(),
       }));
-      addActivity('preview-generated', 'success', `Generated ${generatedFiles.length} preview image(s).`);
+      addActivity(
+        'preview-generated',
+        'success',
+        `Generated ${generatedFiles.length} preview image(s).`,
+      );
     } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'Preview generation failed.');
+      addActivity(
+        'error',
+        'error',
+        error instanceof Error ? error.message : 'Preview generation failed.',
+      );
     } finally {
       setBusyAction(null);
     }
@@ -434,7 +480,11 @@ export const App = () => {
       setProject(nextProject);
       addActivity('project-exported', 'success', 'Exported project JSON metadata backup.');
     } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'Project JSON export failed.');
+      addActivity(
+        'error',
+        'error',
+        error instanceof Error ? error.message : 'Project JSON export failed.',
+      );
     } finally {
       setBusyAction(null);
     }
@@ -455,7 +505,11 @@ export const App = () => {
         'Imported project metadata. Uploaded files are not part of JSON backups and must be re-uploaded.',
       );
     } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'Project import failed.');
+      addActivity(
+        'error',
+        'error',
+        error instanceof Error ? error.message : 'Project import failed.',
+      );
     } finally {
       setBusyAction(null);
     }
@@ -481,7 +535,11 @@ export const App = () => {
           'This archive is marked needs review. Critical QA checks or Etsy size checks need attention. Download anyway?',
         );
         if (!shouldDownload) {
-          addActivity('archive-exported', 'warning', 'Archive export was generated but download was cancelled.');
+          addActivity(
+            'archive-exported',
+            'warning',
+            'Archive export was generated but download was cancelled.',
+          );
           return;
         }
       }
@@ -493,7 +551,11 @@ export const App = () => {
         `Exported ${result.fileName} with app version ${APP_VERSION}.`,
       );
     } catch (error) {
-      addActivity('error', 'error', error instanceof Error ? error.message : 'Archive export failed.');
+      addActivity(
+        'error',
+        'error',
+        error instanceof Error ? error.message : 'Archive export failed.',
+      );
     } finally {
       setBusyAction(null);
     }

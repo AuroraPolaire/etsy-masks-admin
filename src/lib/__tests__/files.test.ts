@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { AnimalItem, ManagedFile } from '../../types';
+
 import { getExpectedFilename, groupFilesForExport } from '../files';
+
+import type { AnimalItem, ManagedFile } from '../../types';
 
 const animals: AnimalItem[] = [
   { id: 'lion', name: 'Lion' },

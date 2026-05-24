@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
+
 import { APP_VERSION, MAX_ETSY_FILE_BYTES } from '../constants';
-import type { ExportManifest, ManagedFile, Project, QAResult } from '../types';
 import {
   createPngBlobFromImage,
   fileToText,
@@ -11,6 +11,8 @@ import {
 } from './files';
 import { createManifestImageDimensions, runQA } from './qa';
 import { slugify } from './slugify';
+
+import type { ExportManifest, ManagedFile, Project, QAResult } from '../types';
 
 type ArchiveResult = {
   blob: Blob;
@@ -132,7 +134,11 @@ const createNestedEtsyZip = async (
   addText(zip, 'listing_copy.txt', listingCopy);
   addText(zip, 'READ_ME_FIRST.txt', createReadMeFirst(project));
 
-  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 7 } });
+  return zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 7 },
+  });
 };
 
 const createManifest = (
@@ -223,7 +229,11 @@ export const exportArchive = async (
   addText(zip, `${basePath}/01_Etsy_Listing/description.txt`, project.settings.description);
   addText(zip, `${basePath}/01_Etsy_Listing/tags.txt`, project.settings.tags);
   addText(zip, `${basePath}/01_Etsy_Listing/safety_note.txt`, project.settings.safetyNote);
-  addText(zip, `${basePath}/01_Etsy_Listing/printing_instructions.txt`, project.settings.printingInstructions);
+  addText(
+    zip,
+    `${basePath}/01_Etsy_Listing/printing_instructions.txt`,
+    project.settings.printingInstructions,
+  );
   addText(zip, `${basePath}/01_Etsy_Listing/license.txt`, project.settings.license);
   addText(zip, `${basePath}/01_Etsy_Listing/refund_policy.txt`, project.settings.refundPolicy);
   addText(zip, `${basePath}/01_Etsy_Listing/full_listing_copy.txt`, listingCopy);
@@ -254,8 +264,15 @@ export const exportArchive = async (
   addText(zip, `${basePath}/04_Etsy_Upload_Files/listing_copy.txt`, listingCopy);
   zip.file(`${basePath}/05_QA/qa_report.json`, JSON.stringify(qaWithNestedSize, null, 2));
   zip.file(`${basePath}/manifest.json`, JSON.stringify(manifest, null, 2));
-  zip.file(`${basePath}/project_backup.json`, JSON.stringify({ appVersion: APP_VERSION, project }, null, 2));
-  addText(zip, `${basePath}/README.txt`, createArchiveReadme(project, qaWithNestedSize.status, nestedSize));
+  zip.file(
+    `${basePath}/project_backup.json`,
+    JSON.stringify({ appVersion: APP_VERSION, project }, null, 2),
+  );
+  addText(
+    zip,
+    `${basePath}/README.txt`,
+    createArchiveReadme(project, qaWithNestedSize.status, nestedSize),
+  );
 
   const archiveBlob = await zip.generateAsync({
     type: 'blob',

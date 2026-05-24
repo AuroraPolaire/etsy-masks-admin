@@ -1,5 +1,4 @@
 import { BLOCKED_IP_TERMS, MAX_ETSY_FILE_BYTES, MAX_TOTAL_SOURCE_BYTES } from '../constants';
-import type { ManagedFile, Project, QACheck, QAGroup, QAResult } from '../types';
 import {
   getExpectedFilename,
   getFileForAnimal,
@@ -9,13 +8,15 @@ import {
 } from './files';
 import { slugify } from './slugify';
 
+import type { ManagedFile, Project, QACheck, QAGroup, QAResult } from '../types';
+
 const hasText = (value: string): boolean => value.trim().length > 0;
 
 const includesPhrase = (value: string, phrase: string): boolean =>
   value.toLowerCase().includes(phrase.toLowerCase());
 
 const extractMaskCountFromTitle = (title: string): number | undefined => {
-  const match = title.match(/\b(\d+)\s*(png|printable|paper)?\s*mask/i);
+  const match = /\b(\d+)\s*(png|printable|paper)?\s*mask/i.exec(title);
   return match?.[1] ? Number(match[1]) : undefined;
 };
 
@@ -93,7 +94,9 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
   const nestedZipSize = project.nestedEtsyUploadZipSizeBytes;
   const generatedAfterApproval =
     !project.lastImageApprovalAt ||
-    Boolean(project.lastPdfGeneratedAt && project.lastPdfGeneratedAt >= project.lastImageApprovalAt);
+    Boolean(
+      project.lastPdfGeneratedAt && project.lastPdfGeneratedAt >= project.lastImageApprovalAt,
+    );
 
   const checks: QACheck[] = [
     createCheck(
@@ -138,7 +141,9 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'critical',
       blockedTerms.length === 0,
       'No obvious blocked IP terms in listing text',
-      blockedTerms.length ? `Review these terms: ${blockedTerms.join(', ')}.` : 'No blocked terms found.',
+      blockedTerms.length
+        ? `Review these terms: ${blockedTerms.join(', ')}.`
+        : 'No blocked terms found.',
     ),
     createCheck(
       'animal-count',
@@ -157,7 +162,9 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     createCheck(
       'rejected-not-approved',
       'critical',
-      groups.rejected.every((file) => !groups.approvedMapped.some((approved) => approved.id === file.id)),
+      groups.rejected.every(
+        (file) => !groups.approvedMapped.some((approved) => approved.id === file.id),
+      ),
       'No rejected image is included in final approved set',
       'Rejected files are routed to PNG_Rejected_Do_Not_Upload.',
     ),
@@ -166,7 +173,9 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'critical',
       !project.pdfSettings.generateA4 || hasA4,
       'A4 printable PDF exists if enabled',
-      project.pdfSettings.generateA4 ? 'Generate the A4 PDF before export.' : 'A4 generation is disabled.',
+      project.pdfSettings.generateA4
+        ? 'Generate the A4 PDF before export.'
+        : 'A4 generation is disabled.',
     ),
     createCheck(
       'letter-pdf',
@@ -255,19 +264,25 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'project-json-exported',
       Boolean(project.lastProjectJsonExportAt),
       'Project JSON exported at least once',
-      project.lastProjectJsonExportAt ? `Last exported ${project.lastProjectJsonExportAt}.` : 'Not exported yet.',
+      project.lastProjectJsonExportAt
+        ? `Last exported ${project.lastProjectJsonExportAt}.`
+        : 'Not exported yet.',
     ),
     createInfoCheck(
       'archive-exported',
       Boolean(project.lastArchiveExportAt),
       'Archive exported at least once',
-      project.lastArchiveExportAt ? `Last exported ${project.lastArchiveExportAt}.` : 'Not exported yet.',
+      project.lastArchiveExportAt
+        ? `Last exported ${project.lastArchiveExportAt}.`
+        : 'Not exported yet.',
     ),
     createInfoCheck(
       'pdf-after-approval',
       generatedAfterApproval,
       'PDFs generated after last image approval if easy to track',
-      generatedAfterApproval ? 'PDFs are not older than the last approval.' : 'Regenerate PDFs after approvals.',
+      generatedAfterApproval
+        ? 'PDFs are not older than the last approval.'
+        : 'Regenerate PDFs after approvals.',
     ),
   ];
 

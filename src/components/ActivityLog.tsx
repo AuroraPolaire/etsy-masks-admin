@@ -1,6 +1,7 @@
-import type { ActivityItem } from '../types';
 import { Badge } from './ui/Badge';
 import { Card, CardBody, CardHeader } from './ui/Card';
+
+import type { ActivityItem } from '../types';
 
 type ActivityLogProps = {
   items: ActivityItem[];

@@ -1,9 +1,10 @@
-import type { OpenAIImageSettings } from '../types';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+
+import type { OpenAIImageSettings } from '../types';
 
 type OpenAIImagePanelProps = {
   settings: OpenAIImageSettings;
@@ -68,7 +69,9 @@ export const OpenAIImagePanel = ({
               { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
               { value: 'gpt-image-2', label: 'gpt-image-2 (no transparent background)' },
             ]}
-            onChange={(event) => update('model', event.target.value as OpenAIImageSettings['model'])}
+            onChange={(event) =>
+              update('model', event.target.value as OpenAIImageSettings['model'])
+            }
           />
           <Select
             label="Size"
@@ -92,7 +95,9 @@ export const OpenAIImagePanel = ({
               { value: 'low', label: 'Low' },
               { value: 'auto', label: 'Auto' },
             ]}
-            onChange={(event) => update('quality', event.target.value as OpenAIImageSettings['quality'])}
+            onChange={(event) =>
+              update('quality', event.target.value as OpenAIImageSettings['quality'])
+            }
           />
           <Select
             label="Background"

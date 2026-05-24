@@ -1,6 +1,7 @@
-import type { QAGroup, QAResult } from '../types';
 import { Badge } from './ui/Badge';
 import { Card, CardBody, CardHeader } from './ui/Card';
+
+import type { QAGroup, QAResult } from '../types';
 
 type QAPanelProps = {
   result: QAResult;
@@ -30,7 +31,9 @@ export const QAPanel = ({ result }: QAPanelProps) => (
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-slate-950">{result.readinessPercentage}%</p>
-          <Badge tone={result.status === 'etsy-ready' ? 'success' : 'warning'}>{result.status}</Badge>
+          <Badge tone={result.status === 'etsy-ready' ? 'success' : 'warning'}>
+            {result.status}
+          </Badge>
         </div>
       </div>
     </CardHeader>

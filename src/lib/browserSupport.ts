@@ -31,7 +31,7 @@ export const checkBrowserSupport = (): BrowserSupportResult => {
   }
 
   const canvas = document.createElement('canvas');
-  if (!canvas.getContext || !canvas.getContext('2d')) {
+  if (!canvas.getContext?.('2d')) {
     missingFeatures.push('canvas');
   }
 
