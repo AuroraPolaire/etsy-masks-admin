@@ -141,7 +141,7 @@ export const OpenAIImagePanel = ({
             Generate missing images
           </Button>
           <p className="text-sm text-slate-600">
-            {missingImageCount} animal{missingImageCount === 1 ? '' : 's'} missing a usable image.
+            {missingImageCount} topic{missingImageCount === 1 ? '' : 's'} missing a usable image.
           </p>
         </div>
       </CardBody>

@@ -26,7 +26,7 @@ import {
   downloadBlob,
   fileToText,
   getExpectedFilename,
-  getFileForAnimal,
+  getFileForSubject,
   groupFilesForExport,
   replaceGeneratedFiles,
 } from './lib/files';
@@ -38,7 +38,7 @@ import type {
   ActivityItem,
   ActivityLevel,
   ActivityType,
-  AnimalItem,
+  SubjectItem,
   ManagedFile,
   OpenAIImageSettings,
   Project,
@@ -58,20 +58,20 @@ type BusyAction =
 
 const nowIso = () => new Date().toISOString();
 
-const clearMappedAnimal = (file: ManagedFile): ManagedFile => {
+const clearMappedSubject = (file: ManagedFile): ManagedFile => {
   const nextFile = { ...file };
-  delete nextFile.mappedAnimalId;
+  delete nextFile.mappedSubjectId;
   return nextFile;
 };
 
-const withMappedAnimal = (file: ManagedFile, animalId: string | undefined): ManagedFile => {
-  if (!animalId) {
-    return clearMappedAnimal(file);
+const withMappedSubject = (file: ManagedFile, subjectId: string | undefined): ManagedFile => {
+  if (!subjectId) {
+    return clearMappedSubject(file);
   }
 
   return {
     ...file,
-    mappedAnimalId: animalId,
+    mappedSubjectId: subjectId,
   };
 };
 
@@ -106,15 +106,15 @@ export const App = () => {
   const filesRef = useRef<ManagedFile[]>([]);
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
-  const [generatingAnimalId, setGeneratingAnimalId] = useState<string | null>(null);
+  const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);
   const [openAISettings, setOpenAISettings] = useState<OpenAIImageSettings>(
     DEFAULT_OPENAI_IMAGE_SETTINGS,
   );
   const browserSupport = useMemo(() => checkBrowserSupport(), []);
-  const prompts = useMemo(() => createPromptItems(project.animals), [project.animals]);
+  const prompts = useMemo(() => createPromptItems(project.subjects), [project.subjects]);
   const qaResult = useMemo(() => runQA(project, files), [project, files]);
   const missingImagePrompts = useMemo(
-    () => prompts.filter((prompt) => !getFileForAnimal(files, prompt.animalId)),
+    () => prompts.filter((prompt) => !getFileForSubject(files, prompt.subjectId)),
     [files, prompts],
   );
 
@@ -161,10 +161,13 @@ export const App = () => {
     updateProject((currentProject) => ({ ...currentProject, pdfSettings }));
   };
 
-  const handleApplyInitialDraft = (draft: { settings: ProjectSettings; animals: AnimalItem[] }) => {
+  const handleApplyInitialDraft = (draft: {
+    settings: ProjectSettings;
+    subjects: SubjectItem[];
+  }) => {
     if (files.length > 0) {
       const shouldApply = window.confirm(
-        'Applying a new initial prompt replaces the animal list and clears existing image mappings. Continue?',
+        'Applying a new initial prompt replaces the mask topic list and clears existing image mappings. Continue?',
       );
       if (!shouldApply) {
         return;
@@ -174,36 +177,37 @@ export const App = () => {
     updateProject((currentProject) => ({
       ...currentProject,
       settings: draft.settings,
-      animals: draft.animals,
+      subjects: draft.subjects,
     }));
-    setFiles((currentFiles) => currentFiles.map(clearMappedAnimal));
+    setFiles((currentFiles) => currentFiles.map(clearMappedSubject));
     addActivity(
       'project-imported',
       'success',
-      `Filled product brief from initial prompt with ${draft.animals.length} animals.`,
+      `Filled product brief from initial prompt with ${draft.subjects.length} topics.`,
     );
   };
 
-  const handleAddAnimal = (name: string) => {
+  const handleAddSubject = (name: string) => {
     updateProject((currentProject) => ({
       ...currentProject,
-      animals: [...currentProject.animals, { id: crypto.randomUUID(), name }],
+      subjects: [...currentProject.subjects, { id: crypto.randomUUID(), name }],
     }));
-    addActivity('file-added', 'info', `Added animal ${name}.`);
+    addActivity('file-added', 'info', `Added topic ${name}.`);
   };
 
-  const handleRemoveAnimal = (animalId: string) => {
-    const animalName = project.animals.find((animal) => animal.id === animalId)?.name ?? 'animal';
+  const handleRemoveSubject = (subjectId: string) => {
+    const subjectName =
+      project.subjects.find((subject) => subject.id === subjectId)?.name ?? 'subject';
     updateProject((currentProject) => ({
       ...currentProject,
-      animals: currentProject.animals.filter((animal) => animal.id !== animalId),
+      subjects: currentProject.subjects.filter((subject) => subject.id !== subjectId),
     }));
     setFiles((currentFiles) =>
       currentFiles.map((file) =>
-        file.mappedAnimalId === animalId ? clearMappedAnimal(file) : file,
+        file.mappedSubjectId === subjectId ? clearMappedSubject(file) : file,
       ),
     );
-    addActivity('file-removed', 'warning', `Removed ${animalName} and cleared related mappings.`);
+    addActivity('file-removed', 'warning', `Removed ${subjectName} and cleared related mappings.`);
   };
 
   const handleFilesSelected = async (incomingFiles: File[]) => {
@@ -221,7 +225,7 @@ export const App = () => {
       const managedFiles: ManagedFile[] = [];
       for (const file of accepted) {
         try {
-          managedFiles.push(await createManagedFile(file, project.animals));
+          managedFiles.push(await createManagedFile(file, project.subjects));
         } catch (error) {
           addActivity(
             'error',
@@ -279,10 +283,11 @@ export const App = () => {
     addActivity('file-removed', 'warning', `Removed ${file?.name ?? 'file'}.`);
   };
 
-  const handleMap = (fileId: string, animalId: string | undefined) => {
-    updateFile(fileId, (file) => withMappedAnimal(file, animalId));
-    const animalName = project.animals.find((animal) => animal.id === animalId)?.name ?? 'unmapped';
-    addActivity('image-mapped', 'info', `Updated image mapping to ${animalName}.`);
+  const handleMap = (fileId: string, subjectId: string | undefined) => {
+    updateFile(fileId, (file) => withMappedSubject(file, subjectId));
+    const subjectName =
+      project.subjects.find((subject) => subject.id === subjectId)?.name ?? 'unmapped';
+    addActivity('image-mapped', 'info', `Updated image mapping to ${subjectName}.`);
   };
 
   const handleNotesChange = (fileId: string, notes: string) => {
@@ -300,30 +305,30 @@ export const App = () => {
     addActivity('notes-updated', 'success', 'Confirmed manual review for image.');
   };
 
-  const handleGenerateImage = async (animalId: string) => {
-    const prompt = prompts.find((item) => item.animalId === animalId);
+  const handleGenerateSubjectImage = async (subjectId: string) => {
+    const prompt = prompts.find((item) => item.subjectId === subjectId);
     if (!prompt) {
       return;
     }
 
     setBusyAction('image-generation');
-    setGeneratingAnimalId(animalId);
+    setGeneratingSubjectId(subjectId);
 
     try {
       const { generateImageWithOpenAI } = await import('./lib/openaiImages');
       const generatedFile = await generateImageWithOpenAI(openAISettings, prompt);
       const uniqueFile = makeUniqueFile(generatedFile, filesRef.current);
-      const managedFile = await createManagedFile(uniqueFile, project.animals);
+      const managedFile = await createManagedFile(uniqueFile, project.subjects);
       const mappedFile: ManagedFile = {
         ...managedFile,
-        mappedAnimalId: animalId,
+        mappedSubjectId: subjectId,
         reviewNotes: `Generated with OpenAI ${openAISettings.model}. Review before approval.`,
       };
       setFiles((currentFiles) => [...currentFiles, mappedFile]);
       addActivity(
         'image-generated',
         'success',
-        `Generated ${getExpectedFilename(prompt.animalName)}.`,
+        `Generated ${getExpectedFilename(prompt.subjectName)}.`,
       );
     } catch (error) {
       addActivity(
@@ -331,15 +336,15 @@ export const App = () => {
         'error',
         error instanceof Error
           ? error.message
-          : `Image generation failed for ${prompt.animalName}.`,
+          : `Image generation failed for ${prompt.subjectName}.`,
       );
     } finally {
-      setGeneratingAnimalId(null);
+      setGeneratingSubjectId(null);
       setBusyAction(null);
     }
   };
 
-  const handleGenerateMissingImages = async () => {
+  const handleGenerateMissingSubjectImages = async () => {
     if (missingImagePrompts.length === 0) {
       return;
     }
@@ -352,21 +357,21 @@ export const App = () => {
       let workingFiles = filesRef.current;
 
       for (const prompt of missingImagePrompts) {
-        setGeneratingAnimalId(prompt.animalId);
+        setGeneratingSubjectId(prompt.subjectId);
         const generatedFile = await generateImageWithOpenAI(openAISettings, prompt);
         const uniqueFile = makeUniqueFile(generatedFile, [
           ...workingFiles,
           ...generatedManagedFiles,
         ]);
-        const managedFile = await createManagedFile(uniqueFile, project.animals);
+        const managedFile = await createManagedFile(uniqueFile, project.subjects);
         const mappedFile: ManagedFile = {
           ...managedFile,
-          mappedAnimalId: prompt.animalId,
+          mappedSubjectId: prompt.subjectId,
           reviewNotes: `Generated with OpenAI ${openAISettings.model}. Review before approval.`,
         };
         generatedManagedFiles.push(mappedFile);
         workingFiles = [...workingFiles, mappedFile];
-        addActivity('image-generated', 'success', `Generated image for ${prompt.animalName}.`);
+        addActivity('image-generated', 'success', `Generated image for ${prompt.subjectName}.`);
       }
 
       if (generatedManagedFiles.length > 0) {
@@ -379,7 +384,7 @@ export const App = () => {
         error instanceof Error ? error.message : 'Image generation failed.',
       );
     } finally {
-      setGeneratingAnimalId(null);
+      setGeneratingSubjectId(null);
       setBusyAction(null);
     }
   };
@@ -388,7 +393,7 @@ export const App = () => {
     setBusyAction('pdfs');
 
     try {
-      const approvedFiles = groupFilesForExport(files, project.animals).approvedMapped;
+      const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
       if (approvedFiles.length === 0) {
         addActivity(
           'error',
@@ -428,7 +433,7 @@ export const App = () => {
     setBusyAction('previews');
 
     try {
-      const approvedFiles = groupFilesForExport(files, project.animals).approvedMapped;
+      const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
       if (approvedFiles.length === 0) {
         addActivity(
           'error',
@@ -562,7 +567,7 @@ export const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-transparent">
       <Header qaResult={qaResult} />
       <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
         <div className="space-y-6">
@@ -583,24 +588,24 @@ export const App = () => {
             missingImageCount={missingImagePrompts.length}
             busy={busyAction !== null}
             onChange={setOpenAISettings}
-            onGenerateMissingImages={handleGenerateMissingImages}
+            onGenerateMissingImages={handleGenerateMissingSubjectImages}
           />
           <PdfSettingsPanel settings={project.pdfSettings} onChange={handlePdfSettingsChange} />
           <PromptManager
-            animals={project.animals}
+            subjects={project.subjects}
             prompts={prompts}
             files={files}
             canGenerateImages={openAISettings.apiKey.trim().length > 0 && busyAction === null}
-            generatingAnimalId={generatingAnimalId}
-            onAddAnimal={handleAddAnimal}
-            onRemoveAnimal={handleRemoveAnimal}
-            onGenerateImage={handleGenerateImage}
+            generatingSubjectId={generatingSubjectId}
+            onAddSubject={handleAddSubject}
+            onRemoveSubject={handleRemoveSubject}
+            onGenerateImage={handleGenerateSubjectImage}
             onCopy={(message) => addActivity('notes-updated', 'success', message)}
           />
           <FileUploader onFilesSelected={handleFilesSelected} disabled={busyAction !== null} />
           <FileReviewGrid
             files={files}
-            animals={project.animals}
+            subjects={project.subjects}
             onApprove={handleApprove}
             onReject={handleReject}
             onDelete={handleDelete}

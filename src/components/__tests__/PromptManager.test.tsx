@@ -7,21 +7,21 @@ import { ProductBriefForm } from '../ProductBriefForm';
 import { PromptManager } from '../PromptManager';
 import { QAPanel } from '../QAPanel';
 
-import type { AnimalItem, ProjectSettings, QAResult } from '../../types';
+import type { SubjectItem, ProjectSettings, QAResult } from '../../types';
 
-const animals: AnimalItem[] = [{ id: 'lion', name: 'Lion' }];
+const subjects: SubjectItem[] = [{ id: 'lion', name: 'Lion' }];
 
 describe('PromptManager', () => {
   it('renders expected filename on a prompt card', () => {
     render(
       <PromptManager
-        animals={animals}
-        prompts={createPromptItems(animals)}
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
         files={[]}
         canGenerateImages={false}
-        generatingAnimalId={null}
-        onAddAnimal={vi.fn()}
-        onRemoveAnimal={vi.fn()}
+        generatingSubjectId={null}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
         onCopy={vi.fn()}
       />,
@@ -41,9 +41,9 @@ describe('QAPanel', () => {
         {
           id: 'approved-images',
           group: 'critical',
-          label: 'Every animal has an approved mapped image',
+          label: 'Every mask topic has an approved mapped image',
           status: 'fail',
-          details: '0 of 1 animals have approved mapped images.',
+          details: '0 of 1 topics have approved mapped images.',
         },
       ],
     };
@@ -51,7 +51,7 @@ describe('QAPanel', () => {
     render(<QAPanel result={result} />);
 
     expect(screen.getByText('Critical')).toBeInTheDocument();
-    expect(screen.getByText('Every animal has an approved mapped image')).toBeInTheDocument();
+    expect(screen.getByText('Every mask topic has an approved mapped image')).toBeInTheDocument();
   });
 });
 

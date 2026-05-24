@@ -39,7 +39,7 @@ export const createListingCopy = (project: Project): string => {
     project.settings.description,
     '',
     'What is included:',
-    `- ${project.animals.length} printable animal mask designs`,
+    `- ${project.subjects.length} printable mask designs`,
     '- Transparent PNG mask files',
     project.pdfSettings.generateA4 ? '- A4 printable PDF' : '',
     project.pdfSettings.generateUSLetter ? '- US Letter printable PDF' : '',
@@ -84,12 +84,12 @@ const createReadMeFirst = (project: Project): string =>
   ].join('\n');
 
 const createPromptText = (project: Project): string =>
-  project.animals
-    .map((animal) =>
+  project.subjects
+    .map((subject) =>
       [
-        animal.name,
-        `Filename: ${getExpectedFilename(animal.name)}`,
-        `Prompt: Front-facing realistic ${animal.name.toLowerCase()} face paper mask for children, friendly expression, symmetrical face, centered composition, transparent background, printable craft asset, high resolution, clear human eye holes, no text, no watermark, no background, original artwork.`,
+        subject.name,
+        `Filename: ${getExpectedFilename(subject.name)}`,
+        `Prompt: Front-facing printable paper mask design inspired by ${subject.name.toLowerCase()}, child-friendly, symmetrical composition, centered on transparent background, clear human eye holes, high resolution craft asset, clean cut outline, no text, no watermark, no background, original artwork.`,
         'Negative requirements: no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no background, no distorted face',
       ].join('\n'),
     )
@@ -102,13 +102,13 @@ const addApprovedPngs = async (
   files: ManagedFile[],
 ): Promise<void> => {
   for (const file of files) {
-    const animal = project.animals.find((item) => item.id === file.mappedAnimalId);
-    if (!animal) {
+    const subject = project.subjects.find((item) => item.id === file.mappedSubjectId);
+    if (!subject) {
       continue;
     }
 
     const pngBlob = await createPngBlobFromImage(file.file);
-    zip.file(`${basePath}/${getExpectedFilename(animal.name)}`, pngBlob);
+    zip.file(`${basePath}/${getExpectedFilename(subject.name)}`, pngBlob);
   }
 };
 
@@ -123,7 +123,7 @@ const createNestedEtsyZip = async (
   files: ManagedFile[],
   listingCopy: string,
 ): Promise<Blob> => {
-  const groups = groupFilesForExport(files, project.animals);
+  const groups = groupFilesForExport(files, project.subjects);
   const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
   const previewFiles = files.filter((file) => file.kind === 'generated-preview');
   const zip = new JSZip();
@@ -147,14 +147,14 @@ const createManifest = (
   qaResult: QAResult,
   nestedEtsyUploadZipSizeBytes: number,
 ): ExportManifest => {
-  const groups = groupFilesForExport(files, project.animals);
+  const groups = groupFilesForExport(files, project.subjects);
   const sourceFiles = getSourceFiles(files);
   const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
   const previewFiles = files.filter((file) => file.kind === 'generated-preview');
   const mappedImages = groups.approvedMapped.reduce<Record<string, string>>((mapped, file) => {
-    const animal = project.animals.find((item) => item.id === file.mappedAnimalId);
-    if (animal) {
-      mapped[animal.name] = file.name;
+    const subject = project.subjects.find((item) => item.id === file.mappedSubjectId);
+    if (subject) {
+      mapped[subject.name] = file.name;
     }
 
     return mapped;
@@ -166,9 +166,9 @@ const createManifest = (
     marketplace: project.settings.marketplace,
     theme: project.settings.theme,
     title: project.settings.title,
-    maskCount: project.animals.length,
-    animals: project.animals.map((animal) => animal.name),
-    expectedFilenames: project.animals.map((animal) => getExpectedFilename(animal.name)),
+    maskCount: project.subjects.length,
+    subjects: project.subjects.map((subject) => subject.name),
+    expectedFilenames: project.subjects.map((subject) => getExpectedFilename(subject.name)),
     approvedImages: groups.approvedMapped.map((file) => file.name),
     rejectedImages: groups.rejected.map((file) => file.name),
     unusedImages: groups.unused.map((file) => file.name),
@@ -194,7 +194,7 @@ const createArchiveReadme = (
     'Etsy printable mask bundle archive',
     '',
     `QA status: ${qaStatus}`,
-    `Mask count: ${project.animals.length}`,
+    `Mask count: ${project.subjects.length}`,
     `Nested Etsy upload ZIP size: ${formatBytes(nestedSizeBytes)}`,
     '',
     'Manual final checklist:',
@@ -216,7 +216,7 @@ export const exportArchive = async (
   const themeSlug = slugify(project.settings.theme);
   const basePath = `${themeSlug}_etsy_bundle`;
   const listingCopy = createListingCopy(project);
-  const groups = groupFilesForExport(files, project.animals);
+  const groups = groupFilesForExport(files, project.subjects);
   const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
   const previewFiles = files.filter((file) => file.kind === 'generated-preview');
   const nestedZipBlob = await createNestedEtsyZip(project, files, listingCopy);
@@ -241,10 +241,10 @@ export const exportArchive = async (
   zip.file(
     `${basePath}/02_Image_Prompts/image_prompts.json`,
     JSON.stringify(
-      project.animals.map((animal) => ({
-        animal: animal.name,
-        expectedFilename: getExpectedFilename(animal.name),
-        prompt: `Front-facing realistic ${animal.name.toLowerCase()} face paper mask for children, friendly expression, symmetrical face, centered composition, transparent background, printable craft asset, high resolution, clear human eye holes, no text, no watermark, no background, original artwork.`,
+      project.subjects.map((subject) => ({
+        subject: subject.name,
+        expectedFilename: getExpectedFilename(subject.name),
+        prompt: `Front-facing printable paper mask design inspired by ${subject.name.toLowerCase()}, child-friendly, symmetrical composition, centered on transparent background, clear human eye holes, high resolution craft asset, clean cut outline, no text, no watermark, no background, original artwork.`,
         negativeRequirements:
           'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no background, no distorted face',
       })),

@@ -4,7 +4,7 @@ import { slugify } from '../slugify';
 
 describe('slugify', () => {
   it('creates safe lowercase slugs', () => {
-    expect(slugify('Realistic Animal Masks!')).toBe('realistic-animal-masks');
+    expect(slugify('Printable Party Masks!')).toBe('printable-party-masks');
   });
 
   it('normalizes accents and ampersands', () => {

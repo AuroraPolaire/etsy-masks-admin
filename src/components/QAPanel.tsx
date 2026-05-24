@@ -45,7 +45,7 @@ export const QAPanel = ({ result }: QAPanelProps) => (
             {result.checks
               .filter((check) => check.group === group)
               .map((check) => (
-                <li key={check.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <li key={check.id} className="rounded-md border border-white/70 bg-white/45 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm font-semibold text-slate-900">{check.label}</p>
                     <Badge tone={statusTone[check.status]}>{check.status}</Badge>

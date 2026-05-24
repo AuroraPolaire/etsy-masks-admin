@@ -2,9 +2,9 @@ import { ACCEPTED_FILE_EXTENSIONS } from '../constants';
 import { readImageMetadata } from './imageMetadata';
 import { slugify } from './slugify';
 
-import type { AnimalItem, FileExportGroups, ManagedFile, PromptItem } from '../types';
+import type { FileExportGroups, ManagedFile, PromptItem, SubjectItem } from '../types';
 
-export const getExpectedFilename = (animalName: string): string => `${slugify(animalName)}.png`;
+export const getExpectedFilename = (subjectName: string): string => `${slugify(subjectName)}.png`;
 
 export const isImageFile = (file: File | ManagedFile): boolean => {
   const name = 'name' in file ? file.name : '';
@@ -99,12 +99,12 @@ export const createGeneratedFile = (
 
 export const createManagedFile = async (
   file: File,
-  animals: AnimalItem[],
+  subjects: SubjectItem[],
 ): Promise<ManagedFile> => {
   const now = new Date().toISOString();
   const imageMetadata = isImageFile(file) ? await readImageMetadata(file) : undefined;
-  const matchingAnimal = animals.find(
-    (animal) => getExpectedFilename(animal.name).toLowerCase() === file.name.toLowerCase(),
+  const matchingSubject = subjects.find(
+    (subject) => getExpectedFilename(subject.name).toLowerCase() === file.name.toLowerCase(),
   );
   const objectUrl = isImageFile(file) ? URL.createObjectURL(file) : undefined;
 
@@ -121,7 +121,7 @@ export const createManagedFile = async (
     ...(imageMetadata ? { imageMetadata } : {}),
     reviewState: 'pending',
     reviewNotes: '',
-    ...(matchingAnimal ? { mappedAnimalId: matchingAnimal.id } : {}),
+    ...(matchingSubject ? { mappedSubjectId: matchingSubject.id } : {}),
     explicitlyConfirmed: false,
   };
 };
@@ -155,49 +155,49 @@ export const dedupeIncomingFiles = (
   return { accepted, duplicates, unsupported };
 };
 
-export const createPromptItems = (animals: AnimalItem[]): PromptItem[] =>
-  animals.map((animal) => ({
-    animalId: animal.id,
-    animalName: animal.name,
-    expectedFilename: getExpectedFilename(animal.name),
-    prompt: `Front-facing realistic ${animal.name.toLowerCase()} face paper mask for children, friendly expression, symmetrical face, centered composition, transparent background, printable craft asset, high resolution, clear human eye holes, no text, no watermark, no background, original artwork.`,
+export const createPromptItems = (subjects: SubjectItem[]): PromptItem[] =>
+  subjects.map((subject) => ({
+    subjectId: subject.id,
+    subjectName: subject.name,
+    expectedFilename: getExpectedFilename(subject.name),
+    prompt: `Front-facing printable paper mask design inspired by ${subject.name.toLowerCase()}, child-friendly, symmetrical composition, centered on transparent background, clear human eye holes, high resolution craft asset, clean cut outline, no text, no watermark, no background, original artwork.`,
     negativeRequirements:
       'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no background, no distorted face',
   }));
 
-export const getFileForAnimal = (
+export const getFileForSubject = (
   files: ManagedFile[],
-  animalId: string,
+  subjectId: string,
   state: ManagedFile['reviewState'] = 'approved',
 ): ManagedFile | undefined =>
   files.find(
     (file) =>
       file.kind === 'uploaded' &&
       isImageFile(file) &&
-      file.mappedAnimalId === animalId &&
+      file.mappedSubjectId === subjectId &&
       file.reviewState === state,
   );
 
 export const groupFilesForExport = (
   files: ManagedFile[],
-  animals: AnimalItem[],
+  subjects: SubjectItem[],
 ): FileExportGroups => {
-  const validAnimalIds = new Set(animals.map((animal) => animal.id));
-  const usedAnimalIds = new Set<string>();
+  const validSubjectIds = new Set(subjects.map((subject) => subject.id));
+  const usedSubjectIds = new Set<string>();
 
   const approvedMapped = files.filter((file) => {
     if (
       file.kind !== 'uploaded' ||
       !isImageFile(file) ||
       file.reviewState !== 'approved' ||
-      !file.mappedAnimalId ||
-      !validAnimalIds.has(file.mappedAnimalId) ||
-      usedAnimalIds.has(file.mappedAnimalId)
+      !file.mappedSubjectId ||
+      !validSubjectIds.has(file.mappedSubjectId) ||
+      usedSubjectIds.has(file.mappedSubjectId)
     ) {
       return false;
     }
 
-    usedAnimalIds.add(file.mappedAnimalId);
+    usedSubjectIds.add(file.mappedSubjectId);
     return true;
   });
 

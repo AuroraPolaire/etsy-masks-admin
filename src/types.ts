@@ -46,7 +46,7 @@ export type ProjectSettings = {
   refundPolicy: string;
 };
 
-export type AnimalItem = {
+export type SubjectItem = {
   id: string;
   name: string;
 };
@@ -55,7 +55,7 @@ export type PdfSettings = {
   generateA4: boolean;
   generateUSLetter: boolean;
   maskScale: MaskScale;
-  showAnimalLabel: boolean;
+  showSubjectLabel: boolean;
   showInstructionFooter: boolean;
   pageMarginMm: number;
   includeCalibrationPage: boolean;
@@ -64,7 +64,7 @@ export type PdfSettings = {
 export type Project = {
   id: string;
   settings: ProjectSettings;
-  animals: AnimalItem[];
+  subjects: SubjectItem[];
   pdfSettings: PdfSettings;
   createdAt: string;
   updatedAt: string;
@@ -89,13 +89,13 @@ export type ManagedFile = {
   imageMetadata?: ImageMetadata;
   reviewState: FileReviewState;
   reviewNotes: string;
-  mappedAnimalId?: string;
+  mappedSubjectId?: string;
   explicitlyConfirmed: boolean;
 };
 
 export type PromptItem = {
-  animalId: string;
-  animalName: string;
+  subjectId: string;
+  subjectName: string;
   expectedFilename: string;
   prompt: string;
   negativeRequirements: string;
@@ -137,7 +137,7 @@ export type ExportManifest = {
   theme: string;
   title: string;
   maskCount: number;
-  animals: string[];
+  subjects: string[];
   expectedFilenames: string[];
   approvedImages: string[];
   rejectedImages: string[];

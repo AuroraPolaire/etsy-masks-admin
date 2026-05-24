@@ -4,33 +4,33 @@ export const APP_VERSION = '1.0.0';
 
 export const STORAGE_KEY = 'etsy-masks-admin/project-v1';
 
-export const DEFAULT_THEME = 'Realistic Animal Masks';
+export const DEFAULT_THEME = 'Printable Party Masks';
 
-export const DEFAULT_ANIMALS = [
+export const DEFAULT_SUBJECTS = [
+  'Robot',
+  'Dinosaur',
+  'Unicorn',
+  'Dragon',
+  'Astronaut',
+  'Pirate',
+  'Butterfly',
+  'Flower',
+  'Sun',
+  'Moon',
   'Lion',
-  'Tiger',
-  'Elephant',
-  'Giraffe',
-  'Zebra',
-  'Panda',
-  'Fox',
-  'Wolf',
-  'Bear',
-  'Rabbit',
-  'Deer',
   'Owl',
 ];
 
 export const DEFAULT_SETTINGS: ProjectSettings = {
   title:
-    'Realistic Animal Masks Printable Bundle for Kids, 12 PNG Paper Masks, Safari Zoo Party, Classroom Craft, Digital Download',
+    'Printable Party Masks Bundle for Kids, 12 PNG Paper Masks, Birthday Party, Classroom Craft, Digital Download',
   theme: DEFAULT_THEME,
   audience: 'Kids',
   marketplace: 'Etsy',
-  style: 'Front-facing realistic printable paper masks',
+  style: 'Front-facing friendly printable paper masks',
   description:
-    'Create fun animal-themed activities with this printable realistic animal mask bundle for kids. Perfect for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume activities. This is a digital download only. No physical item will be shipped.',
-  tags: 'animal masks, printable masks, kids party masks, zoo animal masks, safari masks, classroom craft, paper masks, birthday party, teacher resources, animal costume, digital download, kids activity, wildlife masks',
+    'Create fun themed activities with this printable paper mask bundle for kids. Perfect for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume activities. This is a digital download only. No physical item will be shipped.',
+  tags: 'printable masks, kids party masks, paper masks, birthday party, classroom craft, teacher resources, digital download, kids activity, pretend play, costume craft, party printable, diy masks, craft bundle',
   safetyNote:
     'Adult supervision is required for printing, cutting, and use. Not intended for children under 3 years old. Use child-safe scissors where appropriate. Do not use strings, elastic, or cords with young children without supervision.',
   printingInstructions:
@@ -45,7 +45,7 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
   generateA4: true,
   generateUSLetter: true,
   maskScale: 'medium',
-  showAnimalLabel: true,
+  showSubjectLabel: true,
   showInstructionFooter: true,
   pageMarginMm: 12,
   includeCalibrationPage: true,
@@ -96,7 +96,7 @@ export const createDefaultProject = (): Project => {
   return {
     id: crypto.randomUUID(),
     settings: DEFAULT_SETTINGS,
-    animals: DEFAULT_ANIMALS.map((name) => ({
+    subjects: DEFAULT_SUBJECTS.map((name) => ({
       id: crypto.randomUUID(),
       name,
     })),

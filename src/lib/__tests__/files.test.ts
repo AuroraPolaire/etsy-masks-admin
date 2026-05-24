@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { getExpectedFilename, groupFilesForExport } from '../files';
 
-import type { AnimalItem, ManagedFile } from '../../types';
+import type { SubjectItem, ManagedFile } from '../../types';
 
-const animals: AnimalItem[] = [
+const subjects: SubjectItem[] = [
   { id: 'lion', name: 'Lion' },
   { id: 'snow-owl', name: 'Snow Owl' },
 ];
@@ -13,7 +13,7 @@ const makeFile = (
   id: string,
   name: string,
   reviewState: ManagedFile['reviewState'],
-  mappedAnimalId?: string,
+  mappedSubjectId?: string,
 ): ManagedFile => {
   const file = new File(['image'], name, { type: 'image/png' });
 
@@ -29,13 +29,13 @@ const makeFile = (
     imageMetadata: { width: 2500, height: 2500 },
     reviewState,
     reviewNotes: '',
-    ...(mappedAnimalId ? { mappedAnimalId } : {}),
+    ...(mappedSubjectId ? { mappedSubjectId } : {}),
     explicitlyConfirmed: false,
   };
 };
 
 describe('file helpers', () => {
-  it('builds expected filenames from animal names', () => {
+  it('builds expected filenames from subject names', () => {
     expect(getExpectedFilename('Snow Owl')).toBe('snow-owl.png');
   });
 
@@ -46,20 +46,20 @@ describe('file helpers', () => {
       makeFile('unused', 'extra.png', 'pending'),
     ];
 
-    const groups = groupFilesForExport(files, animals);
+    const groups = groupFilesForExport(files, subjects);
 
     expect(groups.approvedMapped.map((file) => file.id)).toEqual(['approved']);
     expect(groups.rejected.map((file) => file.id)).toEqual(['rejected']);
     expect(groups.unused.map((file) => file.id)).toEqual(['unused']);
   });
 
-  it('treats duplicate approved animal mappings as unused after the first file', () => {
+  it('treats duplicate approved subject mappings as unused after the first file', () => {
     const files = [
       makeFile('first', 'lion-a.png', 'approved', 'lion'),
       makeFile('second', 'lion-b.png', 'approved', 'lion'),
     ];
 
-    const groups = groupFilesForExport(files, animals);
+    const groups = groupFilesForExport(files, subjects);
 
     expect(groups.approvedMapped.map((file) => file.id)).toEqual(['first']);
     expect(groups.unused.map((file) => file.id)).toEqual(['second']);

@@ -7,11 +7,11 @@ browser app: no backend, no database, no Etsy integration, and no stored secrets
 
 - Product brief editor for title, theme, audience, marketplace, style, description, tags, safety
   note, printing instructions, license, and refund policy.
-- Optional initial idea prompt that drafts the listing fields and animal list locally.
-- Animal list and copyable AI image prompts with expected filenames.
+- Optional initial idea prompt that drafts the listing fields and mask topic list locally.
+- Mask topic list and copyable AI image prompts with expected filenames.
 - Direct browser-side OpenAI Images API generation with a session-only pasted API key.
 - Drag-and-drop multi-file upload for PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON.
-- Image preview, dimension reading, approval/rejection, review notes, and animal mapping.
+- Image preview, dimension reading, approval/rejection, review notes, and topic mapping.
 - Browser-only PDF generation with jsPDF for A4 and US Letter printable files.
 - Browser canvas generation for Etsy marketplace preview PNGs.
 - QA readiness panel with critical, warning, and informational checks.
@@ -90,13 +90,13 @@ Change that value if you deploy the app from a differently named repository.
 ## Image Generation Workflow
 
 1. Optionally paste an initial bundle idea and fill the product brief.
-2. Edit the product brief and animal list.
+2. Edit the product brief and mask topic list.
 3. Paste an OpenAI API key for the current session.
-4. Generate one animal image or generate all missing images.
+4. Generate one topic image or generate all missing images.
 5. Review generated files, repair mappings if needed, and approve or reject each image.
 6. Add review notes or explicitly confirm reviewed images.
 
-You can still upload externally generated files manually and map them to animals.
+You can still upload externally generated files manually and map them to topics.
 
 ## Etsy Archive Workflow
 

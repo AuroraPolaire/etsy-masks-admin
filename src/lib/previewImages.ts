@@ -172,7 +172,7 @@ export const generateMarketplacePreviewImages = async (
   approvedFiles: ManagedFile[],
 ): Promise<ManagedFile[]> => {
   const title = project.settings.title;
-  const animalNames = project.animals.map((animal) => animal.name);
+  const subjectNames = project.subjects.map((subject) => subject.name);
 
   const definitions: PreviewDefinition[] = [
     {
@@ -211,7 +211,7 @@ export const generateMarketplacePreviewImages = async (
         drawBulletList(
           context,
           [
-            `${approvedFiles.length} printable animal mask designs`,
+            `${approvedFiles.length} printable mask designs`,
             'Transparent PNG mask files',
             'A4 printable PDF',
             'US Letter printable PDF',
@@ -280,13 +280,13 @@ export const generateMarketplacePreviewImages = async (
       },
     },
     {
-      name: 'full_animal_list_preview.png',
+      name: 'full_topic_list_preview.png',
       draw: ({ context }) => {
-        drawTitle(context, 'Animal mask list');
+        drawTitle(context, 'Mask topic list');
         context.fillStyle = '#243042';
         context.font = '600 48px Arial, sans-serif';
         context.textAlign = 'left';
-        animalNames.forEach((animal, index) => {
+        subjectNames.forEach((subject, index) => {
           const column = index < 6 ? 0 : 1;
           const row = column === 0 ? index : index - 6;
           const x = column === 0 ? 390 : 1080;
@@ -294,7 +294,7 @@ export const generateMarketplacePreviewImages = async (
           context.fillStyle = '#0f766e';
           context.fillText(String(index + 1).padStart(2, '0'), x - 95, y);
           context.fillStyle = '#243042';
-          context.fillText(animal, x, y);
+          context.fillText(subject, x, y);
         });
       },
     },

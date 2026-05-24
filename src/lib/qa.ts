@@ -1,7 +1,7 @@
 import { BLOCKED_IP_TERMS, MAX_ETSY_FILE_BYTES, MAX_TOTAL_SOURCE_BYTES } from '../constants';
 import {
   getExpectedFilename,
-  getFileForAnimal,
+  getFileForSubject,
   getSourceFiles,
   groupFilesForExport,
   isImageFile,
@@ -48,7 +48,7 @@ const createInfoCheck = (id: string, passed: boolean, label: string, details: st
 });
 
 export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
-  const maskCount = project.animals.length;
+  const maskCount = project.subjects.length;
   const titleMaskCount = extractMaskCountFromTitle(project.settings.title);
   const blockedTerms = detectBlockedTerms([
     project.settings.title,
@@ -58,18 +58,18 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
   ]);
   const sourceFiles = getSourceFiles(files);
   const sourceTotalSize = sourceFiles.reduce((total, file) => total + file.size, 0);
-  const groups = groupFilesForExport(files, project.animals);
-  const expectedFilenames = project.animals.map((animal) => getExpectedFilename(animal.name));
+  const groups = groupFilesForExport(files, project.subjects);
+  const expectedFilenames = project.subjects.map((subject) => getExpectedFilename(subject.name));
   const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
   const previewFiles = files.filter((file) => file.kind === 'generated-preview');
   const approvedImages = groups.approvedMapped;
-  const approvedAnimalIds = new Set(approvedImages.map((file) => file.mappedAnimalId));
-  const duplicateApprovedMappings = approvedImages.length !== approvedAnimalIds.size;
+  const approvedSubjectIds = new Set(approvedImages.map((file) => file.mappedSubjectId));
+  const duplicateApprovedMappings = approvedImages.length !== approvedSubjectIds.size;
   const hasInvalidApprovedMapping = approvedImages.some(
-    (file) => !project.animals.some((animal) => animal.id === file.mappedAnimalId),
+    (file) => !project.subjects.some((subject) => subject.id === file.mappedSubjectId),
   );
-  const everyAnimalHasApprovedImage = project.animals.every((animal) =>
-    Boolean(getFileForAnimal(files, animal.id)),
+  const everySubjectHasApprovedImage = project.subjects.every((subject) =>
+    Boolean(getFileForSubject(files, subject.id)),
   );
   const everyImageAtLeastMinimum = approvedImages.every((file) => {
     if (!file.imageMetadata) {
@@ -105,7 +105,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       titleMaskCount === maskCount,
       'Title contains correct mask count',
       titleMaskCount
-        ? `Title says ${titleMaskCount}; animal list has ${maskCount}.`
+        ? `Title says ${titleMaskCount}; topic list has ${maskCount}.`
         : `Title must include the mask count ${maskCount}.`,
     ),
     createCheck(
@@ -146,18 +146,18 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
         : 'No blocked terms found.',
     ),
     createCheck(
-      'animal-count',
+      'subject-count',
       'critical',
       expectedFilenames.length === maskCount,
-      'Animal list length equals mask count',
-      `${maskCount} animal records will generate ${expectedFilenames.length} expected files.`,
+      'Mask topic list length equals mask count',
+      `${maskCount} topic records will generate ${expectedFilenames.length} expected files.`,
     ),
     createCheck(
       'approved-images',
       'critical',
-      everyAnimalHasApprovedImage,
-      'Every animal has an approved mapped image',
-      `${approvedImages.length} of ${maskCount} animals have approved mapped images.`,
+      everySubjectHasApprovedImage,
+      'Every mask topic has an approved mapped image',
+      `${approvedImages.length} of ${maskCount} topics have approved mapped images.`,
     ),
     createCheck(
       'rejected-not-approved',
@@ -201,7 +201,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       !duplicateApprovedMappings && !hasInvalidApprovedMapping,
       'Project has no missing mapped image assignments',
       duplicateApprovedMappings || hasInvalidApprovedMapping
-        ? 'Fix duplicate or invalid animal mappings.'
+        ? 'Fix duplicate or invalid topic mappings.'
         : 'Approved mappings are unique and valid.',
     ),
     createCheck(

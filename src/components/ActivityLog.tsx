@@ -25,7 +25,7 @@ export const ActivityLog = ({ items }: ActivityLogProps) => (
       ) : (
         <ul className="max-h-96 space-y-3 overflow-auto pr-1">
           {items.map((item) => (
-            <li key={item.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <li key={item.id} className="rounded-md border border-white/70 bg-white/45 p-3">
               <div className="flex items-center justify-between gap-2">
                 <Badge tone={levelTone[item.level]}>{item.level}</Badge>
                 <time className="text-xs text-slate-500" dateTime={item.createdAt}>

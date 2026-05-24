@@ -3,22 +3,22 @@ import { FilePreviewCard } from './FilePreviewCard';
 import { formatBytes, getSourceFiles } from '../lib/files';
 import { Card, CardBody, CardHeader } from './ui/Card';
 
-import type { AnimalItem, ManagedFile } from '../types';
+import type { SubjectItem, ManagedFile } from '../types';
 
 type FileReviewGridProps = {
   files: ManagedFile[];
-  animals: AnimalItem[];
+  subjects: SubjectItem[];
   onApprove: (fileId: string) => void;
   onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
-  onMap: (fileId: string, animalId: string | undefined) => void;
+  onMap: (fileId: string, subjectId: string | undefined) => void;
   onNotesChange: (fileId: string, notes: string) => void;
   onConfirmReview: (fileId: string) => void;
 };
 
 export const FileReviewGrid = ({
   files,
-  animals,
+  subjects,
   onApprove,
   onReject,
   onDelete,
@@ -52,9 +52,9 @@ export const FileReviewGrid = ({
           </p>
         ) : null}
         {files.length === 0 ? (
-          <p className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
+          <p className="rounded-md border border-dashed border-white/80 bg-white/35 p-6 text-sm text-slate-500">
             Upload generated masks to start reviewing. Filename matches are mapped automatically,
-            and mismatches can be repaired with the animal dropdown.
+            and mismatches can be repaired with the topic dropdown.
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -62,7 +62,7 @@ export const FileReviewGrid = ({
               <FilePreviewCard
                 key={file.id}
                 file={file}
-                animals={animals}
+                subjects={subjects}
                 onApprove={onApprove}
                 onReject={onReject}
                 onDelete={onDelete}

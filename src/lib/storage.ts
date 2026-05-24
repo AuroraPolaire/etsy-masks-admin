@@ -5,6 +5,42 @@ import type { Project, ProjectJsonBackup } from '../types';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const readSubjects = (projectLike: Record<string, unknown>): Project['subjects'] => {
+  const rawSubjects = Array.isArray(projectLike.subjects)
+    ? projectLike.subjects
+    : Array.isArray(projectLike.animals)
+      ? projectLike.animals
+      : [];
+
+  return rawSubjects
+    .filter(isRecord)
+    .map((subject) => ({
+      id: typeof subject.id === 'string' ? subject.id : crypto.randomUUID(),
+      name: typeof subject.name === 'string' ? subject.name : 'Untitled',
+    }))
+    .filter((subject) => subject.name.trim().length > 0);
+};
+
+const readPdfSettings = (
+  pdfSettingsLike: unknown,
+  fallback: Project['pdfSettings'],
+): Project['pdfSettings'] => {
+  if (!isRecord(pdfSettingsLike)) {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    ...pdfSettingsLike,
+    showSubjectLabel:
+      typeof pdfSettingsLike.showSubjectLabel === 'boolean'
+        ? pdfSettingsLike.showSubjectLabel
+        : typeof pdfSettingsLike.showAnimalLabel === 'boolean'
+          ? pdfSettingsLike.showAnimalLabel
+          : fallback.showSubjectLabel,
+  };
+};
+
 export const loadProject = (): Project => {
   const fallback = createDefaultProject();
 
@@ -15,9 +51,11 @@ export const loadProject = (): Project => {
     }
 
     const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed) || !isRecord(parsed.settings) || !Array.isArray(parsed.animals)) {
+    if (!isRecord(parsed) || !isRecord(parsed.settings)) {
       return fallback;
     }
+
+    const subjects = readSubjects(parsed);
 
     return {
       ...fallback,
@@ -26,17 +64,8 @@ export const loadProject = (): Project => {
         ...fallback.settings,
         ...(isRecord(parsed.settings) ? parsed.settings : {}),
       },
-      pdfSettings: {
-        ...fallback.pdfSettings,
-        ...(isRecord(parsed.pdfSettings) ? parsed.pdfSettings : {}),
-      },
-      animals: parsed.animals
-        .filter(isRecord)
-        .map((animal) => ({
-          id: typeof animal.id === 'string' ? animal.id : crypto.randomUUID(),
-          name: typeof animal.name === 'string' ? animal.name : 'Untitled',
-        }))
-        .filter((animal) => animal.name.trim().length > 0),
+      pdfSettings: readPdfSettings(parsed.pdfSettings, fallback.pdfSettings),
+      subjects: subjects.length > 0 ? subjects : fallback.subjects,
       updatedAt: new Date().toISOString(),
     };
   } catch {
@@ -61,24 +90,20 @@ export const parseProjectBackup = (rawJson: string): Project => {
     throw new Error('Imported JSON does not contain a project backup.');
   }
 
-  const backup = parsed as ProjectJsonBackup;
+  const backup = parsed as { appVersion?: string; project: Record<string, unknown> };
   const fallback = createDefaultProject();
+  const project = backup.project;
+  const settings = isRecord(project.settings) ? project.settings : {};
 
   return {
     ...fallback,
-    ...backup.project,
+    ...project,
     settings: {
       ...fallback.settings,
-      ...backup.project.settings,
+      ...settings,
     },
-    pdfSettings: {
-      ...fallback.pdfSettings,
-      ...backup.project.pdfSettings,
-    },
-    animals: backup.project.animals.map((animal) => ({
-      id: animal.id || crypto.randomUUID(),
-      name: animal.name,
-    })),
+    pdfSettings: readPdfSettings(project.pdfSettings, fallback.pdfSettings),
+    subjects: readSubjects(project),
     updatedAt: new Date().toISOString(),
   };
 };

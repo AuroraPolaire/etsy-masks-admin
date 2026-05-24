@@ -5,8 +5,8 @@ import { buildOpenAIImageRequestBody, canUseTransparentBackground } from '../ope
 import type { OpenAIImageSettings, PromptItem } from '../../types';
 
 const promptItem: PromptItem = {
-  animalId: 'lion',
-  animalName: 'Lion',
+  subjectId: 'lion',
+  subjectName: 'Lion',
   expectedFilename: 'lion.png',
   prompt: 'Front-facing realistic lion mask',
   negativeRequirements: 'no text',

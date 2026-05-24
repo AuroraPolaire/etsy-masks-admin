@@ -13,7 +13,7 @@ export const Textarea = ({ label, helperText, id, className = '', ...props }: Te
       {label}
       <textarea
         id={textareaId}
-        className={`mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-700 focus:ring-2 focus:ring-teal-100 ${className}`}
+        className={`mt-1 block w-full rounded-md border border-white/70 bg-white/70 px-3 py-2 text-sm text-slate-950 shadow-sm outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 ${className}`}
         {...props}
       />
       {helperText ? <span className="mt-1 block text-xs text-slate-500">{helperText}</span> : null}

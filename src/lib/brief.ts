@@ -1,8 +1,43 @@
-import { DEFAULT_SETTINGS } from '../constants';
+import { DEFAULT_SETTINGS, DEFAULT_SUBJECTS } from '../constants';
 
-import type { AnimalItem, ProjectSettings } from '../types';
+import type { SubjectItem, ProjectSettings } from '../types';
 
-const KNOWN_ANIMALS = [
+const KNOWN_SUBJECTS = [
+  'robot',
+  'dinosaur',
+  'unicorn',
+  'dragon',
+  'astronaut',
+  'pirate',
+  'butterfly',
+  'flower',
+  'sun',
+  'moon',
+  'alien',
+  'rocket',
+  'planet',
+  'star',
+  'rainbow',
+  'cloud',
+  'pumpkin',
+  'ghost',
+  'witch',
+  'wizard',
+  'fairy',
+  'mermaid',
+  'crown',
+  'princess',
+  'knight',
+  'castle',
+  'firefighter',
+  'doctor',
+  'nurse',
+  'chef',
+  'clown',
+  'snowman',
+  'santa',
+  'elf',
+  'heart',
   'lion',
   'tiger',
   'elephant',
@@ -39,10 +74,15 @@ const KNOWN_ANIMALS = [
   'shark',
   'whale',
   'dolphin',
+  'octopus',
+  'turtle',
+  'crab',
+  'seahorse',
+  'bee',
+  'ladybug',
   'penguin',
   'eagle',
   'parrot',
-  'butterfly',
 ];
 
 const titleCase = (value: string): string =>
@@ -58,15 +98,18 @@ const cleanIdea = (idea: string): string =>
     .replace(/[.?!]+$/g, '')
     .trim();
 
-const extractAnimalNames = (idea: string): string[] => {
+const extractSubjectNames = (idea: string): string[] => {
   const normalized = idea.toLowerCase();
-  const matched = KNOWN_ANIMALS.filter((animal) => normalized.includes(animal));
+  const matched = KNOWN_SUBJECTS.filter((subject) => normalized.includes(subject));
 
   if (matched.length > 0) {
     return [...new Set(matched.map(titleCase))].slice(0, 20);
   }
 
-  const listMatch = /(?:animals?|masks?|include|with)\s*:\s*([^.;]+)/i.exec(idea);
+  const listMatch =
+    /(?:subjects?|topics?|designs?|masks?|include|including|with|featuring)\s*:?\s*([^.;]+)/i.exec(
+      idea,
+    );
   if (!listMatch?.[1]) {
     return [];
   }
@@ -88,7 +131,7 @@ const inferTheme = (idea: string): string => {
     return titleCase(cleaned);
   }
 
-  return `${titleCase(cleaned)} Animal Masks`;
+  return `${titleCase(cleaned)} Masks`;
 };
 
 const inferAudience = (idea: string): string => {
@@ -109,28 +152,12 @@ const inferAudience = (idea: string): string => {
 
 export const createProjectDraftFromInitialPrompt = (
   initialPrompt: string,
-): { settings: ProjectSettings; animals: AnimalItem[] } => {
+): { settings: ProjectSettings; subjects: SubjectItem[] } => {
   const cleaned = cleanIdea(initialPrompt);
   const theme = inferTheme(cleaned);
-  const animals = extractAnimalNames(cleaned);
-  const animalNames =
-    animals.length > 0
-      ? animals
-      : [
-          'Lion',
-          'Tiger',
-          'Elephant',
-          'Giraffe',
-          'Zebra',
-          'Panda',
-          'Fox',
-          'Wolf',
-          'Bear',
-          'Rabbit',
-          'Deer',
-          'Owl',
-        ];
-  const maskCount = animalNames.length;
+  const subjects = extractSubjectNames(cleaned);
+  const subjectNames = subjects.length > 0 ? subjects : DEFAULT_SUBJECTS;
+  const maskCount = subjectNames.length;
   const title =
     `${theme} Printable Bundle for Kids, ${maskCount} PNG Paper Masks, Party Craft, Classroom Activity, Digital Download`
       .replace(/\s+/g, ' ')
@@ -147,7 +174,7 @@ export const createProjectDraftFromInitialPrompt = (
     'kids activity',
     'pretend play',
     'costume craft',
-    ...animalNames.slice(0, 3).map((animal) => `${animal.toLowerCase()} mask`),
+    ...subjectNames.slice(0, 3).map((subject) => `${subject.toLowerCase()} mask`),
   ]
     .slice(0, 13)
     .join(', ');
@@ -162,7 +189,7 @@ export const createProjectDraftFromInitialPrompt = (
       description: `Create fun themed activities with this printable ${theme.toLowerCase()} bundle for kids. Perfect for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume activities. This is a digital download only. No physical item will be shipped.`,
       tags,
     },
-    animals: animalNames.map((name) => ({
+    subjects: subjectNames.map((name) => ({
       id: crypto.randomUUID(),
       name,
     })),

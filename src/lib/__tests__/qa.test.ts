@@ -5,7 +5,7 @@ import { detectBlockedTerms, runQA } from '../qa';
 
 import type { ManagedFile } from '../../types';
 
-const makeFile = (name: string, mappedAnimalId: string): ManagedFile => {
+const makeFile = (name: string, mappedSubjectId: string): ManagedFile => {
   const file = new File(['image'], name, { type: 'image/png' });
 
   return {
@@ -20,7 +20,7 @@ const makeFile = (name: string, mappedAnimalId: string): ManagedFile => {
     imageMetadata: { width: 3000, height: 3000 },
     reviewState: 'approved',
     reviewNotes: 'Checked eye holes.',
-    mappedAnimalId,
+    mappedSubjectId,
     explicitlyConfirmed: true,
   };
 };
@@ -38,9 +38,9 @@ describe('QA checks', () => {
     expect(result.checks.find((check) => check.id === 'approved-images')?.status).toBe('fail');
   });
 
-  it('passes approved image critical check when every animal has a mapped approval', () => {
+  it('passes approved image critical check when every subject has a mapped approval', () => {
     const project = createDefaultProject();
-    const files = project.animals.map((animal) => makeFile(`${animal.name}.png`, animal.id));
+    const files = project.subjects.map((subject) => makeFile(`${subject.name}.png`, subject.id));
     const result = runQA(project, files);
 
     expect(result.checks.find((check) => check.id === 'approved-images')?.status).toBe('pass');

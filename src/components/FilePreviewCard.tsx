@@ -5,15 +5,15 @@ import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { Textarea } from './ui/Textarea';
 
-import type { AnimalItem, ManagedFile } from '../types';
+import type { SubjectItem, ManagedFile } from '../types';
 
 type FilePreviewCardProps = {
   file: ManagedFile;
-  animals: AnimalItem[];
+  subjects: SubjectItem[];
   onApprove: (fileId: string) => void;
   onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
-  onMap: (fileId: string, animalId: string | undefined) => void;
+  onMap: (fileId: string, subjectId: string | undefined) => void;
   onNotesChange: (fileId: string, notes: string) => void;
   onConfirmReview: (fileId: string) => void;
 };
@@ -26,7 +26,7 @@ const reviewTone = {
 
 export const FilePreviewCard = ({
   file,
-  animals,
+  subjects,
   onApprove,
   onReject,
   onDelete,
@@ -45,11 +45,11 @@ export const FilePreviewCard = ({
     file.imageMetadata.width >= 3000 &&
     file.imageMetadata.height >= 3000;
   const isLarge = file.size > MAX_ETSY_FILE_BYTES;
-  const mappedAnimal = animals.find((animal) => animal.id === file.mappedAnimalId);
+  const mappedSubject = subjects.find((subject) => subject.id === file.mappedSubjectId);
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="flex aspect-square items-center justify-center bg-slate-100">
+    <article className="flex flex-col overflow-hidden rounded-lg border border-white/70 bg-white/55 shadow-sm backdrop-blur-md">
+      <div className="flex aspect-square items-center justify-center bg-white/45">
         {image && file.objectUrl ? (
           <img
             className="size-full object-contain p-3"
@@ -58,7 +58,7 @@ export const FilePreviewCard = ({
           />
         ) : (
           <div className="text-center text-sm text-slate-600">
-            <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-md bg-white text-2xl shadow-sm">
+            <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-md bg-white/70 text-2xl shadow-sm">
               {file.name.split('.').pop()?.toUpperCase() ?? 'FILE'}
             </div>
             Non-image file
@@ -97,21 +97,21 @@ export const FilePreviewCard = ({
         {file.kind === 'uploaded' && image ? (
           <>
             <Select
-              label="Map to animal"
+              label="Map to topic"
               name={`map-${file.id}`}
-              value={file.mappedAnimalId ?? ''}
+              value={file.mappedSubjectId ?? ''}
               options={[
                 { value: '', label: 'Unmapped / unused' },
-                ...animals.map((animal) => ({
-                  value: animal.id,
-                  label: `${animal.name} (${getExpectedFilename(animal.name)})`,
+                ...subjects.map((subject) => ({
+                  value: subject.id,
+                  label: `${subject.name} (${getExpectedFilename(subject.name)})`,
                 })),
               ]}
               onChange={(event) => onMap(file.id, event.target.value || undefined)}
             />
-            {mappedAnimal ? (
+            {mappedSubject ? (
               <p className="text-xs text-slate-500">
-                Export rename: {getExpectedFilename(mappedAnimal.name)}
+                Export rename: {getExpectedFilename(mappedSubject.name)}
               </p>
             ) : null}
             <Textarea

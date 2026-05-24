@@ -42,12 +42,12 @@ const addMaskPage = async (
   doc: jsPDF,
   project: Project,
   imageFile: ManagedFile,
-  animalName: string,
+  subjectName: string,
 ): Promise<void> => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = project.pdfSettings.pageMarginMm;
-  const labelHeight = project.pdfSettings.showAnimalLabel ? 13 : 0;
+  const labelHeight = project.pdfSettings.showSubjectLabel ? 13 : 0;
   const footerHeight = project.pdfSettings.showInstructionFooter ? 16 : 0;
   const imageAreaTop = margin + labelHeight;
   const imageAreaHeight = pageHeight - margin * 2 - labelHeight - footerHeight;
@@ -69,10 +69,10 @@ const addMaskPage = async (
   const pngBlob = await createPngBlobFromImage(imageFile.file);
   const dataUrl = await fileToDataUrl(pngBlob);
 
-  if (project.pdfSettings.showAnimalLabel) {
+  if (project.pdfSettings.showSubjectLabel) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text(animalName, pageWidth / 2, margin + 4, { align: 'center' });
+    doc.text(subjectName, pageWidth / 2, margin + 4, { align: 'center' });
   }
 
   doc.addImage(dataUrl, 'PNG', x, y, renderWidth, renderHeight, undefined, 'FAST');
@@ -94,7 +94,7 @@ export const generatePrintablePdfs = async (
   const enabledFormats = PDF_FORMATS.filter((format) =>
     format.label === 'A4' ? project.pdfSettings.generateA4 : project.pdfSettings.generateUSLetter,
   );
-  const animalById = new Map(project.animals.map((animal) => [animal.id, animal.name]));
+  const subjectById = new Map(project.subjects.map((subject) => [subject.id, subject.name]));
   const themeSlug = slugify(project.settings.theme);
   const generatedFiles: ManagedFile[] = [];
 
@@ -120,12 +120,12 @@ export const generatePrintablePdfs = async (
         doc.addPage(format.jsPdfFormat, 'portrait');
       }
 
-      const animalName =
-        imageFile.mappedAnimalId && animalById.get(imageFile.mappedAnimalId)
-          ? animalById.get(imageFile.mappedAnimalId)
+      const subjectName =
+        imageFile.mappedSubjectId && subjectById.get(imageFile.mappedSubjectId)
+          ? subjectById.get(imageFile.mappedSubjectId)
           : imageFile.name;
 
-      await addMaskPage(doc, project, imageFile, animalName ?? imageFile.name);
+      await addMaskPage(doc, project, imageFile, subjectName ?? imageFile.name);
     }
 
     const blob = doc.output('blob');

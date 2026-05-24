@@ -40,10 +40,10 @@ export const PdfSettingsPanel = ({ settings, onChange }: PdfSettingsPanelProps) 
           <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
             <input
               type="checkbox"
-              checked={settings.showAnimalLabel}
-              onChange={(event) => update('showAnimalLabel', event.target.checked)}
+              checked={settings.showSubjectLabel}
+              onChange={(event) => update('showSubjectLabel', event.target.checked)}
             />
-            Show animal label
+            Show topic label
           </label>
           <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
             <input
