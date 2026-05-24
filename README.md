@@ -81,10 +81,10 @@ VITE_BASE_PATH: "/<REPO>/"
 The workflow currently uses:
 
 ```yaml
-VITE_BASE_PATH: "/mask-bundle-admin/"
+VITE_BASE_PATH: "/etsy-masks-admin/"
 ```
 
-Change that to `"/etsy-masks-admin/"` if your GitHub repository is named `etsy-masks-admin`.
+Change that value if you deploy the app from a differently named repository.
 
 ## Image Generation Workflow
 

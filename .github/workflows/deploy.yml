@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Must match the repository name for https://<USERNAME>.github.io/<REPO>/ deployments.
-      VITE_BASE_PATH: "/mask-bundle-admin/"
+      VITE_BASE_PATH: "/etsy-masks-admin/"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
