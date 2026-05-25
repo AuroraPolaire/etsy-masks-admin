@@ -1,5 +1,4 @@
 import { getOpenAIImageCostComparison, formatUsdEstimate } from '../lib/openaiImageCosts';
-import { AIButton } from './ui/AIButton';
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -13,18 +12,14 @@ type OpenAIImagePanelProps = {
   settings: OpenAIImageSettings;
   missingImageCount: number;
   subjectCount: number;
-  busy: boolean;
   onChange: (settings: OpenAIImageSettings) => void;
-  onGenerateMissingImages: () => void;
 };
 
 export const OpenAIImagePanel = ({
   settings,
   missingImageCount,
   subjectCount,
-  busy,
   onChange,
-  onGenerateMissingImages,
 }: OpenAIImagePanelProps) => {
   const update = <Key extends keyof OpenAIImageSettings>(
     key: Key,
@@ -189,18 +184,6 @@ export const OpenAIImagePanel = ({
             </p>
           ) : null}
         </Surface>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <AIButton
-            disabled={!hasApiKey || missingImageCount === 0 || busy}
-            onClick={onGenerateMissingImages}
-          >
-            Generate missing images
-          </AIButton>
-          <p className="text-sm text-ink-muted">
-            {missingImageCount} topic{missingImageCount === 1 ? '' : 's'} still need an approved
-            image.
-          </p>
-        </div>
       </CardBody>
     </Card>
   );

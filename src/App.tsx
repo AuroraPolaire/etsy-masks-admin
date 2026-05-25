@@ -154,6 +154,12 @@ export const App = () => {
     appendFiles,
     addActivity,
   });
+  const hasOpenAIKey = openAISettings.apiKey.trim().length > 0;
+  const imageGenerationHint = !hasOpenAIKey
+    ? 'Add an OpenAI key in Settings to generate images.'
+    : missingImagePrompts.length === 0
+      ? 'All topics have approved images.'
+      : `${missingImagePrompts.length} topic${missingImagePrompts.length === 1 ? '' : 's'} still need an approved image.`;
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
     return new Promise<boolean>((resolve) => {
       setConfirmRequest({ ...request, resolve });
@@ -328,7 +334,7 @@ export const App = () => {
     void runBusyAction('image-generation', generateMissingSubjectImages);
   }, [generateMissingSubjectImages, runBusyAction]);
 
-  const briefComplete = useMemo(
+  const briefFieldsComplete = useMemo(
     () =>
       [
         project.settings.title,
@@ -342,6 +348,7 @@ export const App = () => {
       ].every((value) => value.trim().length > 0),
     [project.settings],
   );
+  const briefComplete = Boolean(project.lastBriefUpdatedAt) && briefFieldsComplete;
   const topicsComplete = project.subjects.length > 0;
   const imagesComplete = topicsComplete && approvedImageCount === project.subjects.length;
   const outputsComplete = imagesComplete && hasRequiredPdfs && previewCount >= 5;
@@ -370,7 +377,9 @@ export const App = () => {
       description: 'Turn a product idea into buyer-facing listing copy.',
       summary: briefComplete
         ? `${project.settings.theme} brief is ready`
-        : 'Complete title, description, tags, safety, license, and refund copy.',
+        : project.lastBriefUpdatedAt
+          ? 'Complete title, description, tags, safety, license, and refund copy.'
+          : 'Draft from an idea or edit the listing brief to start.',
       complete: briefComplete,
       unlocked: true,
     },
@@ -448,9 +457,7 @@ export const App = () => {
       settings={openAISettings}
       missingImageCount={missingImagePrompts.length}
       subjectCount={project.subjects.length}
-      busy={busyAction !== null}
       onChange={setOpenAISettings}
-      onGenerateMissingImages={handleGenerateMissingSubjectImages}
     />
   );
 
@@ -478,7 +485,7 @@ export const App = () => {
             {step.id === 'brief' ? (
               <div className="space-y-6">
                 <InitialPromptPanel
-                  hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+                  hasOpenAIKey={hasOpenAIKey}
                   disabled={busyAction !== null}
                   isGenerating={busyAction === 'brief-generation'}
                   onFillBrief={handleFillProductBrief}
@@ -514,12 +521,15 @@ export const App = () => {
                   subjects={project.subjects}
                   prompts={prompts}
                   files={files}
-                  canGenerateImages={openAISettings.apiKey.trim().length > 0 && busyAction === null}
+                  canGenerateImages={hasOpenAIKey && busyAction === null}
                   generatingSubjectId={generatingSubjectId}
+                  missingImageCount={missingImagePrompts.length}
+                  imageGenerationHint={imageGenerationHint}
                   allowTopicEditing={false}
                   onAddSubject={handleAddSubject}
                   onRemoveSubject={handleRemoveSubject}
                   onGenerateImage={handleGenerateSubjectImage}
+                  onGenerateMissingImages={handleGenerateMissingSubjectImages}
                   onApprove={approveFile}
                   onReject={rejectFile}
                   onDelete={handleDeleteFile}
@@ -583,7 +593,7 @@ export const App = () => {
           project={project}
           files={files}
           qaResult={qaResult}
-          hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+          hasOpenAIKey={hasOpenAIKey}
         />
         <QAPanel result={qaResult} />
         <ActivityLog items={activityLog} />
@@ -647,7 +657,7 @@ export const App = () => {
           project={project}
           files={files}
           qaResult={qaResult}
-          hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+          hasOpenAIKey={hasOpenAIKey}
         />
         <ActivityLog items={activityLog} />
         <Button className="w-full" variant="ghost" onClick={handleClearFiles}>

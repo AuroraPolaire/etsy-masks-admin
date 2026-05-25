@@ -51,6 +51,7 @@ describe('project storage', () => {
   it('starts new projects without mocked topics', () => {
     expect(createDefaultProject().subjects).toEqual([]);
     expect(loadProject().subjects).toEqual([]);
+    expect(loadProject().lastBriefUpdatedAt).toBeUndefined();
   });
 
   it('clears original animal mock topics from saved browser state', () => {
@@ -76,10 +77,20 @@ describe('project storage', () => {
     const project = createProjectWithSubjects(['Fox', 'Moon', 'Custom Crown']);
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
 
-    expect(loadProject().subjects.map((subject) => subject.name)).toEqual([
+    const loadedProject = loadProject();
+
+    expect(loadedProject.subjects.map((subject) => subject.name)).toEqual([
       'Fox',
       'Moon',
       'Custom Crown',
     ]);
+    expect(loadedProject.lastBriefUpdatedAt).toBe(project.updatedAt);
+  });
+
+  it('does not mark untouched default copy as brief progress', () => {
+    const project = createDefaultProject();
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+
+    expect(loadProject().lastBriefUpdatedAt).toBeUndefined();
   });
 });
