@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_SETTINGS } from '../../constants';
 import { createPromptItems } from '../../lib/files';
+import { EtsySeoPanel } from '../EtsySeoPanel';
 import { ProductBriefForm } from '../ProductBriefForm';
 import { PromptManager } from '../PromptManager';
 import { QAPanel } from '../QAPanel';
 
-import type { SubjectItem, ProjectSettings, QAResult } from '../../types';
+import type { Project, SubjectItem, ProjectSettings, QAResult } from '../../types';
 
 const subjects: SubjectItem[] = [{ id: 'lion', name: 'Lion' }];
 
@@ -63,7 +64,7 @@ describe('PromptManager', () => {
 });
 
 describe('QAPanel', () => {
-  it('renders critical checks', () => {
+  it('summarizes QA and expands critical checks', () => {
     const result: QAResult = {
       readinessPercentage: 50,
       status: 'needs-review',
@@ -81,8 +82,47 @@ describe('QAPanel', () => {
 
     render(<QAPanel result={result} />);
 
+    expect(screen.getByText('50%')).toBeInTheDocument();
+    expect(screen.getByText('Critical issues')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Every mask topic has an approved mapped image'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show qa details/i }));
+
     expect(screen.getByText('Critical')).toBeInTheDocument();
     expect(screen.getByText('Every mask topic has an approved mapped image')).toBeInTheDocument();
+  });
+});
+
+describe('EtsySeoPanel', () => {
+  it('summarizes Etsy SEO and keeps suggestions collapsed', () => {
+    const project: Project = {
+      id: 'project',
+      settings: DEFAULT_SETTINGS,
+      subjects,
+      pdfSettings: {
+        generateA4: true,
+        generateUSLetter: true,
+        maskScale: 'medium',
+        showSubjectLabel: true,
+        showInstructionFooter: true,
+        pageMarginMm: 12,
+        includeCalibrationPage: true,
+      },
+      createdAt: '2026-05-25T10:00:00.000Z',
+      updatedAt: '2026-05-25T10:00:00.000Z',
+    };
+
+    render(<EtsySeoPanel project={project} onChange={vi.fn()} />);
+
+    expect(screen.getByText('Checks')).toBeInTheDocument();
+    expect(screen.getByText('Title words')).toBeInTheDocument();
+    expect(screen.queryByText('Suggested title')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show seo details/i }));
+
+    expect(screen.getByText('Suggested title')).toBeInTheDocument();
   });
 });
 
