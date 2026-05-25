@@ -5,24 +5,46 @@ import type { Project, ProjectJsonBackup } from '../types';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-const LEGACY_MOCK_SUBJECTS = [
-  'Robot',
-  'Dinosaur',
-  'Unicorn',
-  'Dragon',
-  'Astronaut',
-  'Pirate',
-  'Butterfly',
-  'Flower',
-  'Sun',
-  'Moon',
-  'Lion',
-  'Owl',
+const LEGACY_MOCK_SUBJECT_SETS = [
+  [
+    'Robot',
+    'Dinosaur',
+    'Unicorn',
+    'Dragon',
+    'Astronaut',
+    'Pirate',
+    'Butterfly',
+    'Flower',
+    'Sun',
+    'Moon',
+    'Lion',
+    'Owl',
+  ],
+  [
+    'Lion',
+    'Tiger',
+    'Elephant',
+    'Giraffe',
+    'Zebra',
+    'Panda',
+    'Fox',
+    'Wolf',
+    'Bear',
+    'Rabbit',
+    'Deer',
+    'Owl',
+  ],
 ];
 
 const isLegacyMockSubjectList = (subjects: Project['subjects']): boolean =>
-  subjects.length === LEGACY_MOCK_SUBJECTS.length &&
-  subjects.every((subject, index) => subject.name === LEGACY_MOCK_SUBJECTS[index]);
+  LEGACY_MOCK_SUBJECT_SETS.some(
+    (mockSubjects) =>
+      subjects.length === mockSubjects.length &&
+      subjects.every((subject, index) => subject.name === mockSubjects[index]),
+  );
+
+const removeLegacyMockSubjects = (subjects: Project['subjects']): Project['subjects'] =>
+  isLegacyMockSubjectList(subjects) ? [] : subjects;
 
 const readSubjects = (projectLike: Record<string, unknown>): Project['subjects'] => {
   const rawSubjects = Array.isArray(projectLike.subjects)
@@ -74,9 +96,6 @@ export const loadProject = (): Project => {
       return fallback;
     }
 
-    const subjects = readSubjects(parsed);
-    const restoredSubjects = isLegacyMockSubjectList(subjects) ? [] : subjects;
-
     return {
       ...fallback,
       ...parsed,
@@ -85,7 +104,7 @@ export const loadProject = (): Project => {
         ...(isRecord(parsed.settings) ? parsed.settings : {}),
       },
       pdfSettings: readPdfSettings(parsed.pdfSettings, fallback.pdfSettings),
-      subjects: restoredSubjects,
+      subjects: removeLegacyMockSubjects(readSubjects(parsed)),
       updatedAt: new Date().toISOString(),
     };
   } catch {
@@ -123,7 +142,7 @@ export const parseProjectBackup = (rawJson: string): Project => {
       ...settings,
     },
     pdfSettings: readPdfSettings(project.pdfSettings, fallback.pdfSettings),
-    subjects: readSubjects(project),
+    subjects: removeLegacyMockSubjects(readSubjects(project)),
     updatedAt: new Date().toISOString(),
   };
 };
