@@ -19,8 +19,8 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
     <Card>
       <CardHeader>
         <div>
-          <h2 className="text-lg font-bold text-slate-950">Product brief</h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <h2 className="text-lg font-bold text-ink-strong">Product brief</h2>
+          <p className="mt-1 text-sm text-ink-muted">
             Listing copy is saved in this browser. Uploaded files are kept in memory only.
           </p>
         </div>

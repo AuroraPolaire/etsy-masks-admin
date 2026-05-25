@@ -27,12 +27,12 @@ export const FileUploader = ({ onFilesSelected, disabled }: FileUploaderProps) =
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-bold text-slate-950">Upload files</h2>
+        <h2 className="text-lg font-bold text-ink-strong">Upload files</h2>
       </CardHeader>
       <CardBody>
         <label
-          className={`flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition ${
-            isDragging ? 'border-teal-700 bg-teal-50' : 'border-slate-300 bg-slate-50'
+          className={`flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-panel border-2 border-dashed p-6 text-center transition ${
+            isDragging ? 'border-brand bg-brand-subtle' : 'border-surface-outline bg-surface-muted'
           } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
           onDragOver={(event) => {
             event.preventDefault();
@@ -45,8 +45,8 @@ export const FileUploader = ({ onFilesSelected, disabled }: FileUploaderProps) =
             handleFiles(event.dataTransfer.files);
           }}
         >
-          <span className="text-base font-bold text-slate-950">Drop files here or browse</span>
-          <span className="mt-2 max-w-xl text-sm text-slate-600">
+          <span className="text-base font-bold text-ink-strong">Drop files here or browse</span>
+          <span className="mt-2 max-w-xl text-sm text-ink-muted">
             Accepts PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON. Uploaded binary files are not
             saved after refresh.
           </span>

@@ -4,6 +4,7 @@ import { analyzeEtsySeo } from '../lib/etsySeo';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
+import { Surface } from './ui/Surface';
 import { Textarea } from './ui/Textarea';
 
 import type { Project, ProjectSettings } from '../types';
@@ -31,8 +32,8 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Etsy SEO assistant</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-lg font-bold text-ink-strong">Etsy SEO assistant</h2>
+            <p className="mt-1 text-sm text-ink-muted">
               Keep titles readable, tags useful, and the product clear in the first sentence.
             </p>
           </div>
@@ -42,12 +43,14 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        <div className="rounded-lg border border-white/70 bg-white/50 p-4 shadow-sm backdrop-blur-md">
+        <Surface variant="muted" className="p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">Suggested title</p>
-              <p className="mt-1 text-sm font-semibold text-slate-950">{analysis.suggestedTitle}</p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="text-xs font-semibold uppercase text-ink-muted">Suggested title</p>
+              <p className="mt-1 text-sm font-semibold text-ink-strong">
+                {analysis.suggestedTitle}
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">
                 {analysis.suggestedTitle.split(/\s+/).length} words, product-first, count included.
               </p>
             </div>
@@ -55,28 +58,28 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
               Use title
             </Button>
           </div>
-        </div>
+        </Surface>
 
-        <div className="rounded-lg border border-white/70 bg-white/50 p-4 shadow-sm backdrop-blur-md">
+        <Surface variant="muted" className="p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">Suggested tags</p>
-              <p className="mt-1 text-sm text-slate-700">{suggestedTags}</p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="text-xs font-semibold uppercase text-ink-muted">Suggested tags</p>
+              <p className="mt-1 text-sm text-ink-base">{suggestedTags}</p>
+              <p className="mt-1 text-xs text-ink-muted">
                 {analysis.suggestedTags.length} tags, each 20 characters or fewer.
               </p>
             </div>
             <Button onClick={() => updateSettings({ tags: suggestedTags })}>Use tags</Button>
           </div>
-        </div>
+        </Surface>
 
-        <div className="rounded-lg border border-white/70 bg-white/50 p-4 shadow-sm backdrop-blur-md">
+        <Surface variant="muted" className="p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">
+              <p className="text-xs font-semibold uppercase text-ink-muted">
                 Suggested description
               </p>
-              <p className="mt-1 text-sm text-slate-700">
+              <p className="mt-1 text-sm text-ink-base">
                 Structured buyer copy with included files, use cases, instructions, disclaimers, and
                 natural keyword phrases.
               </p>
@@ -102,22 +105,19 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
               value={analysis.suggestedDescription}
             />
           ) : null}
-        </div>
+        </Surface>
 
         <ul className="space-y-2">
           {analysis.checks.map((check) => (
-            <li
-              key={check.id}
-              className="rounded-md border border-white/70 bg-white/45 p-3 text-sm"
-            >
+            <Surface as="li" key={check.id} variant="muted" className="p-3 text-sm">
               <div className="flex items-start justify-between gap-3">
-                <span className="font-semibold text-slate-900">{check.label}</span>
+                <span className="font-semibold text-ink-strong">{check.label}</span>
                 <Badge tone={check.passed ? 'success' : 'warning'}>
                   {check.passed ? 'Pass' : 'Review'}
                 </Badge>
               </div>
-              <p className="mt-1 text-slate-600">{check.details}</p>
-            </li>
+              <p className="mt-1 text-ink-muted">{check.details}</p>
+            </Surface>
           ))}
         </ul>
       </CardBody>

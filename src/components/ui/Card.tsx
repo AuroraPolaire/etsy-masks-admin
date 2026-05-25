@@ -6,7 +6,7 @@ type CardProps = HTMLAttributes<HTMLDivElement> & {
 
 export const Card = ({ children, className = '', ...props }: CardProps) => (
   <section
-    className={`rounded-lg border border-white/60 bg-white/65 shadow-panel ring-1 ring-slate-900/5 backdrop-blur-xl ${className}`}
+    className={`min-w-0 rounded-panel border border-surface-outline bg-surface-panel shadow-panel ${className}`}
     {...props}
   >
     {children}
@@ -14,7 +14,7 @@ export const Card = ({ children, className = '', ...props }: CardProps) => (
 );
 
 export const CardHeader = ({ children, className = '', ...props }: CardProps) => (
-  <div className={`border-b border-white/60 px-5 py-4 ${className}`} {...props}>
+  <div className={`border-b border-surface-divider px-5 py-4 ${className}`} {...props}>
     {children}
   </div>
 );

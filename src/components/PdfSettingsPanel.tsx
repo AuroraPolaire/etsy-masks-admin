@@ -1,4 +1,5 @@
 import { Card, CardBody, CardHeader } from './ui/Card';
+import { CheckboxCard } from './ui/CheckboxCard';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 
@@ -17,50 +18,40 @@ export const PdfSettingsPanel = ({ settings, onChange }: PdfSettingsPanelProps) 
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-bold text-slate-950">PDF settings</h2>
+        <h2 className="text-lg font-bold text-ink-strong">PDF settings</h2>
       </CardHeader>
       <CardBody className="grid gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={settings.generateA4}
-              onChange={(event) => update('generateA4', event.target.checked)}
-            />
-            Generate A4
-          </label>
-          <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={settings.generateUSLetter}
-              onChange={(event) => update('generateUSLetter', event.target.checked)}
-            />
-            Generate US Letter
-          </label>
-          <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={settings.showSubjectLabel}
-              onChange={(event) => update('showSubjectLabel', event.target.checked)}
-            />
-            Show topic label
-          </label>
-          <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={settings.showInstructionFooter}
-              onChange={(event) => update('showInstructionFooter', event.target.checked)}
-            />
-            Show instruction footer
-          </label>
-          <label className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={settings.includeCalibrationPage}
-              onChange={(event) => update('includeCalibrationPage', event.target.checked)}
-            />
-            Include calibration page
-          </label>
+          <CheckboxCard
+            label="Generate A4"
+            name="generateA4"
+            checked={settings.generateA4}
+            onChange={(event) => update('generateA4', event.target.checked)}
+          />
+          <CheckboxCard
+            label="Generate US Letter"
+            name="generateUSLetter"
+            checked={settings.generateUSLetter}
+            onChange={(event) => update('generateUSLetter', event.target.checked)}
+          />
+          <CheckboxCard
+            label="Show topic label"
+            name="showSubjectLabel"
+            checked={settings.showSubjectLabel}
+            onChange={(event) => update('showSubjectLabel', event.target.checked)}
+          />
+          <CheckboxCard
+            label="Show instruction footer"
+            name="showInstructionFooter"
+            checked={settings.showInstructionFooter}
+            onChange={(event) => update('showInstructionFooter', event.target.checked)}
+          />
+          <CheckboxCard
+            label="Include calibration page"
+            name="includeCalibrationPage"
+            checked={settings.includeCalibrationPage}
+            onChange={(event) => update('includeCalibrationPage', event.target.checked)}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Select

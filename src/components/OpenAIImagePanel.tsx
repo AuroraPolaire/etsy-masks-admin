@@ -1,9 +1,11 @@
 import { getOpenAIImageCostComparison, formatUsdEstimate } from '../lib/openaiImageCosts';
+import { AIButton } from './ui/AIButton';
+import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
-import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+import { Surface } from './ui/Surface';
 
 import type { OpenAIImageSettings } from '../types';
 
@@ -50,8 +52,8 @@ export const OpenAIImagePanel = ({
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">OpenAI image generation</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-lg font-bold text-ink-strong">OpenAI image generation</h2>
+            <p className="mt-1 text-sm text-ink-muted">
               Test one mask from a topic card, or generate the remaining bundle here. Review and
               approve every image before export.
             </p>
@@ -140,16 +142,16 @@ export const OpenAIImagePanel = ({
           />
         </div>
         {transparentUnsupported ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <Alert tone="warning">
             Transparent mask assets require a GPT Image 1.x model with PNG or WEBP output. For
             `gpt-image-2`, this app sends an opaque background request.
-          </p>
+          </Alert>
         ) : null}
-        <div className="rounded-lg border border-white/70 bg-white/50 p-4 shadow-sm backdrop-blur-md">
+        <Surface variant="muted" className="p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-950">Approximate generation cost</h3>
-              <p className="mt-1 text-xs text-slate-600">
+              <h3 className="text-sm font-bold text-ink-strong">Approximate generation cost</h3>
+              <p className="mt-1 text-xs text-ink-muted">
                 Estimated from selected quality and size. Actual API billing can vary with token
                 usage and OpenAI pricing changes. Switch the selected model above before generating.
               </p>
@@ -160,12 +162,9 @@ export const OpenAIImagePanel = ({
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {costComparison.map((estimate) => (
-              <div
-                key={estimate.model}
-                className="rounded-md border border-white/70 bg-white/55 p-3 text-sm"
-              >
-                <p className="font-semibold text-slate-950">{estimate.model}</p>
-                <dl className="mt-2 grid gap-1 text-slate-700">
+              <Surface key={estimate.model} variant="default" className="p-3 text-sm">
+                <p className="font-semibold text-ink-strong">{estimate.model}</p>
+                <dl className="mt-2 grid gap-1 text-ink-base">
                   <div className="flex justify-between gap-4">
                     <dt>One mask</dt>
                     <dd className="font-semibold">{formatUsdEstimate(estimate.oneImageUsd)}</dd>
@@ -181,24 +180,23 @@ export const OpenAIImagePanel = ({
                     <dd className="font-semibold">{formatUsdEstimate(estimate.fullBundleUsd)}</dd>
                   </div>
                 </dl>
-              </div>
+              </Surface>
             ))}
           </div>
           {hasCostFallbackAssumption ? (
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-ink-muted">
               Auto settings are estimated as medium quality at 1024 x 1024.
             </p>
           ) : null}
-        </div>
+        </Surface>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button
-            variant="primary"
+          <AIButton
             disabled={!hasApiKey || missingImageCount === 0 || busy}
             onClick={onGenerateMissingImages}
           >
             Generate remaining bundle
-          </Button>
-          <p className="text-sm text-slate-600">
+          </AIButton>
+          <p className="text-sm text-ink-muted">
             {missingImageCount} topic{missingImageCount === 1 ? '' : 's'} missing a usable image.
           </p>
         </div>

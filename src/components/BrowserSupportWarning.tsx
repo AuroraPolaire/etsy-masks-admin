@@ -1,3 +1,5 @@
+import { Alert } from './ui/Alert';
+
 import type { BrowserSupportResult } from '../types';
 
 type BrowserSupportWarningProps = {
@@ -10,9 +12,9 @@ export const BrowserSupportWarning = ({ result }: BrowserSupportWarningProps) =>
   }
 
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+    <Alert tone="danger" role="alert">
       <strong>Browser support warning:</strong> Missing {result.missingFeatures.join(', ')}. File
       upload, browser storage, preview generation, PDF generation, or ZIP export may not work.
-    </div>
+    </Alert>
   );
 };
