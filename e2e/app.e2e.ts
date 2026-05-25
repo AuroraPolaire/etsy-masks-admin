@@ -74,6 +74,11 @@ test.describe('production workflow', () => {
     await expect(page.getByLabel('Search saved runs')).toBeVisible();
     await expect(page.getByText('Worker API URL')).toHaveCount(0);
     await expect(page.getByText('Admin token')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Insights' }).click();
+    await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Current project snapshot' })).toBeVisible();
+    await expect(page.getByText('TODO')).toHaveCount(0);
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {
@@ -92,13 +97,21 @@ test.describe('accessibility smoke checks', () => {
     await prepareCleanPage(page);
   });
 
-  test('home, cloud saves, and settings have no obvious axe violations', async ({ page }) => {
+  test('home, cloud saves, insights, and settings have no obvious axe violations', async ({
+    page,
+  }) => {
     await waitForUiToSettle(page);
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
     await page.getByRole('button', { name: 'Cloud saves', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Cloud saves' })).toBeVisible();
+    await waitForUiToSettle(page);
+    results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+    expect(results.violations).toEqual([]);
+
+    await page.getByRole('button', { name: 'Insights' }).click();
+    await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
     await waitForUiToSettle(page);
     results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);

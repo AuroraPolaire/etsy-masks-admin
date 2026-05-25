@@ -1,30 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ActivityLog } from './components/ActivityLog';
+import { AppAside } from './components/AppAside';
+import { AppMainLayout } from './components/AppMainLayout';
+import { AppSectionHeader } from './components/AppSectionHeader';
 import { AppSidebar } from './components/AppSidebar';
-import { ArchiveActions } from './components/ArchiveActions';
 import { BackendDataPanel } from './components/BackendDataPanel';
-import { BrowserSupportWarning } from './components/BrowserSupportWarning';
-import { EtsySeoPanel } from './components/EtsySeoPanel';
-import { FileUploader } from './components/FileUploader';
 import { Header } from './components/Header';
-import { InitialPromptPanel } from './components/InitialPromptPanel';
+import { HomeWorkflowView } from './components/HomeWorkflowView';
+import { InsightsPanel } from './components/InsightsPanel';
 import { OpenAIImagePanel } from './components/OpenAIImagePanel';
-import { OutputActionsPanel } from './components/OutputActionsPanel';
-import { PdfSettingsPanel } from './components/PdfSettingsPanel';
-import { PrivacyNotice } from './components/PrivacyNotice';
-import { ProductBriefForm } from './components/ProductBriefForm';
-import { PromptManager } from './components/PromptManager';
-import { QAPanel } from './components/QAPanel';
-import { TopicSetupPanel } from './components/TopicSetupPanel';
-import { Alert } from './components/ui/Alert';
-import { Button } from './components/ui/Button';
-import { Card, CardBody, CardHeader } from './components/ui/Card';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
-import { Stepper } from './components/ui/Stepper';
-import { StepAdvanceButton, StepSection } from './components/ui/StepSection';
 import { useToast } from './components/ui/toastContext';
-import { WorkflowStatus } from './components/WorkflowStatus';
 import { useActivityLog } from './hooks/useActivityLog';
 import { useBackendCache } from './hooks/useBackendCache';
 import { useBusyAction } from './hooks/useBusyAction';
@@ -190,7 +176,7 @@ export const App = () => {
     [activeStepId, files, hasAIProvider, project, qaResult],
   );
   const imageGenerationHint = !hasAIProvider
-    ? 'Configure the Backend proxy to generate images.'
+    ? 'Configure the backend OpenAI proxy to generate images.'
     : missingImagePrompts.length === 0
       ? 'All topics have approved images.'
       : `${missingImagePrompts.length} topic${missingImagePrompts.length === 1 ? '' : 's'} still need an approved image.`;
@@ -375,288 +361,105 @@ export const App = () => {
     />
   );
 
+  const renderAside = (showQA = false) => (
+    <AppAside
+      workflow={workflow}
+      qaResult={qaResult}
+      busyAction={busyAction}
+      busyProgress={busyProgress}
+      activityLog={activityLog}
+      showQA={showQA}
+      onCancelBusyAction={cancelBusyAction}
+      onClearFiles={handleClearFiles}
+    />
+  );
+
   const renderHomeView = () => (
-    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
-      <div className="min-w-0 space-y-6">
-        <BrowserSupportWarning result={browserSupport} />
-        <PrivacyNotice />
-        <Alert>
-          Listing copy is saved in this browser. Uploaded files clear on refresh, so export the ZIP
-          or re-upload files before continuing later.
-        </Alert>
-        <Stepper steps={workflow.stepperItems} />
-        {workflow.steps.map((step, index) => (
-          <StepSection
-            key={step.id}
-            number={index + 1}
-            title={step.title}
-            description={step.description}
-            state={workflow.getStepState(step.id)}
-            summary={step.summary}
-            lockedReason={step.lockedReason}
-            onActivate={() => setActiveStepId(step.id)}
-          >
-            {step.id === 'brief' ? (
-              <div className="space-y-6">
-                <InitialPromptPanel
-                  aiReady={hasAIProvider}
-                  disabled={busyAction !== null}
-                  isGenerating={busyAction === 'brief-generation'}
-                  onFillBrief={handleFillProductBrief}
-                />
-                <ProductBriefForm
-                  settings={project.settings}
-                  lastSavedAt={project.updatedAt}
-                  onChange={updateSettings}
-                />
-                <EtsySeoPanel project={project} onChange={updateSettings} />
-                <StepAdvanceButton
-                  disabled={!workflow.briefComplete}
-                  onClick={() => setActiveStepId('topics')}
-                >
-                  Next: topics
-                </StepAdvanceButton>
-              </div>
-            ) : null}
-            {step.id === 'topics' ? (
-              <div className="space-y-6">
-                <TopicSetupPanel
-                  subjects={project.subjects}
-                  onAddSubject={handleAddSubject}
-                  onRemoveSubject={handleRemoveSubject}
-                />
-                <StepAdvanceButton
-                  disabled={!workflow.topicsComplete}
-                  onClick={() => setActiveStepId('images')}
-                >
-                  Next: AI images
-                </StepAdvanceButton>
-              </div>
-            ) : null}
-            {step.id === 'images' ? (
-              <div className="space-y-6">
-                {!hasAIProvider ? (
-                  <Alert
-                    tone="info"
-                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span>
-                      Configure the backend OpenAI proxy for AI generation, or upload files manually
-                      for each topic.
-                    </span>
-                    <Button onClick={() => setActiveSectionId('backend')}>Open Cloud saves</Button>
-                  </Alert>
-                ) : null}
-                <PromptManager
-                  subjects={project.subjects}
-                  prompts={prompts}
-                  files={files}
-                  canGenerateImages={hasAIProvider && busyAction === null}
-                  generatingSubjectId={generatingSubjectId}
-                  missingImageCount={missingImagePrompts.length}
-                  imageGenerationHint={imageGenerationHint}
-                  allowTopicEditing={false}
-                  onAddSubject={handleAddSubject}
-                  onRemoveSubject={handleRemoveSubject}
-                  onGenerateImage={handleGenerateSubjectImage}
-                  onGenerateMissingImages={handleGenerateMissingSubjectImages}
-                  onApprove={approveFile}
-                  onReject={rejectFile}
-                  onDelete={handleDeleteFile}
-                  onNotesChange={updateNotes}
-                  onConfirmReview={confirmReview}
-                  onCopy={(message) => addActivity('notes-updated', 'success', message)}
-                />
-                <FileUploader
-                  onFilesSelected={handleFilesSelected}
-                  disabled={busyAction !== null}
-                />
-                <StepAdvanceButton
-                  disabled={!workflow.imagesComplete}
-                  onClick={() => setActiveStepId('outputs')}
-                >
-                  Next: PDFs and previews
-                </StepAdvanceButton>
-              </div>
-            ) : null}
-            {step.id === 'outputs' ? (
-              <div className="space-y-6">
-                <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
-                <OutputActionsPanel
-                  busyAction={busyAction}
-                  canGenerateOutputs={workflow.canGenerateOutputs}
-                  pdfCount={workflow.pdfCount}
-                  previewCount={workflow.previewCount}
-                  onGeneratePdfs={generatePdfs}
-                  onGeneratePreviews={generatePreviews}
-                />
-                <StepAdvanceButton
-                  disabled={!workflow.outputsComplete}
-                  onClick={() => setActiveStepId('export')}
-                >
-                  Next: QA and export
-                </StepAdvanceButton>
-              </div>
-            ) : null}
-            {step.id === 'export' ? (
-              <div className="space-y-6">
-                <QAPanel result={qaResult} />
-                <ArchiveActions
-                  qaResult={qaResult}
-                  busyAction={busyAction}
-                  canGenerateOutputs={workflow.canGenerateOutputs}
-                  pdfCount={workflow.pdfCount}
-                  previewCount={workflow.previewCount}
-                  onGeneratePdfs={generatePdfs}
-                  onGeneratePreviews={generatePreviews}
-                  onExportArchive={exportArchive}
-                  onExportProjectJson={exportProjectJson}
-                  onImportProjectJson={importProjectJson}
-                />
-              </div>
-            ) : null}
-          </StepSection>
-        ))}
-      </div>
-      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
-        <WorkflowStatus
-          workflow={workflow}
-          qaResult={qaResult}
-          busyAction={busyAction}
-          busyProgress={busyProgress}
-          onCancelBusyAction={cancelBusyAction}
-        />
-        <QAPanel result={qaResult} />
-        <ActivityLog items={activityLog} />
-        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-          Clear session files
-        </Button>
-      </aside>
-    </main>
+    <AppMainLayout aside={renderAside(true)}>
+      <HomeWorkflowView
+        browserSupport={browserSupport}
+        workflow={workflow}
+        project={project}
+        prompts={prompts}
+        files={files}
+        qaResult={qaResult}
+        hasAIProvider={hasAIProvider}
+        busyAction={busyAction}
+        generatingSubjectId={generatingSubjectId}
+        missingImageCount={missingImagePrompts.length}
+        imageGenerationHint={imageGenerationHint}
+        onStepSelected={setActiveStepId}
+        onOpenCloudSaves={() => setActiveSectionId('backend')}
+        onFillProductBrief={handleFillProductBrief}
+        onUpdateSettings={updateSettings}
+        onUpdatePdfSettings={updatePdfSettings}
+        onAddSubject={handleAddSubject}
+        onRemoveSubject={handleRemoveSubject}
+        onGenerateImage={handleGenerateSubjectImage}
+        onGenerateMissingImages={handleGenerateMissingSubjectImages}
+        onApproveFile={approveFile}
+        onRejectFile={rejectFile}
+        onDeleteFile={handleDeleteFile}
+        onNotesChange={updateNotes}
+        onConfirmReview={confirmReview}
+        onCopyPrompt={(message) => addActivity('notes-updated', 'success', message)}
+        onFilesSelected={handleFilesSelected}
+        onGeneratePdfs={generatePdfs}
+        onGeneratePreviews={generatePreviews}
+        onExportArchive={exportArchive}
+        onExportProjectJson={exportProjectJson}
+        onImportProjectJson={importProjectJson}
+      />
+    </AppMainLayout>
   );
 
   const renderSettingsView = () => (
-    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
-      <div className="min-w-0 space-y-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
-            Settings
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-ink-strong">Image generation settings</h2>
-          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
-            Manage the model, image size, quality, background, output format, and cost estimate used
-            by backend AI generation.
-          </p>
-        </div>
-        {renderOpenAIImagePanel()}
-      </div>
-      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
-        <WorkflowStatus
-          workflow={workflow}
-          qaResult={qaResult}
-          busyAction={busyAction}
-          busyProgress={busyProgress}
-          onCancelBusyAction={cancelBusyAction}
-        />
-        <ActivityLog items={activityLog} />
-        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-          Clear session files
-        </Button>
-      </aside>
-    </main>
+    <AppMainLayout aside={renderAside()}>
+      <AppSectionHeader
+        eyebrow="Settings"
+        title="Image generation settings"
+        description="Manage the model, image size, quality, background, output format, and cost estimate used by backend AI generation."
+      />
+      {renderOpenAIImagePanel()}
+    </AppMainLayout>
   );
 
   const renderBackendView = () => (
-    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
-      <div className="min-w-0 space-y-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
-            Cloud saves
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-ink-strong">Cloud saves</h2>
-          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
-            Save the current project, search previous runs by idea, and restore the brief with its
-            files when you need to continue older work.
-          </p>
-        </div>
-        <BackendDataPanel
-          health={backendCache.health}
-          runs={backendCache.runs}
-          selectedRunId={backendCache.selectedRunId}
-          snapshot={backendCache.snapshot}
-          saveIdea={backendCache.saveIdea}
-          suggestedIdea={backendCache.suggestedIdea}
-          files={files}
-          busyAction={busyAction}
-          onSaveIdeaChange={backendCache.setSaveIdea}
-          onRunSelected={backendCache.selectRun}
-          onRestoreRun={backendCache.restoreRun}
-          onTestConnection={backendCache.testConnection}
-          onBackupToCloud={backendCache.backupToCloud}
-          onDeleteSelectedRun={backendCache.deleteSelectedRun}
-          onDeleteAllCloudData={backendCache.deleteAllCloudData}
-        />
-      </div>
-      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
-        <WorkflowStatus
-          workflow={workflow}
-          qaResult={qaResult}
-          busyAction={busyAction}
-          busyProgress={busyProgress}
-          onCancelBusyAction={cancelBusyAction}
-        />
-        <ActivityLog items={activityLog} />
-        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-          Clear session files
-        </Button>
-      </aside>
-    </main>
+    <AppMainLayout aside={renderAside()}>
+      <AppSectionHeader
+        eyebrow="Cloud saves"
+        title="Cloud saves"
+        description="Save the current project, search previous runs by idea, and restore the brief with its files when you need to continue older work."
+      />
+      <BackendDataPanel
+        health={backendCache.health}
+        runs={backendCache.runs}
+        selectedRunId={backendCache.selectedRunId}
+        snapshot={backendCache.snapshot}
+        saveIdea={backendCache.saveIdea}
+        suggestedIdea={backendCache.suggestedIdea}
+        files={files}
+        busyAction={busyAction}
+        onSaveIdeaChange={backendCache.setSaveIdea}
+        onRunSelected={backendCache.selectRun}
+        onRestoreRun={backendCache.restoreRun}
+        onTestConnection={backendCache.testConnection}
+        onBackupToCloud={backendCache.backupToCloud}
+        onDeleteSelectedRun={backendCache.deleteSelectedRun}
+        onDeleteAllCloudData={backendCache.deleteAllCloudData}
+      />
+    </AppMainLayout>
   );
 
   const renderInsightsView = () => (
-    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
-      <div className="min-w-0 space-y-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
-            Insights
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-ink-strong">Project insights</h2>
-          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
-            Cost, output, and readiness history will live here once the workflow has durable
-            analytics data.
-          </p>
-        </div>
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h3 className="text-base font-bold text-ink-strong">TODO</h3>
-              <span className="inline-flex w-fit items-center rounded-badge border border-feedback-warning-border bg-feedback-warning-bg px-2.5 py-1 text-xs font-semibold text-feedback-warning-fg">
-                Planned
-              </span>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <p className="text-sm leading-6 text-ink-muted">
-              Add project-level insights after export history and generated output metrics are
-              stored consistently.
-            </p>
-          </CardBody>
-        </Card>
-      </div>
-      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
-        <WorkflowStatus
-          workflow={workflow}
-          qaResult={qaResult}
-          busyAction={busyAction}
-          busyProgress={busyProgress}
-          onCancelBusyAction={cancelBusyAction}
-        />
-        <ActivityLog items={activityLog} />
-        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-          Clear session files
-        </Button>
-      </aside>
-    </main>
+    <AppMainLayout aside={renderAside()}>
+      <AppSectionHeader
+        eyebrow="Insights"
+        title="Project insights"
+        description="Review current readiness, file counts, and local save/export history before publishing."
+      />
+      <InsightsPanel project={project} files={files} qaResult={qaResult} workflow={workflow} />
+    </AppMainLayout>
   );
 
   const renderActiveSection = () => {

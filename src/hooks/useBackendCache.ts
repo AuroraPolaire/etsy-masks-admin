@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { createBackendClient } from '../lib/backendClient';
-import {
-  createManagedFileFromBackendRecord,
-  managedFileToBackendMetadata,
-} from '../lib/backendFiles';
 import { getProjectIdeaLabel } from '../lib/backendIdea';
+import {
+  downloadBackendRunFiles,
+  getErrorMessage,
+  getOversizedFiles,
+  isAbortError,
+  loadBackendRunCache,
+  uploadBackendRunFiles,
+} from '../lib/backendSync';
 
+import type { BackendRunCacheState } from '../lib/backendSync';
 import type {
   AddActivity,
   BackendHealth,
@@ -39,12 +44,6 @@ type UseBackendCacheParams = {
   confirmAction: ConfirmAction;
 };
 
-const isAbortError = (error: unknown): boolean =>
-  error instanceof DOMException && error.name === 'AbortError';
-
-const getErrorMessage = (error: unknown, fallback: string): string =>
-  error instanceof Error ? error.message : fallback;
-
 export const useBackendCache = ({
   project,
   files,
@@ -73,34 +72,17 @@ export const useBackendCache = ({
     setLastSuggestedIdea(suggestedIdea);
   }, [lastSuggestedIdea, suggestedIdea]);
 
+  const applyRunCache = useCallback((nextCache: BackendRunCacheState) => {
+    setHealth(nextCache.health);
+    setRuns(nextCache.runs);
+    setSelectedRunId(nextCache.selectedRunId);
+    setSnapshot(nextCache.snapshot);
+  }, []);
+
   const loadRunCache = useCallback(
-    async (
-      preferredRunId: string | undefined,
-      { signal, setProgress }: BusyActionContext,
-    ): Promise<void> => {
-      setProgress('Checking Cloudflare Worker health...');
-      const nextHealth = await client.getHealth(signal);
-      setHealth(nextHealth);
-
-      setProgress('Reading saved runs from D1...');
-      const { runs: nextRuns } = await client.listRuns(signal);
-      setRuns(nextRuns);
-      const runId =
-        preferredRunId && nextRuns.some((run) => run.id === preferredRunId)
-          ? preferredRunId
-          : nextRuns[0]?.id;
-
-      if (!runId) {
-        setSelectedRunId('');
-        setSnapshot(null);
-        return;
-      }
-
-      setSelectedRunId(runId);
-      setProgress('Reading selected run metadata...');
-      setSnapshot(await client.getRun(runId, signal));
-    },
-    [client],
+    async (preferredRunId: string | undefined, context: BusyActionContext) =>
+      applyRunCache(await loadBackendRunCache(client, preferredRunId, context)),
+    [applyRunCache, client],
   );
 
   const testConnection = useCallback(() => {
@@ -158,7 +140,7 @@ export const useBackendCache = ({
         setProgress('Checking Cloudflare backend limits...');
         const nextHealth = health ?? (await client.getHealth(signal));
         setHealth(nextHealth);
-        const oversizedFiles = files.filter((file) => file.size > nextHealth.maxFileBytes);
+        const oversizedFiles = getOversizedFiles(files, nextHealth.maxFileBytes);
 
         if (oversizedFiles.length > 0) {
           addActivity(
@@ -173,20 +155,7 @@ export const useBackendCache = ({
         setProgress(`Saving "${idea}" metadata to D1...`);
         const { run } = await client.createRun(project, idea, signal);
 
-        for (const [index, file] of files.entries()) {
-          if (signal.aborted) {
-            throw new DOMException('Backend backup cancelled', 'AbortError');
-          }
-
-          setProgress(`Uploading ${index + 1}/${files.length}: ${file.name}`);
-          await client.uploadFile(
-            run.id,
-            managedFileToBackendMetadata(project, file),
-            file.file,
-            signal,
-          );
-        }
-
+        await uploadBackendRunFiles(client, project, run.id, files, { signal, setProgress });
         await loadRunCache(run.id, { signal, setProgress });
         addActivity(
           'cloud-synced',
@@ -253,16 +222,10 @@ export const useBackendCache = ({
               return;
             }
 
-            const restoredFiles: ManagedFile[] = [];
-            for (const [index, file] of nextSnapshot.files.entries()) {
-              if (signal.aborted) {
-                throw new DOMException('Backend restore cancelled', 'AbortError');
-              }
-
-              setProgress(`Downloading ${index + 1}/${nextSnapshot.files.length}: ${file.name}`);
-              const blob = await client.downloadFile(targetRunId, file.id, signal);
-              restoredFiles.push(createManagedFileFromBackendRecord(file, blob));
-            }
+            const restoredFiles = await downloadBackendRunFiles(client, targetRunId, nextSnapshot, {
+              signal,
+              setProgress,
+            });
 
             replaceProject(nextSnapshot.project);
             replaceFiles(
