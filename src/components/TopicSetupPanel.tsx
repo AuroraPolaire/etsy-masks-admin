@@ -41,7 +41,7 @@ export const TopicSetupPanel = ({
             label="Add mask topic"
             name="workflowAddSubject"
             value={subjectName}
-            placeholder="Lion, robot, butterfly..."
+            placeholder="Lion, robot, butterfly"
             onChange={(event) => setSubjectName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
@@ -56,7 +56,7 @@ export const TopicSetupPanel = ({
         </Button>
       </div>
       {subjects.length === 0 ? (
-        <EmptyState>Add at least one mask topic to unlock image generation.</EmptyState>
+        <EmptyState>Add one topic to unlock image generation.</EmptyState>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {subjects.map((subject) => (

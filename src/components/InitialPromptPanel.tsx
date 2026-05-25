@@ -30,33 +30,33 @@ export const InitialPromptPanel = ({
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Start from an idea</h2>
+            <h2 className="text-lg font-bold text-ink-strong">Draft from an idea</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Paste a short bundle idea and draft the brief, tags, description, and topic list.
+              Describe the bundle once. The app drafts listing copy and a topic list.
             </p>
           </div>
           <Badge tone={hasOpenAIKey ? 'success' : 'neutral'}>
-            {hasOpenAIKey ? 'AI brief ready' : 'Local fallback'}
+            {hasOpenAIKey ? 'AI ready' : 'Local draft'}
           </Badge>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
         <Textarea
-          label="Initial bundle prompt"
+          label="Bundle idea"
           name="initialPrompt"
           rows={4}
-          placeholder="Describe the bundle theme, audience, visual style, mask count, and topics you want included."
+          placeholder="Example: 10 woodland animal masks for a kids birthday party, watercolor style, classroom friendly."
           value={initialPrompt}
           onChange={(event) => setInitialPrompt(event.target.value)}
         />
         <p className="text-xs text-ink-muted">
           {hasOpenAIKey
-            ? 'Uses the same pasted OpenAI API key as image generation. The key is not saved.'
-            : 'Paste an OpenAI API key above to draft this with AI. Without a key, the app uses a local template.'}
+            ? 'Uses the session OpenAI key from Settings. The key is not saved.'
+            : 'Add an OpenAI key in Settings for an AI draft, or use the local template.'}
         </p>
         {hasOpenAIKey ? (
           <AIButton disabled={disabled || initialPrompt.trim().length === 0} onClick={applyDraft}>
-            {isGenerating ? 'Filling product brief...' : 'Fill product brief with AI'}
+            {isGenerating ? 'Drafting brief...' : 'Draft brief with AI'}
           </AIButton>
         ) : (
           <Button
@@ -64,7 +64,7 @@ export const InitialPromptPanel = ({
             disabled={disabled || initialPrompt.trim().length === 0}
             onClick={applyDraft}
           >
-            {isGenerating ? 'Filling product brief...' : 'Fill product brief locally'}
+            {isGenerating ? 'Drafting brief...' : 'Draft brief locally'}
           </Button>
         )}
       </CardBody>

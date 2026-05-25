@@ -27,12 +27,10 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <main className="flex min-h-screen items-center justify-center bg-canvas p-6">
           <section className="max-w-xl rounded-panel border border-feedback-danger-border bg-surface-panel p-6 shadow-panel">
-            <h1 className="text-xl font-bold text-feedback-danger-fg">
-              The app hit an unexpected error.
-            </h1>
+            <h1 className="text-xl font-bold text-feedback-danger-fg">Something went wrong.</h1>
             <p className="mt-3 text-sm text-ink-base">
-              Refresh the page to continue. Project text saved in localStorage should still be
-              available, but uploaded files need to be re-uploaded after refresh.
+              Refresh to continue. Saved listing copy should still be available, but uploaded files
+              need to be re-uploaded.
             </p>
             {this.state.message ? (
               <p className="mt-4 rounded-control bg-feedback-danger-bg p-3 text-sm text-feedback-danger-fg">

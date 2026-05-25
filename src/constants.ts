@@ -16,14 +16,14 @@ export const DEFAULT_SETTINGS: ProjectSettings = {
   marketplace: 'Etsy',
   style: DEFAULT_MASK_PROMPT_STYLE,
   description:
-    'Create fun themed activities with this printable paper mask bundle for kids. Perfect for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume activities. This is a digital download only. No physical item will be shipped.',
+    'Create an easy party or classroom activity with this printable paper mask bundle for kids. Use the designs for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume corners. This is a digital download only. No physical item will be shipped.',
   tags: 'printable masks, kids party masks, paper masks, birthday party, classroom craft, teacher resources, digital download, kids activity, pretend play, costume craft, party printable, diy masks, craft bundle',
   safetyNote:
-    'Adult supervision is required for printing, cutting, and use. Not intended for children under 3 years old. Use child-safe scissors where appropriate. Do not use strings, elastic, or cords with young children without supervision.',
+    'Adult supervision is required for printing, cutting, and use. Not intended for children under 3 years old. Use child-safe scissors where appropriate. Do not use string, elastic, or cords with young children without supervision.',
   printingInstructions:
-    'Print at 100% scale on cardstock or thick paper. Cut around the outside edge. Carefully cut out the eye holes. Punch side holes only if needed. Add string or elastic only with adult supervision. Colors may vary depending on printer and paper type.',
+    'Print at 100% scale on cardstock or thick paper. Cut around the outside edge, then carefully cut out the eye holes. Punch side holes only if needed. Add string or elastic only with adult supervision. Colors may vary by printer and paper type.',
   license:
-    'Personal use and small classroom use are included. Do not resell, redistribute, share, or claim the digital files as your own. Commercial redistribution of the files is not permitted.',
+    'Personal use and small classroom use are included. Do not resell, redistribute, share, or claim the digital files as your own. Commercial redistribution is not permitted.',
   refundPolicy:
     'Due to the digital nature of this product, refunds and exchanges are not available after download. Please contact the seller if you have any issue with your files.',
 };

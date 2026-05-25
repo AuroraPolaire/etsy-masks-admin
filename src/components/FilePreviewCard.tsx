@@ -63,7 +63,7 @@ export const FilePreviewCard = ({
             <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-control bg-surface-raised text-2xl shadow-sm">
               {file.name.split('.').pop()?.toUpperCase() ?? 'FILE'}
             </div>
-            Non-image file
+            Not an image
           </div>
         )}
       </div>
@@ -78,22 +78,22 @@ export const FilePreviewCard = ({
         </div>
         {file.imageMetadata ? (
           <p className="text-sm text-ink-muted">
-            Dimensions: {file.imageMetadata.width} x {file.imageMetadata.height}px
+            Size: {file.imageMetadata.width} x {file.imageMetadata.height}px
           </p>
         ) : null}
         {isLowResolution ? (
           <Alert tone="warning" density="compact">
-            Below 2000x2000. Prefer 3000x3000 or higher for good print quality.
+            Below 2000x2000. Use 3000x3000 or higher for sharper prints.
           </Alert>
         ) : null}
         {isRecommendedResolution ? (
           <Alert tone="success" density="compact">
-            Meets the 3000x3000 recommended print-quality target.
+            Meets the 3000x3000 print-quality target.
           </Alert>
         ) : null}
         {isLarge ? (
           <Alert tone="warning" density="compact">
-            Over 20MB. Etsy upload files may need manual splitting or smaller source images.
+            Over 20MB. Etsy upload may need smaller files or manual splitting.
           </Alert>
         ) : null}
         {file.kind === 'uploaded' && image ? (
@@ -103,7 +103,7 @@ export const FilePreviewCard = ({
               name={`map-${file.id}`}
               value={file.mappedSubjectId ?? ''}
               options={[
-                { value: '', label: 'Unmapped / unused' },
+                { value: '', label: 'Not assigned / unused' },
                 ...subjects.map((subject) => ({
                   value: subject.id,
                   label: `${subject.name} (${getExpectedFilename(subject.name)})`,
@@ -113,7 +113,7 @@ export const FilePreviewCard = ({
             />
             {mappedSubject ? (
               <p className="text-xs text-ink-muted">
-                Export rename: {getExpectedFilename(mappedSubject.name)}
+                Export filename: {getExpectedFilename(mappedSubject.name)}
               </p>
             ) : null}
             <Textarea
@@ -130,7 +130,7 @@ export const FilePreviewCard = ({
               <Button variant="danger" onClick={() => onReject(file.id)}>
                 Reject
               </Button>
-              <Button onClick={() => onConfirmReview(file.id)}>Confirm review</Button>
+              <Button onClick={() => onConfirmReview(file.id)}>Mark reviewed</Button>
               <Button variant="ghost" onClick={() => onDelete(file.id)}>
                 Delete
               </Button>

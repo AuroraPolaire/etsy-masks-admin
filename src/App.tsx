@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { ActivityLog } from './components/ActivityLog';
+import { AppSidebar } from './components/AppSidebar';
 import { ArchiveActions } from './components/ArchiveActions';
 import { BrowserSupportWarning } from './components/BrowserSupportWarning';
 import { EtsySeoPanel } from './components/EtsySeoPanel';
@@ -16,8 +17,11 @@ import { PromptManager } from './components/PromptManager';
 import { QAPanel } from './components/QAPanel';
 import { TopicSetupPanel } from './components/TopicSetupPanel';
 import { Alert } from './components/ui/Alert';
+import { Badge } from './components/ui/Badge';
 import { Button } from './components/ui/Button';
+import { Card, CardBody, CardHeader } from './components/ui/Card';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { EmptyState } from './components/ui/EmptyState';
 import { Stepper } from './components/ui/Stepper';
 import { StepAdvanceButton, StepSection } from './components/ui/StepSection';
 import { useToast } from './components/ui/toastContext';
@@ -33,6 +37,7 @@ import { checkBrowserSupport } from './lib/browserSupport';
 import { createPromptItems, getFileForSubject } from './lib/files';
 import { runQA } from './lib/qa';
 
+import type { AppSectionId } from './components/AppSidebar';
 import type { ConfirmDialogRequest } from './components/ui/ConfirmDialog';
 import type { StepperItem } from './components/ui/Stepper';
 import type { ActivityLevel, ActivityType, ProjectDraft } from './types';
@@ -65,6 +70,8 @@ export const App = () => {
     [recordActivity, showToast],
   );
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('topics');
+  const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
@@ -180,10 +187,10 @@ export const App = () => {
     async (draft: ProjectDraft, activityMessage: string) => {
       if (files.length > 0) {
         const shouldApply = await requestConfirmation({
-          title: 'Replace current topic mappings?',
+          title: 'Replace current topics?',
           description:
-            'Applying a new initial prompt replaces the mask topic list and clears existing image mappings. Uploaded files remain in memory, but their topic mappings will be reset.',
-          confirmLabel: 'Apply new brief',
+            'A new brief replaces the topic list and clears assigned images. Uploaded files stay in this session.',
+          confirmLabel: 'Replace topics',
         });
         if (!shouldApply) {
           return;
@@ -206,7 +213,7 @@ export const App = () => {
           const draft = createProjectDraftFromInitialPrompt(initialPrompt);
           await applyDraftToProject(
             draft,
-            `Filled product brief locally with ${draft.subjects.length} topics.`,
+            `Drafted the brief locally with ${draft.subjects.length} topics.`,
           );
           return;
         }
@@ -216,13 +223,13 @@ export const App = () => {
           const draft = await generateProjectDraftWithOpenAI({ apiKey, initialPrompt });
           await applyDraftToProject(
             draft,
-            `Filled product brief with OpenAI using ${draft.subjects.length} topics.`,
+            `Drafted the brief with OpenAI and added ${draft.subjects.length} topics.`,
           );
         } catch (error) {
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'OpenAI product brief generation failed.'),
+            getErrorMessage(error, 'Could not draft the brief with OpenAI.'),
           );
         }
       });
@@ -233,7 +240,7 @@ export const App = () => {
   const handleAddSubject = useCallback(
     (name: string) => {
       addSubject(name);
-      addActivity('file-added', 'info', `Added topic ${name}.`);
+      addActivity('file-added', 'info', `Added ${name} to topics.`);
     },
     [addActivity, addSubject],
   );
@@ -246,7 +253,7 @@ export const App = () => {
         const shouldRemove = await requestConfirmation({
           title: `Remove ${subjectName}?`,
           description:
-            'This removes the topic from the bundle and clears image mappings tied to it. Uploaded files remain in memory.',
+            'This removes the topic and clears its assigned image. Uploaded files stay in this session.',
           confirmLabel: 'Remove topic',
           tone: 'danger',
         });
@@ -260,7 +267,7 @@ export const App = () => {
         addActivity(
           'file-removed',
           'warning',
-          `Removed ${subjectName} and cleared related mappings.`,
+          `Removed ${subjectName} and cleared its assigned image.`,
         );
       })();
     },
@@ -274,7 +281,7 @@ export const App = () => {
         const shouldDelete = await requestConfirmation({
           title: `Delete ${fileName}?`,
           description:
-            'This removes the file from the current browser session. If you still need it, you will have to upload or generate it again.',
+            'This removes the file from this session. Upload or generate it again if you need it later.',
           confirmLabel: 'Delete file',
           tone: 'danger',
         });
@@ -290,15 +297,15 @@ export const App = () => {
   const handleClearFiles = useCallback(() => {
     void (async () => {
       const shouldClear = await requestConfirmation({
-        title: 'Clear uploaded and generated files?',
+        title: 'Clear session files?',
         description:
-          'This removes all in-memory files from the current browser session. Project text remains saved, but files must be uploaded or generated again.',
+          'This removes uploaded and generated files from this browser session. Project text stays saved.',
         confirmLabel: 'Clear files',
         tone: 'danger',
       });
 
       if (shouldClear) {
-        clearFiles('Cleared in-memory files.');
+        clearFiles('Cleared session files.');
       }
     })();
   }, [clearFiles, requestConfirmation]);
@@ -359,52 +366,52 @@ export const App = () => {
   }> = [
     {
       id: 'brief',
-      title: 'Idea and product brief',
-      description: 'Draft or refine the listing copy before creating images.',
+      title: 'Idea and brief',
+      description: 'Turn a product idea into buyer-facing listing copy.',
       summary: briefComplete
-        ? `${project.settings.theme} brief is ready.`
+        ? `${project.settings.theme} brief is ready`
         : 'Complete title, description, tags, safety, license, and refund copy.',
       complete: briefComplete,
       unlocked: true,
     },
     {
       id: 'topics',
-      title: 'Mask topics',
-      description: 'Choose the exact masks that will appear in the bundle.',
+      title: 'Topics',
+      description: 'Choose the masks included in the bundle.',
       summary: `${project.subjects.length} topic${project.subjects.length === 1 ? '' : 's'} configured.`,
       complete: topicsComplete,
       unlocked: briefComplete,
-      lockedReason: 'Complete the product brief first.',
+      lockedReason: 'Finish the brief first.',
     },
     {
       id: 'images',
-      title: 'Generate and review images',
-      description: 'Generate images with OpenAI, review them inline, and approve one per topic.',
+      title: 'AI images',
+      description: 'Generate or upload images, then approve one per topic.',
       summary: `${approvedImageCount}/${project.subjects.length} topics have approved images.`,
       complete: imagesComplete,
       unlocked: topicsComplete,
-      lockedReason: 'Add at least one mask topic first.',
+      lockedReason: 'Add at least one topic first.',
     },
     {
       id: 'outputs',
-      title: 'Generate outputs',
+      title: 'PDFs and previews',
       description: 'Create printable PDFs and marketplace preview images.',
       summary: `${pdfCount} PDF files and ${previewCount} preview images generated.`,
       complete: outputsComplete,
       unlocked: imagesComplete,
-      lockedReason: 'Approve one image for every topic first.',
+      lockedReason: 'Approve one image per topic first.',
     },
     {
       id: 'export',
-      title: 'Final QA and ZIP',
-      description: 'Review readiness and export the final package.',
+      title: 'QA and export',
+      description: 'Check readiness and export the final ZIP.',
       summary:
         qaResult.status === 'etsy-ready'
-          ? 'The package is Etsy-ready.'
+          ? 'Package is Etsy-ready.'
           : `QA is ${qaResult.readinessPercentage}% ready.`,
       complete: qaResult.status === 'etsy-ready',
       unlocked: outputsComplete,
-      lockedReason: 'Generate required PDFs and at least five preview images first.',
+      lockedReason: 'Generate required PDFs and at least five previews first.',
     },
   ];
   const stepById = new Map(stepMeta.map((step) => [step.id, step]));
@@ -436,156 +443,244 @@ export const App = () => {
             : 'available',
     }),
   );
+  const renderOpenAIImagePanel = () => (
+    <OpenAIImagePanel
+      settings={openAISettings}
+      missingImageCount={missingImagePrompts.length}
+      subjectCount={project.subjects.length}
+      busy={busyAction !== null}
+      onChange={setOpenAISettings}
+      onGenerateMissingImages={handleGenerateMissingSubjectImages}
+    />
+  );
+
+  const renderHomeView = () => (
+    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
+      <div className="min-w-0 space-y-6">
+        <BrowserSupportWarning result={browserSupport} />
+        <PrivacyNotice />
+        <Alert>
+          Listing copy is saved in this browser. Uploaded files clear on refresh, so export the ZIP
+          or re-upload files before continuing later.
+        </Alert>
+        <Stepper steps={stepperItems} />
+        {stepMeta.map((step, index) => (
+          <StepSection
+            key={step.id}
+            number={index + 1}
+            title={step.title}
+            description={step.description}
+            state={getStepState(step.id)}
+            summary={step.summary}
+            lockedReason={step.lockedReason}
+            onActivate={() => setActiveStepId(step.id)}
+          >
+            {step.id === 'brief' ? (
+              <div className="space-y-6">
+                <InitialPromptPanel
+                  hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+                  disabled={busyAction !== null}
+                  isGenerating={busyAction === 'brief-generation'}
+                  onFillBrief={handleFillProductBrief}
+                />
+                <ProductBriefForm settings={project.settings} onChange={updateSettings} />
+                <EtsySeoPanel project={project} onChange={updateSettings} />
+                <StepAdvanceButton
+                  disabled={!briefComplete}
+                  onClick={() => setActiveStepId('topics')}
+                >
+                  Next: topics
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'topics' ? (
+              <div className="space-y-6">
+                <TopicSetupPanel
+                  subjects={project.subjects}
+                  onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                />
+                <StepAdvanceButton
+                  disabled={!topicsComplete}
+                  onClick={() => setActiveStepId('images')}
+                >
+                  Next: AI images
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'images' ? (
+              <div className="space-y-6">
+                <PromptManager
+                  subjects={project.subjects}
+                  prompts={prompts}
+                  files={files}
+                  canGenerateImages={openAISettings.apiKey.trim().length > 0 && busyAction === null}
+                  generatingSubjectId={generatingSubjectId}
+                  allowTopicEditing={false}
+                  onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                  onGenerateImage={handleGenerateSubjectImage}
+                  onApprove={approveFile}
+                  onReject={rejectFile}
+                  onDelete={handleDeleteFile}
+                  onNotesChange={updateNotes}
+                  onConfirmReview={confirmReview}
+                  onCopy={(message) => addActivity('notes-updated', 'success', message)}
+                />
+                <FileUploader
+                  onFilesSelected={handleFilesSelected}
+                  disabled={busyAction !== null}
+                />
+                <StepAdvanceButton
+                  disabled={!imagesComplete}
+                  onClick={() => setActiveStepId('outputs')}
+                >
+                  Next: PDFs and previews
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'outputs' ? (
+              <div className="space-y-6">
+                <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
+                <OutputActionsPanel
+                  busyAction={busyAction}
+                  canGenerateOutputs={canGenerateOutputs}
+                  pdfCount={pdfCount}
+                  previewCount={previewCount}
+                  onGeneratePdfs={generatePdfs}
+                  onGeneratePreviews={generatePreviews}
+                />
+                <StepAdvanceButton
+                  disabled={!outputsComplete}
+                  onClick={() => setActiveStepId('export')}
+                >
+                  Next: QA and export
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'export' ? (
+              <div className="space-y-6">
+                <QAPanel result={qaResult} />
+                <ArchiveActions
+                  qaResult={qaResult}
+                  busyAction={busyAction}
+                  canGenerateOutputs={canGenerateOutputs}
+                  pdfCount={pdfCount}
+                  previewCount={previewCount}
+                  onGeneratePdfs={generatePdfs}
+                  onGeneratePreviews={generatePreviews}
+                  onExportArchive={exportArchive}
+                  onExportProjectJson={exportProjectJson}
+                  onImportProjectJson={importProjectJson}
+                />
+              </div>
+            ) : null}
+          </StepSection>
+        ))}
+      </div>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+        <WorkflowStatus
+          project={project}
+          files={files}
+          qaResult={qaResult}
+          hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+        />
+        <QAPanel result={qaResult} />
+        <ActivityLog items={activityLog} />
+        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
+          Clear session files
+        </Button>
+      </aside>
+    </main>
+  );
+
+  const renderAnalyticsView = () => (
+    <main className="mx-auto max-w-[1500px] px-4 py-6 lg:px-6">
+      <div className="max-w-4xl space-y-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
+              Analytics
+            </p>
+            <h2 className="mt-1 text-2xl font-bold text-ink-strong">Production analytics</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              Cost, output, approval, and export metrics will live here.
+            </p>
+          </div>
+          <Badge tone="neutral">Todo</Badge>
+        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-ink-strong">Analytics dashboard</h3>
+              <Badge tone="neutral">Not wired yet</Badge>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <EmptyState>
+              Analytics is planned for a future pass. Current production status remains available
+              from Home and the activity feed.
+            </EmptyState>
+          </CardBody>
+        </Card>
+      </div>
+    </main>
+  );
+
+  const renderSettingsView = () => (
+    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
+      <div className="min-w-0 space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
+            Settings
+          </p>
+          <h2 className="mt-1 text-2xl font-bold text-ink-strong">OpenAI configuration</h2>
+          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
+            Manage the session key, model, image size, quality, background, output format, and cost
+            estimate for AI actions.
+          </p>
+        </div>
+        {renderOpenAIImagePanel()}
+      </div>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+        <WorkflowStatus
+          project={project}
+          files={files}
+          qaResult={qaResult}
+          hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+        />
+        <ActivityLog items={activityLog} />
+        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
+          Clear session files
+        </Button>
+      </aside>
+    </main>
+  );
+
+  const renderActiveSection = () => {
+    if (activeSectionId === 'analytics') {
+      return renderAnalyticsView();
+    }
+
+    if (activeSectionId === 'settings') {
+      return renderSettingsView();
+    }
+
+    return renderHomeView();
+  };
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <Header qaResult={qaResult} />
-      <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
-        <div className="min-w-0 space-y-6">
-          <BrowserSupportWarning result={browserSupport} />
-          <PrivacyNotice />
-          <Alert>
-            Project text is saved in this browser. Uploaded files are not saved after refresh;
-            export your archive or re-upload files.
-          </Alert>
-          <Stepper steps={stepperItems} />
-          {stepMeta.map((step, index) => (
-            <StepSection
-              key={step.id}
-              number={index + 1}
-              title={step.title}
-              description={step.description}
-              state={getStepState(step.id)}
-              summary={step.summary}
-              lockedReason={step.lockedReason}
-              onActivate={() => setActiveStepId(step.id)}
-            >
-              {step.id === 'brief' ? (
-                <div className="space-y-6">
-                  <InitialPromptPanel
-                    hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
-                    disabled={busyAction !== null}
-                    isGenerating={busyAction === 'brief-generation'}
-                    onFillBrief={handleFillProductBrief}
-                  />
-                  <ProductBriefForm settings={project.settings} onChange={updateSettings} />
-                  <EtsySeoPanel project={project} onChange={updateSettings} />
-                  <StepAdvanceButton
-                    disabled={!briefComplete}
-                    onClick={() => setActiveStepId('topics')}
-                  >
-                    Continue to topics
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'topics' ? (
-                <div className="space-y-6">
-                  <TopicSetupPanel
-                    subjects={project.subjects}
-                    onAddSubject={handleAddSubject}
-                    onRemoveSubject={handleRemoveSubject}
-                  />
-                  <StepAdvanceButton
-                    disabled={!topicsComplete}
-                    onClick={() => setActiveStepId('images')}
-                  >
-                    Continue to image generation
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'images' ? (
-                <div className="space-y-6">
-                  <OpenAIImagePanel
-                    settings={openAISettings}
-                    missingImageCount={missingImagePrompts.length}
-                    subjectCount={project.subjects.length}
-                    busy={busyAction !== null}
-                    onChange={setOpenAISettings}
-                    onGenerateMissingImages={handleGenerateMissingSubjectImages}
-                  />
-                  <PromptManager
-                    subjects={project.subjects}
-                    prompts={prompts}
-                    files={files}
-                    canGenerateImages={
-                      openAISettings.apiKey.trim().length > 0 && busyAction === null
-                    }
-                    generatingSubjectId={generatingSubjectId}
-                    onAddSubject={handleAddSubject}
-                    onRemoveSubject={handleRemoveSubject}
-                    onGenerateImage={handleGenerateSubjectImage}
-                    onApprove={approveFile}
-                    onReject={rejectFile}
-                    onDelete={handleDeleteFile}
-                    onNotesChange={updateNotes}
-                    onConfirmReview={confirmReview}
-                    onCopy={(message) => addActivity('notes-updated', 'success', message)}
-                  />
-                  <FileUploader
-                    onFilesSelected={handleFilesSelected}
-                    disabled={busyAction !== null}
-                  />
-                  <StepAdvanceButton
-                    disabled={!imagesComplete}
-                    onClick={() => setActiveStepId('outputs')}
-                  >
-                    Continue to outputs
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'outputs' ? (
-                <div className="space-y-6">
-                  <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
-                  <OutputActionsPanel
-                    busyAction={busyAction}
-                    canGenerateOutputs={canGenerateOutputs}
-                    pdfCount={pdfCount}
-                    previewCount={previewCount}
-                    onGeneratePdfs={generatePdfs}
-                    onGeneratePreviews={generatePreviews}
-                  />
-                  <StepAdvanceButton
-                    disabled={!outputsComplete}
-                    onClick={() => setActiveStepId('export')}
-                  >
-                    Continue to final QA
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'export' ? (
-                <div className="space-y-6">
-                  <QAPanel result={qaResult} />
-                  <ArchiveActions
-                    qaResult={qaResult}
-                    busyAction={busyAction}
-                    canGenerateOutputs={canGenerateOutputs}
-                    pdfCount={pdfCount}
-                    previewCount={previewCount}
-                    onGeneratePdfs={generatePdfs}
-                    onGeneratePreviews={generatePreviews}
-                    onExportArchive={exportArchive}
-                    onExportProjectJson={exportProjectJson}
-                    onImportProjectJson={importProjectJson}
-                  />
-                </div>
-              ) : null}
-            </StepSection>
-          ))}
-        </div>
-        <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
-          <WorkflowStatus
-            project={project}
-            files={files}
-            qaResult={qaResult}
-            hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
-          />
-          <QAPanel result={qaResult} />
-          <ActivityLog items={activityLog} />
-          <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-            Clear uploaded/generated files
-          </Button>
-        </aside>
-      </main>
+    <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[auto_minmax(0,1fr)]">
+      <AppSidebar
+        activeSection={activeSectionId}
+        expanded={isSidebarExpanded}
+        onExpandedChange={setIsSidebarExpanded}
+        onSectionChange={setActiveSectionId}
+      />
+      <div className="min-w-0">
+        <Header qaResult={qaResult} />
+        {renderActiveSection()}
+      </div>
       {confirmRequest ? (
         <ConfirmDialog
           open

@@ -19,28 +19,28 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
     <Card>
       <CardHeader>
         <div>
-          <h2 className="text-lg font-bold text-ink-strong">Product brief</h2>
+          <h2 className="text-lg font-bold text-ink-strong">Listing brief</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Listing copy is saved in this browser. Uploaded files are kept in memory only.
+            Buyer-facing copy is saved in this browser. Uploaded files stay in memory only.
           </p>
         </div>
       </CardHeader>
       <CardBody className="grid gap-4">
         <Input
-          label="Title"
+          label="Listing title"
           name="title"
           value={settings.title}
           onChange={(event) => update('title', event.target.value)}
         />
         <div className="grid gap-4 md:grid-cols-2">
           <Input
-            label="Theme"
+            label="Bundle theme"
             name="theme"
             value={settings.theme}
             onChange={(event) => update('theme', event.target.value)}
           />
           <Input
-            label="Audience"
+            label="Target buyer"
             name="audience"
             value={settings.audience}
             onChange={(event) => update('audience', event.target.value)}
@@ -58,24 +58,24 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
             }
           />
           <Input
-            label="Style"
+            label="Visual style"
             name="style"
             value={settings.style}
             onChange={(event) => update('style', event.target.value)}
           />
         </div>
         <Textarea
-          label="Description"
+          label="Listing description"
           name="description"
           rows={5}
           value={settings.description}
           onChange={(event) => update('description', event.target.value)}
         />
         <Textarea
-          label="Tags"
+          label="Etsy tags"
           name="tags"
           rows={3}
-          helperText="Comma-separated Etsy-style tags."
+          helperText="Use comma-separated Etsy tags."
           value={settings.tags}
           onChange={(event) => update('tags', event.target.value)}
         />
@@ -87,7 +87,7 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
           onChange={(event) => update('safetyNote', event.target.value)}
         />
         <Textarea
-          label="Printing instructions"
+          label="Print instructions"
           name="printingInstructions"
           rows={3}
           value={settings.printingInstructions}
@@ -95,14 +95,14 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
         />
         <div className="grid gap-4 md:grid-cols-2">
           <Textarea
-            label="License"
+            label="Usage license"
             name="license"
             rows={4}
             value={settings.license}
             onChange={(event) => update('license', event.target.value)}
           />
           <Textarea
-            label="Refund policy"
+            label="Refund note"
             name="refundPolicy"
             rows={4}
             value={settings.refundPolicy}

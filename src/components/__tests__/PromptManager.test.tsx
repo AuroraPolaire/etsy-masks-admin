@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_SETTINGS } from '../../constants';
 import { createPromptItems } from '../../lib/files';
+import { EtsySeoPanel } from '../EtsySeoPanel';
 import { ProductBriefForm } from '../ProductBriefForm';
 import { PromptManager } from '../PromptManager';
 import { QAPanel } from '../QAPanel';
 
-import type { SubjectItem, ProjectSettings, QAResult } from '../../types';
+import type { Project, SubjectItem, ProjectSettings, QAResult } from '../../types';
 
 const subjects: SubjectItem[] = [{ id: 'lion', name: 'Lion' }];
 
@@ -35,10 +36,35 @@ describe('PromptManager', () => {
     expect(screen.getByText('lion.png')).toBeInTheDocument();
     expect(screen.getByText(/white background/i)).toBeInTheDocument();
   });
+
+  it('hides topic editing controls when topic editing is disabled', () => {
+    render(
+      <PromptManager
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
+        files={[]}
+        canGenerateImages={false}
+        generatingSubjectId={null}
+        allowTopicEditing={false}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
+        onGenerateImage={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onDelete={vi.fn()}
+        onNotesChange={vi.fn()}
+        onConfirmReview={vi.fn()}
+        onCopy={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Add topic')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Remove Lion')).not.toBeInTheDocument();
+  });
 });
 
 describe('QAPanel', () => {
-  it('renders critical checks', () => {
+  it('summarizes QA and expands critical checks', () => {
     const result: QAResult = {
       readinessPercentage: 50,
       status: 'needs-review',
@@ -47,17 +73,54 @@ describe('QAPanel', () => {
         {
           id: 'approved-images',
           group: 'critical',
-          label: 'Every mask topic has an approved mapped image',
+          label: 'Every topic has an approved image',
           status: 'fail',
-          details: '0 of 1 topics have approved mapped images.',
+          details: '0 of 1 topics have an approved image.',
         },
       ],
     };
 
     render(<QAPanel result={result} />);
 
+    expect(screen.getByText('50%')).toBeInTheDocument();
+    expect(screen.getByText('Blockers')).toBeInTheDocument();
+    expect(screen.queryByText('Every topic has an approved image')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show qa checks/i }));
+
     expect(screen.getByText('Critical')).toBeInTheDocument();
-    expect(screen.getByText('Every mask topic has an approved mapped image')).toBeInTheDocument();
+    expect(screen.getByText('Every topic has an approved image')).toBeInTheDocument();
+  });
+});
+
+describe('EtsySeoPanel', () => {
+  it('summarizes Etsy SEO and keeps suggestions collapsed', () => {
+    const project: Project = {
+      id: 'project',
+      settings: DEFAULT_SETTINGS,
+      subjects,
+      pdfSettings: {
+        generateA4: true,
+        generateUSLetter: true,
+        maskScale: 'medium',
+        showSubjectLabel: true,
+        showInstructionFooter: true,
+        pageMarginMm: 12,
+        includeCalibrationPage: true,
+      },
+      createdAt: '2026-05-25T10:00:00.000Z',
+      updatedAt: '2026-05-25T10:00:00.000Z',
+    };
+
+    render(<EtsySeoPanel project={project} onChange={vi.fn()} />);
+
+    expect(screen.getByText('Checks passed')).toBeInTheDocument();
+    expect(screen.getByText('Title words')).toBeInTheDocument();
+    expect(screen.queryByText('Suggested title')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show seo suggestions/i }));
+
+    expect(screen.getByText('Suggested title')).toBeInTheDocument();
   });
 });
 
@@ -66,7 +129,7 @@ describe('ProductBriefForm', () => {
     const onChange = vi.fn<(settings: ProjectSettings) => void>();
     render(<ProductBriefForm settings={DEFAULT_SETTINGS} onChange={onChange} />);
 
-    fireEvent.change(screen.getByLabelText('Title'), {
+    fireEvent.change(screen.getByLabelText('Listing title'), {
       target: { value: 'New bundle title' },
     });
 

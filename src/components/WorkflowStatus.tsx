@@ -20,22 +20,22 @@ export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: Workf
   const pdfCount = files.filter((file) => file.kind === 'generated-pdf').length;
   const previewCount = files.filter((file) => file.kind === 'generated-preview').length;
   const nextStep = !hasOpenAIKey
-    ? 'Paste a session OpenAI API key.'
+    ? 'Add the session OpenAI key in Settings.'
     : approvedCount < project.subjects.length
-      ? 'Generate and approve missing mask images.'
+      ? 'Generate and approve missing images.'
       : pdfCount === 0
         ? 'Generate printable PDFs.'
         : previewCount < 5
-          ? 'Generate marketplace preview images.'
+          ? 'Generate marketplace previews.'
           : qaResult.status === 'etsy-ready'
-            ? 'Export the final ZIP archive.'
-            : 'Review the QA panel.';
+            ? 'Export the final ZIP.'
+            : 'Fix the remaining QA items.';
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-ink-strong">Workflow</h2>
+          <h2 className="text-base font-bold text-ink-strong">Next action</h2>
           <Badge tone={qaResult.status === 'etsy-ready' ? 'success' : 'warning'}>
             {qaResult.readinessPercentage}%
           </Badge>
@@ -43,7 +43,7 @@ export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: Workf
       </CardHeader>
       <CardBody className="space-y-3">
         <Alert tone="brand" className="font-semibold">
-          Next: {nextStep}
+          {nextStep}
         </Alert>
         <dl className="grid grid-cols-3 gap-2 text-center text-sm">
           <StatCard label="Images" value={`${approvedCount}/${project.subjects.length}`} />

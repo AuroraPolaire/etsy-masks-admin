@@ -59,7 +59,7 @@ export const StepSection = ({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-bold text-ink-strong">{title}</h2>
-              <Badge tone="success">Complete</Badge>
+              <Badge tone="success">Done</Badge>
             </div>
             <p className="mt-1 text-sm text-ink-muted">{summary}</p>
           </div>
@@ -90,22 +90,20 @@ export const StepSection = ({
   }
 
   return (
-    <section className="workflow-reveal rounded-panel border border-brand-border bg-surface-panel shadow-panel">
-      <div className="border-b border-surface-divider px-5 py-4">
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-badge border border-brand bg-brand text-sm font-bold text-ink-inverse">
-            {number}
-          </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-ink-strong">{title}</h2>
-              <Badge tone="info">Current step</Badge>
-            </div>
-            <p className="mt-1 text-sm text-ink-muted">{description}</p>
+    <section className="workflow-reveal space-y-4">
+      <div className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-badge border border-brand bg-brand text-sm font-bold text-ink-inverse">
+          {number}
+        </span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-bold text-ink-strong">{title}</h2>
+            <Badge tone="info">Now</Badge>
           </div>
+          <p className="mt-1 text-sm text-ink-muted">{description}</p>
         </div>
       </div>
-      <div className="px-5 py-4">{children}</div>
+      {children}
     </section>
   );
 };
