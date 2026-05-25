@@ -50,17 +50,18 @@ export const OpenAIImagePanel = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">OpenAI image generation</h2>
+            <h2 className="text-lg font-bold text-ink-strong">AI setup</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Test one mask from a topic card, or generate the remaining bundle here. Review and
-              approve every image before export.
+              Paste the session key once. It powers AI brief drafting and mask image generation.
             </p>
           </div>
-          <Badge tone={hasApiKey ? 'success' : 'warning'}>
-            {hasApiKey ? 'Session key ready' : 'API key required'}
-          </Badge>
+          <div>
+            <Badge tone={hasApiKey ? 'success' : 'warning'}>
+              {hasApiKey ? 'Session key ready' : 'API key required'}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
@@ -73,7 +74,7 @@ export const OpenAIImagePanel = ({
           helperText="Stored only in React state. Reused for AI brief drafting and image generation. It is not saved to localStorage, project JSON, manifests, or ZIP files."
           onChange={(event) => update('apiKey', event.target.value)}
         />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
           <Select
             label="Image model"
             name="openaiModel"
@@ -153,14 +154,14 @@ export const OpenAIImagePanel = ({
               <h3 className="text-sm font-bold text-ink-strong">Approximate generation cost</h3>
               <p className="mt-1 text-xs text-ink-muted">
                 Estimated from selected quality and size. Actual API billing can vary with token
-                usage and OpenAI pricing changes. Switch the selected model above before generating.
+                usage and OpenAI pricing changes. Switch the selected model before generating.
               </p>
             </div>
             <Badge tone="neutral">
               {settings.quality} / {settings.size}
             </Badge>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-3">
             {costComparison.map((estimate) => (
               <Surface key={estimate.model} variant="default" className="p-3 text-sm">
                 <p className="font-semibold text-ink-strong">{estimate.model}</p>

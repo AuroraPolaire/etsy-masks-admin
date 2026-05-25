@@ -436,6 +436,16 @@ export const App = () => {
             : 'available',
     }),
   );
+  const renderOpenAIImagePanel = () => (
+    <OpenAIImagePanel
+      settings={openAISettings}
+      missingImageCount={missingImagePrompts.length}
+      subjectCount={project.subjects.length}
+      busy={busyAction !== null}
+      onChange={setOpenAISettings}
+      onGenerateMissingImages={handleGenerateMissingSubjectImages}
+    />
+  );
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -448,6 +458,7 @@ export const App = () => {
             Project text is saved in this browser. Uploaded files are not saved after refresh;
             export your archive or re-upload files.
           </Alert>
+          <div className="lg:hidden">{renderOpenAIImagePanel()}</div>
           <Stepper steps={stepperItems} />
           {stepMeta.map((step, index) => (
             <StepSection
@@ -495,14 +506,6 @@ export const App = () => {
               ) : null}
               {step.id === 'images' ? (
                 <div className="space-y-6">
-                  <OpenAIImagePanel
-                    settings={openAISettings}
-                    missingImageCount={missingImagePrompts.length}
-                    subjectCount={project.subjects.length}
-                    busy={busyAction !== null}
-                    onChange={setOpenAISettings}
-                    onGenerateMissingImages={handleGenerateMissingSubjectImages}
-                  />
                   <PromptManager
                     subjects={project.subjects}
                     prompts={prompts}
@@ -574,6 +577,7 @@ export const App = () => {
           ))}
         </div>
         <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+          <div className="hidden lg:block">{renderOpenAIImagePanel()}</div>
           <WorkflowStatus
             project={project}
             files={files}

@@ -52,7 +52,7 @@ export const InitialPromptPanel = ({
         <p className="text-xs text-ink-muted">
           {hasOpenAIKey
             ? 'Uses the same pasted OpenAI API key as image generation. The key is not saved.'
-            : 'Paste an OpenAI API key above to draft this with AI. Without a key, the app uses a local template.'}
+            : 'Paste an OpenAI API key in AI setup to draft this with AI. Without a key, the app uses a local template.'}
         </p>
         {hasOpenAIKey ? (
           <AIButton disabled={disabled || initialPrompt.trim().length === 0} onClick={applyDraft}>
