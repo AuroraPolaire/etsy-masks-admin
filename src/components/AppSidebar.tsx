@@ -34,6 +34,8 @@ export const AppSidebar = ({
     : 'max-w-0 opacity-0 lg:pointer-events-none';
   const sidebarWidthClassName = expanded ? 'lg:w-60' : 'lg:w-[4.75rem]';
   const justifyClassName = expanded ? 'justify-start' : 'justify-center';
+  const buttonGapClassName = expanded ? 'gap-3' : 'gap-0';
+  const buttonWidthClassName = expanded ? 'w-full' : 'lg:w-full';
   const containerDirectionClassName = expanded ? 'flex-col' : 'flex-row lg:flex-col';
   const navDirectionClassName = expanded
     ? 'flex-col overflow-visible'
@@ -46,7 +48,7 @@ export const AppSidebar = ({
       <div className={`flex h-full min-w-0 gap-2 p-2 ${containerDirectionClassName}`}>
         <button
           type="button"
-          className={`inline-flex min-h-11 shrink-0 items-center gap-3 rounded-control border border-transparent px-3 py-2 text-sm font-semibold text-ink-base transition hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 focus:ring-offset-surface-panel ${justifyClassName}`}
+          className={`inline-flex min-h-11 shrink-0 items-center rounded-control border border-transparent px-3 py-2 text-sm font-semibold text-ink-base transition hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 focus:ring-offset-surface-panel ${buttonGapClassName} ${buttonWidthClassName} ${justifyClassName}`}
           aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'}
           aria-expanded={expanded}
           title={expanded ? 'Collapse navigation' : 'Expand navigation'}
@@ -73,7 +75,7 @@ export const AppSidebar = ({
               <button
                 key={item.id}
                 type="button"
-                className={`inline-flex min-h-11 shrink-0 items-center gap-3 rounded-control border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 focus:ring-offset-surface-panel lg:w-full ${justifyClassName} ${
+                className={`inline-flex min-h-11 shrink-0 items-center rounded-control border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 focus:ring-offset-surface-panel ${buttonGapClassName} ${buttonWidthClassName} ${justifyClassName} ${
                   isActive
                     ? 'border-brand-border bg-brand-subtle text-brand-strong shadow-sm'
                     : 'border-transparent text-ink-muted hover:bg-surface-muted hover:text-ink-strong'
