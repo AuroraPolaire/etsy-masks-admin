@@ -1,0 +1,227 @@
+import type { Marketplace, MaskScale, Project, ProjectSettings, SubjectItem } from '../types';
+
+const LEGACY_MOCK_SUBJECT_SETS = [
+  [
+    'Robot',
+    'Dinosaur',
+    'Unicorn',
+    'Dragon',
+    'Astronaut',
+    'Pirate',
+    'Butterfly',
+    'Flower',
+    'Sun',
+    'Moon',
+    'Lion',
+    'Owl',
+  ],
+  [
+    'Lion',
+    'Tiger',
+    'Elephant',
+    'Giraffe',
+    'Zebra',
+    'Panda',
+    'Fox',
+    'Wolf',
+    'Bear',
+    'Rabbit',
+    'Deer',
+    'Owl',
+  ],
+];
+
+const LEGACY_MOCK_TITLE_PATTERNS = [
+  /^Realistic Animal Masks Printable Bundle for Kids,\s*3 PNG Paper Masks,\s*Safari Zoo Party,\s*Classroom Craft,\s*Digital Download$/i,
+  /^Printable Paper Mask Bundle for Kids,\s*Party Craft,\s*Classroom Activity,\s*Digital Download$/i,
+];
+
+const optionalProjectDateFields = [
+  'lastProjectJsonExportAt',
+  'lastArchiveExportAt',
+  'lastPdfGeneratedAt',
+  'lastPreviewGeneratedAt',
+  'lastImageApprovalAt',
+  'lastBriefUpdatedAt',
+] as const;
+
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const readString = (value: unknown, fallback: string): string =>
+  typeof value === 'string' ? value : fallback;
+
+const readRequiredString = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value.trim().length > 0 ? value : fallback;
+
+const readOptionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+
+const readMarketplace = (value: unknown, fallback: Marketplace): Marketplace =>
+  value === 'Etsy' || value === 'Other' ? value : fallback;
+
+const readMaskScale = (value: unknown, fallback: MaskScale): MaskScale =>
+  value === 'small' || value === 'medium' || value === 'large' ? value : fallback;
+
+const readBoolean = (value: unknown, fallback: boolean): boolean =>
+  typeof value === 'boolean' ? value : fallback;
+
+const readPageMarginMm = (value: unknown, fallback: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(Math.round(value), 5), 30);
+};
+
+const readOptionalNonNegativeNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+
+const isLegacyMockSubjectList = (subjects: SubjectItem[]): boolean =>
+  LEGACY_MOCK_SUBJECT_SETS.some(
+    (mockSubjects) =>
+      subjects.length === mockSubjects.length &&
+      subjects.every((subject, index) => subject.name === mockSubjects[index]),
+  );
+
+const removeLegacyMockSubjects = (subjects: SubjectItem[]): SubjectItem[] =>
+  isLegacyMockSubjectList(subjects) ? [] : subjects;
+
+const hasLegacyMockTitle = (settings: ProjectSettings): boolean =>
+  LEGACY_MOCK_TITLE_PATTERNS.some((pattern) => pattern.test(settings.title.trim()));
+
+const readSubjects = (projectLike: Record<string, unknown>): SubjectItem[] => {
+  const rawSubjects = Array.isArray(projectLike.subjects)
+    ? projectLike.subjects
+    : Array.isArray(projectLike.animals)
+      ? projectLike.animals
+      : [];
+
+  return rawSubjects
+    .filter(isRecord)
+    .map((subject) => ({
+      id:
+        typeof subject.id === 'string' && subject.id.trim().length > 0
+          ? subject.id
+          : crypto.randomUUID(),
+      name: typeof subject.name === 'string' ? subject.name.trim() : '',
+    }))
+    .filter((subject) => subject.name.length > 0);
+};
+
+const readSettings = (
+  settingsLike: unknown,
+  fallbackSettings: ProjectSettings,
+): ProjectSettings => {
+  const settings = isRecord(settingsLike) ? settingsLike : {};
+
+  return {
+    title: readString(settings.title, fallbackSettings.title),
+    theme: readString(settings.theme, fallbackSettings.theme),
+    audience: readString(settings.audience, fallbackSettings.audience),
+    marketplace: readMarketplace(settings.marketplace, fallbackSettings.marketplace),
+    style: readString(settings.style, fallbackSettings.style),
+    description: readString(settings.description, fallbackSettings.description),
+    tags: readString(settings.tags, fallbackSettings.tags),
+    safetyNote: readString(settings.safetyNote, fallbackSettings.safetyNote),
+    printingInstructions: readString(
+      settings.printingInstructions,
+      fallbackSettings.printingInstructions,
+    ),
+    license: readString(settings.license, fallbackSettings.license),
+    refundPolicy: readString(settings.refundPolicy, fallbackSettings.refundPolicy),
+  };
+};
+
+const readPdfSettings = (
+  pdfSettingsLike: unknown,
+  fallback: Project['pdfSettings'],
+): Project['pdfSettings'] => {
+  const pdfSettings = isRecord(pdfSettingsLike) ? pdfSettingsLike : {};
+
+  return {
+    generateA4: readBoolean(pdfSettings.generateA4, fallback.generateA4),
+    generateUSLetter: readBoolean(pdfSettings.generateUSLetter, fallback.generateUSLetter),
+    maskScale: readMaskScale(pdfSettings.maskScale, fallback.maskScale),
+    showSubjectLabel: readBoolean(
+      pdfSettings.showSubjectLabel ?? pdfSettings.showAnimalLabel,
+      fallback.showSubjectLabel,
+    ),
+    showInstructionFooter: readBoolean(
+      pdfSettings.showInstructionFooter,
+      fallback.showInstructionFooter,
+    ),
+    pageMarginMm: readPageMarginMm(pdfSettings.pageMarginMm, fallback.pageMarginMm),
+    includeCalibrationPage: readBoolean(
+      pdfSettings.includeCalibrationPage,
+      fallback.includeCalibrationPage,
+    ),
+  };
+};
+
+const hasChangedSettings = (
+  settings: ProjectSettings,
+  fallbackSettings: ProjectSettings,
+): boolean =>
+  (Object.keys(fallbackSettings) as Array<keyof ProjectSettings>).some(
+    (key) => settings[key] !== fallbackSettings[key],
+  );
+
+const readLastBriefUpdatedAt = (
+  projectLike: Record<string, unknown>,
+  settings: ProjectSettings,
+  subjects: SubjectItem[],
+  fallback: Project,
+): string | undefined => {
+  const explicitLastBriefUpdatedAt = readOptionalString(projectLike.lastBriefUpdatedAt);
+  if (explicitLastBriefUpdatedAt) {
+    return explicitLastBriefUpdatedAt;
+  }
+
+  if (subjects.length > 0 || hasChangedSettings(settings, fallback.settings)) {
+    return readOptionalString(projectLike.updatedAt) ?? fallback.updatedAt;
+  }
+
+  return undefined;
+};
+
+export const normalizeProject = (projectLike: unknown, fallback: Project): Project => {
+  if (!isRecord(projectLike)) {
+    return fallback;
+  }
+
+  const settings = readSettings(projectLike.settings, fallback.settings);
+  const subjects = removeLegacyMockSubjects(readSubjects(projectLike));
+  const pdfSettings = readPdfSettings(projectLike.pdfSettings, fallback.pdfSettings);
+
+  if (hasLegacyMockTitle(settings)) {
+    return {
+      ...fallback,
+      pdfSettings,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const optionalDates = optionalProjectDateFields.reduce<Partial<Project>>((dates, field) => {
+    const value =
+      field === 'lastBriefUpdatedAt'
+        ? readLastBriefUpdatedAt(projectLike, settings, subjects, fallback)
+        : readOptionalString(projectLike[field]);
+
+    return value ? { ...dates, [field]: value } : dates;
+  }, {});
+  const nestedEtsyUploadZipSizeBytes = readOptionalNonNegativeNumber(
+    projectLike.nestedEtsyUploadZipSizeBytes,
+  );
+
+  return {
+    id: readRequiredString(projectLike.id, fallback.id),
+    settings,
+    subjects,
+    pdfSettings,
+    createdAt: readRequiredString(projectLike.createdAt, fallback.createdAt),
+    updatedAt: new Date().toISOString(),
+    ...optionalDates,
+    ...(nestedEtsyUploadZipSizeBytes !== undefined ? { nestedEtsyUploadZipSizeBytes } : {}),
+  };
+};

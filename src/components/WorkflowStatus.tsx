@@ -1,40 +1,38 @@
-import { getFileForSubject } from '../lib/files';
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { StatCard } from './ui/StatCard';
 
-import type { ManagedFile, Project, QAResult } from '../types';
+import type { BusyAction, QAResult } from '../types';
+import type { WorkflowState } from '../workflow/workflowState';
 
 type WorkflowStatusProps = {
-  project: Project;
-  files: ManagedFile[];
+  workflow: WorkflowState;
   qaResult: QAResult;
-  hasOpenAIKey: boolean;
+  busyAction: BusyAction;
+  busyProgress: string | null;
+  onCancelBusyAction: () => void;
 };
 
-export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: WorkflowStatusProps) => {
-  const approvedCount = project.subjects.filter((subject) =>
-    getFileForSubject(files, subject.id),
-  ).length;
-  const pdfCount = files.filter((file) => file.kind === 'generated-pdf').length;
-  const previewCount = files.filter((file) => file.kind === 'generated-preview').length;
-  const nextStep = !project.lastBriefUpdatedAt
-    ? 'Draft the brief or edit listing copy.'
-    : project.subjects.length === 0
-      ? 'Add the mask topics for this bundle.'
-      : !hasOpenAIKey && approvedCount < project.subjects.length
-        ? 'Add an OpenAI key in Settings or upload images.'
-        : approvedCount < project.subjects.length
-          ? 'Generate and approve missing images.'
-          : pdfCount === 0
-            ? 'Generate printable PDFs.'
-            : previewCount < 5
-              ? 'Generate marketplace previews.'
-              : qaResult.status === 'etsy-ready'
-                ? 'Export the final ZIP.'
-                : 'Fix the remaining QA items.';
+const busyActionLabels: Record<Exclude<BusyAction, null>, string> = {
+  uploading: 'Uploading files',
+  'brief-generation': 'Drafting brief',
+  'image-generation': 'Generating images',
+  pdfs: 'Creating PDFs',
+  previews: 'Creating previews',
+  archive: 'Creating archive',
+  'project-json': 'Exporting project JSON',
+  import: 'Importing project JSON',
+};
 
+export const WorkflowStatus = ({
+  workflow,
+  qaResult,
+  busyAction,
+  busyProgress,
+  onCancelBusyAction,
+}: WorkflowStatusProps) => {
   return (
     <Card>
       <CardHeader>
@@ -47,12 +45,32 @@ export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: Workf
       </CardHeader>
       <CardBody className="space-y-3">
         <Alert tone="brand" className="font-semibold">
-          {nextStep}
+          {workflow.nextAction}
         </Alert>
+        {busyAction ? (
+          <Alert tone="info">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">{busyActionLabels[busyAction]}</p>
+                {busyProgress ? <p className="mt-1 text-xs">{busyProgress}</p> : null}
+              </div>
+              <Button
+                className="self-start sm:self-center"
+                variant="ghost"
+                onClick={onCancelBusyAction}
+              >
+                Cancel
+              </Button>
+            </div>
+          </Alert>
+        ) : null}
         <dl className="grid grid-cols-3 gap-2 text-center text-sm">
-          <StatCard label="Images" value={`${approvedCount}/${project.subjects.length}`} />
-          <StatCard label="PDFs" value={pdfCount} />
-          <StatCard label="Previews" value={previewCount} />
+          <StatCard
+            label="Images"
+            value={`${workflow.approvedImageCount}/${workflow.subjectCount}`}
+          />
+          <StatCard label="PDFs" value={workflow.pdfCount} />
+          <StatCard label="Previews" value={workflow.previewCount} />
         </dl>
       </CardBody>
     </Card>

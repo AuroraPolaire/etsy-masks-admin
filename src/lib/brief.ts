@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from '../constants';
+import { DRAFT_TEMPLATE_SETTINGS } from '../constants';
 
 import type { ProjectDraft } from '../types';
 
@@ -126,7 +126,7 @@ const extractSubjectNames = (idea: string): string[] => {
 const inferTheme = (idea: string): string => {
   const cleaned = cleanIdea(idea);
   if (!cleaned) {
-    return DEFAULT_SETTINGS.theme;
+    return DRAFT_TEMPLATE_SETTINGS.theme;
   }
 
   if (/mask/i.test(cleaned)) {
@@ -149,23 +149,23 @@ const inferAudience = (idea: string): string => {
     return 'Families';
   }
 
-  return DEFAULT_SETTINGS.audience;
+  return DRAFT_TEMPLATE_SETTINGS.audience;
 };
 
 const inferStyle = (idea: string): string => {
   if (/watercolor/i.test(idea)) {
-    return DEFAULT_SETTINGS.style.replace('Realistic', 'Watercolor');
+    return DRAFT_TEMPLATE_SETTINGS.style.replace('Realistic', 'Watercolor');
   }
 
   if (/cartoon|cute|kawaii/i.test(idea)) {
-    return DEFAULT_SETTINGS.style.replace('Realistic', 'Cute illustrated');
+    return DRAFT_TEMPLATE_SETTINGS.style.replace('Realistic', 'Cute illustrated');
   }
 
   if (/fantasy|dragon|unicorn|fairy|wizard/i.test(idea)) {
-    return DEFAULT_SETTINGS.style.replace('Realistic', 'Detailed fantasy');
+    return DRAFT_TEMPLATE_SETTINGS.style.replace('Realistic', 'Detailed fantasy');
   }
 
-  return DEFAULT_SETTINGS.style;
+  return DRAFT_TEMPLATE_SETTINGS.style;
 };
 
 export const createProjectDraftFromInitialPrompt = (initialPrompt: string): ProjectDraft => {
@@ -202,7 +202,7 @@ export const createProjectDraftFromInitialPrompt = (initialPrompt: string): Proj
 
   return {
     settings: {
-      ...DEFAULT_SETTINGS,
+      ...DRAFT_TEMPLATE_SETTINGS,
       title,
       theme,
       audience: inferAudience(cleaned),

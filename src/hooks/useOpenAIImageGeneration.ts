@@ -6,6 +6,7 @@ import { createManagedFile, getExpectedFilename } from '../lib/files';
 
 import type {
   AddActivity,
+  BusyActionContext,
   ManagedFile,
   OpenAIImageSettings,
   PromptItem,
@@ -37,6 +38,9 @@ const createGeneratedManagedFile = async (
   };
 };
 
+const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError';
+
 export const useOpenAIImageGeneration = ({
   subjects,
   prompts,
@@ -49,17 +53,21 @@ export const useOpenAIImageGeneration = ({
   const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);
 
   const generateSubjectImage = useCallback(
-    async (subjectId: string) => {
+    async (subjectId: string, context?: BusyActionContext) => {
       const prompt = prompts.find((item) => item.subjectId === subjectId);
       if (!prompt) {
         return;
       }
 
       setGeneratingSubjectId(subjectId);
+      context?.setProgress(`Generating ${prompt.subjectName}...`);
 
       try {
         const { generateImageWithOpenAI } = await import('../lib/openaiImages');
-        const generatedFile = await generateImageWithOpenAI(settings, prompt);
+        const generatedFile = await generateImageWithOpenAI(settings, prompt, context?.signal);
+        if (context?.signal.aborted) {
+          return;
+        }
         const uniqueFile = makeUniqueFile(generatedFile, filesRef.current);
         const mappedFile = await createGeneratedManagedFile(uniqueFile, prompt, settings, subjects);
 
@@ -70,6 +78,11 @@ export const useOpenAIImageGeneration = ({
           `Generated ${getExpectedFilename(prompt.subjectName)}.`,
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('image-generated', 'warning', 'Image generation was cancelled.');
+          return;
+        }
+
         addActivity(
           'error',
           'error',
@@ -82,43 +95,72 @@ export const useOpenAIImageGeneration = ({
     [addActivity, appendFiles, filesRef, prompts, settings, subjects],
   );
 
-  const generateMissingSubjectImages = useCallback(async () => {
-    if (missingImagePrompts.length === 0) {
-      return;
-    }
-
-    try {
-      const { generateImageWithOpenAI } = await import('../lib/openaiImages');
-      const generatedManagedFiles: ManagedFile[] = [];
-      let workingFiles = filesRef.current;
-
-      for (const prompt of missingImagePrompts) {
-        setGeneratingSubjectId(prompt.subjectId);
-        const generatedFile = await generateImageWithOpenAI(settings, prompt);
-        const uniqueFile = makeUniqueFile(generatedFile, [
-          ...workingFiles,
-          ...generatedManagedFiles,
-        ]);
-        const mappedFile = await createGeneratedManagedFile(uniqueFile, prompt, settings, subjects);
-
-        generatedManagedFiles.push(mappedFile);
-        workingFiles = [...workingFiles, mappedFile];
-        addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
+  const generateMissingSubjectImages = useCallback(
+    async (context?: BusyActionContext) => {
+      if (missingImagePrompts.length === 0) {
+        return;
       }
 
-      if (generatedManagedFiles.length > 0) {
-        appendFiles(generatedManagedFiles);
+      try {
+        const { generateImageWithOpenAI } = await import('../lib/openaiImages');
+        const generatedManagedFiles: ManagedFile[] = [];
+        let workingFiles = filesRef.current;
+
+        for (const prompt of missingImagePrompts) {
+          if (context?.signal.aborted) {
+            break;
+          }
+
+          setGeneratingSubjectId(prompt.subjectId);
+          context?.setProgress(
+            `Generating ${generatedManagedFiles.length + 1}/${missingImagePrompts.length}: ${
+              prompt.subjectName
+            }...`,
+          );
+          const generatedFile = await generateImageWithOpenAI(settings, prompt, context?.signal);
+          if (context?.signal.aborted) {
+            break;
+          }
+          const uniqueFile = makeUniqueFile(generatedFile, [
+            ...workingFiles,
+            ...generatedManagedFiles,
+          ]);
+          const mappedFile = await createGeneratedManagedFile(
+            uniqueFile,
+            prompt,
+            settings,
+            subjects,
+          );
+
+          generatedManagedFiles.push(mappedFile);
+          workingFiles = [...workingFiles, mappedFile];
+          addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
+        }
+
+        if (generatedManagedFiles.length > 0) {
+          appendFiles(generatedManagedFiles);
+        }
+
+        if (context?.signal.aborted) {
+          addActivity('image-generated', 'warning', 'Image generation was cancelled.');
+        }
+      } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('image-generated', 'warning', 'Image generation was cancelled.');
+          return;
+        }
+
+        addActivity(
+          'error',
+          'error',
+          error instanceof Error ? error.message : 'Could not generate images.',
+        );
+      } finally {
+        setGeneratingSubjectId(null);
       }
-    } catch (error) {
-      addActivity(
-        'error',
-        'error',
-        error instanceof Error ? error.message : 'Could not generate images.',
-      );
-    } finally {
-      setGeneratingSubjectId(null);
-    }
-  }, [addActivity, appendFiles, filesRef, missingImagePrompts, settings, subjects]);
+    },
+    [addActivity, appendFiles, filesRef, missingImagePrompts, settings, subjects],
+  );
 
   return {
     openAISettings: settings,

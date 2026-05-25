@@ -42,9 +42,14 @@ export type BusyAction =
 
 export type BusyActionName = Exclude<BusyAction, null>;
 
+export type BusyActionContext = {
+  signal: AbortSignal;
+  setProgress: (message: string | null) => void;
+};
+
 export type RunBusyAction = <Result>(
   action: BusyActionName,
-  task: () => Result | Promise<Result>,
+  task: (context: BusyActionContext) => Result | Promise<Result>,
 ) => Promise<Result>;
 
 export type ImageMetadata = {

@@ -17,11 +17,9 @@ import { PromptManager } from './components/PromptManager';
 import { QAPanel } from './components/QAPanel';
 import { TopicSetupPanel } from './components/TopicSetupPanel';
 import { Alert } from './components/ui/Alert';
-import { Badge } from './components/ui/Badge';
 import { Button } from './components/ui/Button';
 import { Card, CardBody, CardHeader } from './components/ui/Card';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
-import { EmptyState } from './components/ui/EmptyState';
 import { Stepper } from './components/ui/Stepper';
 import { StepAdvanceButton, StepSection } from './components/ui/StepSection';
 import { useToast } from './components/ui/toastContext';
@@ -36,11 +34,12 @@ import { createProjectDraftFromInitialPrompt } from './lib/brief';
 import { checkBrowserSupport } from './lib/browserSupport';
 import { createPromptItems, getFileForSubject } from './lib/files';
 import { runQA } from './lib/qa';
+import { createWorkflowState } from './workflow/workflowState';
 
 import type { AppSectionId } from './components/AppSidebar';
 import type { ConfirmDialogRequest } from './components/ui/ConfirmDialog';
-import type { StepperItem } from './components/ui/Stepper';
 import type { ActivityLevel, ActivityType, ProjectDraft } from './types';
+import type { WorkflowStepId } from './workflow/workflowState';
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : fallback;
@@ -51,8 +50,6 @@ const toastTitles: Record<ActivityLevel, string> = {
   warning: 'Needs attention',
   error: 'Something went wrong',
 };
-
-type WorkflowStepId = 'brief' | 'topics' | 'images' | 'outputs' | 'export';
 
 export const App = () => {
   const browserSupport = useMemo(() => checkBrowserSupport(), []);
@@ -69,7 +66,7 @@ export const App = () => {
     },
     [recordActivity, showToast],
   );
-  const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('topics');
+  const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('brief');
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<
@@ -105,37 +102,12 @@ export const App = () => {
     addActivity,
     onImageApproved: markImageApproved,
   });
-  const { busyAction, runBusyAction } = useBusyAction();
+  const { busyAction, busyProgress, cancelBusyAction, runBusyAction } = useBusyAction();
   const prompts = useMemo(
     () => createPromptItems(project.subjects, project.settings),
     [project.settings, project.subjects],
   );
   const qaResult = useMemo(() => runQA(project, files), [project, files]);
-  const approvedImageCount = useMemo(
-    () => project.subjects.filter((subject) => getFileForSubject(files, subject.id)).length,
-    [files, project.subjects],
-  );
-  const pdfCount = useMemo(
-    () => files.filter((file) => file.kind === 'generated-pdf').length,
-    [files],
-  );
-  const previewCount = useMemo(
-    () => files.filter((file) => file.kind === 'generated-preview').length,
-    [files],
-  );
-  const hasRequiredPdfs = useMemo(() => {
-    const hasA4 = files.some(
-      (file) => file.kind === 'generated-pdf' && file.name.includes('_A4_printable.pdf'),
-    );
-    const hasLetter = files.some(
-      (file) => file.kind === 'generated-pdf' && file.name.includes('_US_Letter_printable.pdf'),
-    );
-
-    return (
-      (!project.pdfSettings.generateA4 || hasA4) &&
-      (!project.pdfSettings.generateUSLetter || hasLetter)
-    );
-  }, [files, project.pdfSettings.generateA4, project.pdfSettings.generateUSLetter]);
   const missingImagePrompts = useMemo(
     () => prompts.filter((prompt) => !getFileForSubject(files, prompt.subjectId)),
     [files, prompts],
@@ -155,6 +127,17 @@ export const App = () => {
     addActivity,
   });
   const hasOpenAIKey = openAISettings.apiKey.trim().length > 0;
+  const workflow = useMemo(
+    () =>
+      createWorkflowState({
+        project,
+        files,
+        qaResult,
+        hasOpenAIKey,
+        activeStepId,
+      }),
+    [activeStepId, files, hasOpenAIKey, project, qaResult],
+  );
   const imageGenerationHint = !hasOpenAIKey
     ? 'Add an OpenAI key in Settings to generate images.'
     : missingImagePrompts.length === 0
@@ -212,10 +195,14 @@ export const App = () => {
 
   const handleFillProductBrief = useCallback(
     (initialPrompt: string) => {
-      void runBusyAction('brief-generation', async () => {
+      void runBusyAction('brief-generation', async ({ setProgress, signal }) => {
+        setProgress('Drafting product brief...');
         const apiKey = openAISettings.apiKey.trim();
 
         if (!apiKey) {
+          if (signal.aborted) {
+            return;
+          }
           const draft = createProjectDraftFromInitialPrompt(initialPrompt);
           await applyDraftToProject(
             draft,
@@ -226,12 +213,23 @@ export const App = () => {
 
         try {
           const { generateProjectDraftWithOpenAI } = await import('./lib/openaiBrief');
-          const draft = await generateProjectDraftWithOpenAI({ apiKey, initialPrompt });
+          if (signal.aborted) {
+            return;
+          }
+          const draft = await generateProjectDraftWithOpenAI({ apiKey, initialPrompt, signal });
+          if (signal.aborted) {
+            return;
+          }
           await applyDraftToProject(
             draft,
             `Drafted the brief with OpenAI and added ${draft.subjects.length} topics.`,
           );
         } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            addActivity('project-imported', 'warning', 'Brief generation was cancelled.');
+            return;
+          }
+
           addActivity(
             'error',
             'error',
@@ -325,7 +323,7 @@ export const App = () => {
 
   const handleGenerateSubjectImage = useCallback(
     (subjectId: string) => {
-      void runBusyAction('image-generation', () => generateSubjectImage(subjectId));
+      void runBusyAction('image-generation', (context) => generateSubjectImage(subjectId, context));
     },
     [generateSubjectImage, runBusyAction],
   );
@@ -334,124 +332,6 @@ export const App = () => {
     void runBusyAction('image-generation', generateMissingSubjectImages);
   }, [generateMissingSubjectImages, runBusyAction]);
 
-  const briefFieldsComplete = useMemo(
-    () =>
-      [
-        project.settings.title,
-        project.settings.theme,
-        project.settings.description,
-        project.settings.tags,
-        project.settings.safetyNote,
-        project.settings.printingInstructions,
-        project.settings.license,
-        project.settings.refundPolicy,
-      ].every((value) => value.trim().length > 0),
-    [project.settings],
-  );
-  const briefComplete = Boolean(project.lastBriefUpdatedAt) && briefFieldsComplete;
-  const topicsComplete = project.subjects.length > 0;
-  const imagesComplete = topicsComplete && approvedImageCount === project.subjects.length;
-  const outputsComplete = imagesComplete && hasRequiredPdfs && previewCount >= 5;
-  const canGenerateOutputs = approvedImageCount > 0;
-  const recommendedStepId: WorkflowStepId = !briefComplete
-    ? 'brief'
-    : !topicsComplete
-      ? 'topics'
-      : !imagesComplete
-        ? 'images'
-        : !outputsComplete
-          ? 'outputs'
-          : 'export';
-  const stepMeta: Array<{
-    id: WorkflowStepId;
-    title: string;
-    description: string;
-    summary: string;
-    complete: boolean;
-    unlocked: boolean;
-    lockedReason?: string;
-  }> = [
-    {
-      id: 'brief',
-      title: 'Idea and brief',
-      description: 'Turn a product idea into buyer-facing listing copy.',
-      summary: briefComplete
-        ? `${project.settings.theme} brief is ready`
-        : project.lastBriefUpdatedAt
-          ? 'Complete title, description, tags, safety, license, and refund copy.'
-          : 'Draft from an idea or edit the listing brief to start.',
-      complete: briefComplete,
-      unlocked: true,
-    },
-    {
-      id: 'topics',
-      title: 'Topics',
-      description: 'Choose the masks included in the bundle.',
-      summary: `${project.subjects.length} topic${project.subjects.length === 1 ? '' : 's'} configured.`,
-      complete: topicsComplete,
-      unlocked: briefComplete,
-      lockedReason: 'Finish the brief first.',
-    },
-    {
-      id: 'images',
-      title: 'AI images',
-      description: 'Generate or upload images, then approve one per topic.',
-      summary: `${approvedImageCount}/${project.subjects.length} topics have approved images.`,
-      complete: imagesComplete,
-      unlocked: topicsComplete,
-      lockedReason: 'Add at least one topic first.',
-    },
-    {
-      id: 'outputs',
-      title: 'PDFs and previews',
-      description: 'Create printable PDFs and marketplace preview images.',
-      summary: `${pdfCount} PDF files and ${previewCount} preview images generated.`,
-      complete: outputsComplete,
-      unlocked: imagesComplete,
-      lockedReason: 'Approve one image per topic first.',
-    },
-    {
-      id: 'export',
-      title: 'QA and export',
-      description: 'Check readiness and export the final ZIP.',
-      summary:
-        qaResult.status === 'etsy-ready'
-          ? 'Package is Etsy-ready.'
-          : `QA is ${qaResult.readinessPercentage}% ready.`,
-      complete: qaResult.status === 'etsy-ready',
-      unlocked: outputsComplete,
-      lockedReason: 'Generate required PDFs and at least five previews first.',
-    },
-  ];
-  const stepById = new Map(stepMeta.map((step) => [step.id, step]));
-  const visibleActiveStepId = stepById.get(activeStepId)?.unlocked
-    ? activeStepId
-    : recommendedStepId;
-  const getStepState = (stepId: WorkflowStepId) => {
-    const step = stepById.get(stepId);
-    if (!step?.unlocked) {
-      return 'locked';
-    }
-
-    if (visibleActiveStepId === stepId) {
-      return 'active';
-    }
-
-    return step.complete ? 'complete' : 'available';
-  };
-  const stepperItems = stepMeta.map(
-    (step): StepperItem => ({
-      id: step.id,
-      title: step.title,
-      status: !step.unlocked
-        ? 'locked'
-        : visibleActiveStepId === step.id
-          ? 'active'
-          : step.complete && visibleActiveStepId !== step.id
-            ? 'complete'
-            : 'available',
-    }),
-  );
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
@@ -470,14 +350,14 @@ export const App = () => {
           Listing copy is saved in this browser. Uploaded files clear on refresh, so export the ZIP
           or re-upload files before continuing later.
         </Alert>
-        <Stepper steps={stepperItems} />
-        {stepMeta.map((step, index) => (
+        <Stepper steps={workflow.stepperItems} />
+        {workflow.steps.map((step, index) => (
           <StepSection
             key={step.id}
             number={index + 1}
             title={step.title}
             description={step.description}
-            state={getStepState(step.id)}
+            state={workflow.getStepState(step.id)}
             summary={step.summary}
             lockedReason={step.lockedReason}
             onActivate={() => setActiveStepId(step.id)}
@@ -490,10 +370,14 @@ export const App = () => {
                   isGenerating={busyAction === 'brief-generation'}
                   onFillBrief={handleFillProductBrief}
                 />
-                <ProductBriefForm settings={project.settings} onChange={updateSettings} />
+                <ProductBriefForm
+                  settings={project.settings}
+                  lastSavedAt={project.updatedAt}
+                  onChange={updateSettings}
+                />
                 <EtsySeoPanel project={project} onChange={updateSettings} />
                 <StepAdvanceButton
-                  disabled={!briefComplete}
+                  disabled={!workflow.briefComplete}
                   onClick={() => setActiveStepId('topics')}
                 >
                   Next: topics
@@ -508,7 +392,7 @@ export const App = () => {
                   onRemoveSubject={handleRemoveSubject}
                 />
                 <StepAdvanceButton
-                  disabled={!topicsComplete}
+                  disabled={!workflow.topicsComplete}
                   onClick={() => setActiveStepId('images')}
                 >
                   Next: AI images
@@ -517,6 +401,17 @@ export const App = () => {
             ) : null}
             {step.id === 'images' ? (
               <div className="space-y-6">
+                {!hasOpenAIKey ? (
+                  <Alert
+                    tone="info"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span>
+                      Add an OpenAI key in Settings to generate images, or upload files manually.
+                    </span>
+                    <Button onClick={() => setActiveSectionId('settings')}>Open Settings</Button>
+                  </Alert>
+                ) : null}
                 <PromptManager
                   subjects={project.subjects}
                   prompts={prompts}
@@ -542,7 +437,7 @@ export const App = () => {
                   disabled={busyAction !== null}
                 />
                 <StepAdvanceButton
-                  disabled={!imagesComplete}
+                  disabled={!workflow.imagesComplete}
                   onClick={() => setActiveStepId('outputs')}
                 >
                   Next: PDFs and previews
@@ -554,14 +449,14 @@ export const App = () => {
                 <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
                 <OutputActionsPanel
                   busyAction={busyAction}
-                  canGenerateOutputs={canGenerateOutputs}
-                  pdfCount={pdfCount}
-                  previewCount={previewCount}
+                  canGenerateOutputs={workflow.canGenerateOutputs}
+                  pdfCount={workflow.pdfCount}
+                  previewCount={workflow.previewCount}
                   onGeneratePdfs={generatePdfs}
                   onGeneratePreviews={generatePreviews}
                 />
                 <StepAdvanceButton
-                  disabled={!outputsComplete}
+                  disabled={!workflow.outputsComplete}
                   onClick={() => setActiveStepId('export')}
                 >
                   Next: QA and export
@@ -574,9 +469,9 @@ export const App = () => {
                 <ArchiveActions
                   qaResult={qaResult}
                   busyAction={busyAction}
-                  canGenerateOutputs={canGenerateOutputs}
-                  pdfCount={pdfCount}
-                  previewCount={previewCount}
+                  canGenerateOutputs={workflow.canGenerateOutputs}
+                  pdfCount={workflow.pdfCount}
+                  previewCount={workflow.previewCount}
                   onGeneratePdfs={generatePdfs}
                   onGeneratePreviews={generatePreviews}
                   onExportArchive={exportArchive}
@@ -590,10 +485,11 @@ export const App = () => {
       </div>
       <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
         <WorkflowStatus
-          project={project}
-          files={files}
+          workflow={workflow}
           qaResult={qaResult}
-          hasOpenAIKey={hasOpenAIKey}
+          busyAction={busyAction}
+          busyProgress={busyProgress}
+          onCancelBusyAction={cancelBusyAction}
         />
         <QAPanel result={qaResult} />
         <ActivityLog items={activityLog} />
@@ -601,39 +497,6 @@ export const App = () => {
           Clear session files
         </Button>
       </aside>
-    </main>
-  );
-
-  const renderAnalyticsView = () => (
-    <main className="mx-auto max-w-[1500px] px-4 py-6 lg:px-6">
-      <div className="max-w-4xl space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
-              Analytics
-            </p>
-            <h2 className="mt-1 text-2xl font-bold text-ink-strong">Production analytics</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              Cost, output, approval, and export metrics will live here.
-            </p>
-          </div>
-          <Badge tone="neutral">Todo</Badge>
-        </div>
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-base font-bold text-ink-strong">Analytics dashboard</h3>
-              <Badge tone="neutral">Not wired yet</Badge>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <EmptyState>
-              Analytics is planned for a future pass. Current production status remains available
-              from Home and the activity feed.
-            </EmptyState>
-          </CardBody>
-        </Card>
-      </div>
     </main>
   );
 
@@ -654,10 +517,57 @@ export const App = () => {
       </div>
       <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
         <WorkflowStatus
-          project={project}
-          files={files}
+          workflow={workflow}
           qaResult={qaResult}
-          hasOpenAIKey={hasOpenAIKey}
+          busyAction={busyAction}
+          busyProgress={busyProgress}
+          onCancelBusyAction={cancelBusyAction}
+        />
+        <ActivityLog items={activityLog} />
+        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
+          Clear session files
+        </Button>
+      </aside>
+    </main>
+  );
+
+  const renderInsightsView = () => (
+    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
+      <div className="min-w-0 space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
+            Insights
+          </p>
+          <h2 className="mt-1 text-2xl font-bold text-ink-strong">Project insights</h2>
+          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
+            Cost, output, and readiness history will live here once the workflow has durable
+            analytics data.
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-base font-bold text-ink-strong">TODO</h3>
+              <span className="inline-flex w-fit items-center rounded-badge border border-feedback-warning-border bg-feedback-warning-bg px-2.5 py-1 text-xs font-semibold text-feedback-warning-fg">
+                Planned
+              </span>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <p className="text-sm leading-6 text-ink-muted">
+              Add project-level insights after export history and generated output metrics are
+              stored consistently.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+        <WorkflowStatus
+          workflow={workflow}
+          qaResult={qaResult}
+          busyAction={busyAction}
+          busyProgress={busyProgress}
+          onCancelBusyAction={cancelBusyAction}
         />
         <ActivityLog items={activityLog} />
         <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
@@ -668,12 +578,12 @@ export const App = () => {
   );
 
   const renderActiveSection = () => {
-    if (activeSectionId === 'analytics') {
-      return renderAnalyticsView();
-    }
-
     if (activeSectionId === 'settings') {
       return renderSettingsView();
+    }
+
+    if (activeSectionId === 'insights') {
+      return renderInsightsView();
     }
 
     return renderHomeView();

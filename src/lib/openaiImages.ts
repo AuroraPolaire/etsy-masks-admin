@@ -54,6 +54,7 @@ export const buildOpenAIImageRequestBody = (
 export const generateImageWithOpenAI = async (
   settings: OpenAIImageSettings,
   promptItem: PromptItem,
+  signal?: AbortSignal,
 ): Promise<File> => {
   if (!settings.apiKey.trim()) {
     throw new Error('Paste an OpenAI API key for this session before generating images.');
@@ -65,6 +66,7 @@ export const generateImageWithOpenAI = async (
       Authorization: `Bearer ${settings.apiKey.trim()}`,
       'Content-Type': 'application/json',
     },
+    ...(signal ? { signal } : {}),
     body: JSON.stringify(buildOpenAIImageRequestBody(settings, promptItem)),
   });
 
