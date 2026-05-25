@@ -29,6 +29,11 @@ export default {
           subtle: colorVariable('--color-brand-subtle'),
           border: colorVariable('--color-brand-border'),
         },
+        ai: {
+          from: colorVariable('--color-ai-from'),
+          mid: colorVariable('--color-ai-mid'),
+          to: colorVariable('--color-ai-to'),
+        },
         feedback: {
           success: {
             bg: colorVariable('--color-success-bg'),
