@@ -12,13 +12,6 @@ type InitialPromptPanelProps = {
   onFillBrief: (initialPrompt: string) => void;
 };
 
-const STARTER_IDEAS = [
-  'Space party masks for kids with astronaut, rocket, alien, planet, star, moon, and sun.',
-  'Ocean adventure masks for kids with shark, whale, dolphin, octopus, turtle, crab, and seahorse.',
-  'Fairy tale masks for kids with dragon, unicorn, fairy, wizard, knight, crown, and castle.',
-  'Garden craft masks for kids with butterfly, flower, bee, ladybug, frog, sun, and rainbow.',
-];
-
 export const InitialPromptPanel = ({
   hasOpenAIKey,
   disabled,
@@ -51,7 +44,7 @@ export const InitialPromptPanel = ({
           label="Initial bundle prompt"
           name="initialPrompt"
           rows={4}
-          placeholder="Example: Space party masks for kids with astronaut, rocket, alien, planet, star, moon, and sun."
+          placeholder="Describe the bundle theme, audience, visual style, mask count, and topics you want included."
           value={initialPrompt}
           onChange={(event) => setInitialPrompt(event.target.value)}
         />
@@ -60,13 +53,6 @@ export const InitialPromptPanel = ({
             ? 'Uses the same pasted OpenAI API key as image generation. The key is not saved.'
             : 'Paste an OpenAI API key above to draft this with AI. Without a key, the app uses a local template.'}
         </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {STARTER_IDEAS.map((idea) => (
-            <Button key={idea} variant="ghost" onClick={() => setInitialPrompt(idea)}>
-              {idea.split(' with ')[0]}
-            </Button>
-          ))}
-        </div>
         <Button
           variant="primary"
           disabled={disabled || initialPrompt.trim().length === 0}

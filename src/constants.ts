@@ -9,24 +9,8 @@ export const DEFAULT_THEME = 'Printable Party Masks';
 export const DEFAULT_MASK_PROMPT_STYLE =
   'Realistic printable mask for kids with eye holes and white background, front view, no shadows';
 
-export const DEFAULT_SUBJECTS = [
-  'Robot',
-  'Dinosaur',
-  'Unicorn',
-  'Dragon',
-  'Astronaut',
-  'Pirate',
-  'Butterfly',
-  'Flower',
-  'Sun',
-  'Moon',
-  'Lion',
-  'Owl',
-];
-
 export const DEFAULT_SETTINGS: ProjectSettings = {
-  title:
-    'Printable Party Masks Bundle for Kids, 12 PNG Paper Masks, Birthday Party, Classroom Craft, Digital Download',
+  title: 'Printable Paper Mask Bundle for Kids, Party Craft, Classroom Activity, Digital Download',
   theme: DEFAULT_THEME,
   audience: 'Kids',
   marketplace: 'Etsy',
@@ -101,10 +85,7 @@ export const createDefaultProject = (): Project => {
   return {
     id: crypto.randomUUID(),
     settings: DEFAULT_SETTINGS,
-    subjects: DEFAULT_SUBJECTS.map((name) => ({
-      id: crypto.randomUUID(),
-      name,
-    })),
+    subjects: [],
     pdfSettings: DEFAULT_PDF_SETTINGS,
     createdAt: now,
     updatedAt: now,

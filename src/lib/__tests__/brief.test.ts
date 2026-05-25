@@ -19,4 +19,11 @@ describe('brief prompt drafting', () => {
       'Owl',
     ]);
   });
+
+  it('does not inject mocked topics when the initial idea is vague', () => {
+    const draft = createProjectDraftFromInitialPrompt('Printable party masks for kids.');
+
+    expect(draft.subjects).toEqual([]);
+    expect(draft.settings.title).not.toContain('12 PNG Paper Masks');
+  });
 });

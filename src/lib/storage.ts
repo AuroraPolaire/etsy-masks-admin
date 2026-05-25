@@ -5,6 +5,25 @@ import type { Project, ProjectJsonBackup } from '../types';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+const LEGACY_MOCK_SUBJECTS = [
+  'Robot',
+  'Dinosaur',
+  'Unicorn',
+  'Dragon',
+  'Astronaut',
+  'Pirate',
+  'Butterfly',
+  'Flower',
+  'Sun',
+  'Moon',
+  'Lion',
+  'Owl',
+];
+
+const isLegacyMockSubjectList = (subjects: Project['subjects']): boolean =>
+  subjects.length === LEGACY_MOCK_SUBJECTS.length &&
+  subjects.every((subject, index) => subject.name === LEGACY_MOCK_SUBJECTS[index]);
+
 const readSubjects = (projectLike: Record<string, unknown>): Project['subjects'] => {
   const rawSubjects = Array.isArray(projectLike.subjects)
     ? projectLike.subjects
@@ -56,6 +75,7 @@ export const loadProject = (): Project => {
     }
 
     const subjects = readSubjects(parsed);
+    const restoredSubjects = isLegacyMockSubjectList(subjects) ? [] : subjects;
 
     return {
       ...fallback,
@@ -65,7 +85,7 @@ export const loadProject = (): Project => {
         ...(isRecord(parsed.settings) ? parsed.settings : {}),
       },
       pdfSettings: readPdfSettings(parsed.pdfSettings, fallback.pdfSettings),
-      subjects: subjects.length > 0 ? subjects : fallback.subjects,
+      subjects: restoredSubjects,
       updatedAt: new Date().toISOString(),
     };
   } catch {

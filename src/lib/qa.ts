@@ -121,11 +121,13 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     createCheck(
       'title-count',
       'critical',
-      titleMaskCount === maskCount,
+      maskCount > 0 && titleMaskCount === maskCount,
       'Title contains correct mask count',
-      titleMaskCount
-        ? `Title says ${titleMaskCount}; topic list has ${maskCount}.`
-        : `Title must include the mask count ${maskCount}.`,
+      maskCount === 0
+        ? 'Add mask topics before finalizing the listing title count.'
+        : titleMaskCount
+          ? `Title says ${titleMaskCount}; topic list has ${maskCount}.`
+          : `Title must include the mask count ${maskCount}.`,
     ),
     createCheck(
       'description-digital-download',
@@ -167,16 +169,20 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     createCheck(
       'subject-count',
       'critical',
-      expectedFilenames.length === maskCount,
+      maskCount > 0 && expectedFilenames.length === maskCount,
       'Mask topic list length equals mask count',
-      `${maskCount} topic records will generate ${expectedFilenames.length} expected files.`,
+      maskCount === 0
+        ? 'Add at least one mask topic.'
+        : `${maskCount} topic records will generate ${expectedFilenames.length} expected files.`,
     ),
     createCheck(
       'approved-images',
       'critical',
-      everySubjectHasApprovedImage,
+      maskCount > 0 && everySubjectHasApprovedImage,
       'Every mask topic has an approved mapped image',
-      `${approvedImages.length} of ${maskCount} topics have approved mapped images.`,
+      maskCount === 0
+        ? 'Add mask topics before approving images.'
+        : `${approvedImages.length} of ${maskCount} topics have approved mapped images.`,
     ),
     createCheck(
       'rejected-not-approved',

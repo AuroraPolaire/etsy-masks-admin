@@ -39,7 +39,17 @@ describe('QA checks', () => {
   });
 
   it('passes approved image critical check when every subject has a mapped approval', () => {
-    const project = createDefaultProject();
+    const project = {
+      ...createDefaultProject(),
+      settings: {
+        ...createDefaultProject().settings,
+        title: 'Woodland Printable Masks, 2 PNG Paper Masks, Digital Download',
+      },
+      subjects: [
+        { id: 'fox', name: 'Fox' },
+        { id: 'owl', name: 'Owl' },
+      ],
+    };
     const files = project.subjects.map((subject) => makeFile(`${subject.name}.png`, subject.id));
     const result = runQA(project, files);
 

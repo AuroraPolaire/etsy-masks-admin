@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, DEFAULT_SUBJECTS } from '../constants';
+import { DEFAULT_SETTINGS } from '../constants';
 
 import type { ProjectDraft } from '../types';
 
@@ -107,14 +107,16 @@ const extractSubjectNames = (idea: string): string[] => {
   }
 
   const listMatch =
-    /(?:subjects?|topics?|designs?|masks?|include|including|with|featuring)\s*:?\s*([^.;]+)/i.exec(
+    /(?:subjects?|topics?|designs?)\s*:\s*([^.;]+)|(?:include|including|with|featuring)\s+([^.;]+)/i.exec(
       idea,
     );
-  if (!listMatch?.[1]) {
+  const matchedList = listMatch?.[1] ?? listMatch?.[2];
+
+  if (!matchedList) {
     return [];
   }
 
-  return listMatch[1]
+  return matchedList
     .split(/,| and /i)
     .map(titleCase)
     .filter(Boolean)
@@ -169,13 +171,18 @@ const inferStyle = (idea: string): string => {
 export const createProjectDraftFromInitialPrompt = (initialPrompt: string): ProjectDraft => {
   const cleaned = cleanIdea(initialPrompt);
   const theme = inferTheme(cleaned);
-  const subjects = extractSubjectNames(cleaned);
-  const subjectNames = subjects.length > 0 ? subjects : DEFAULT_SUBJECTS;
+  const subjectNames = extractSubjectNames(cleaned);
   const maskCount = subjectNames.length;
-  const title =
-    `${theme} Printable Bundle for Kids, ${maskCount} PNG Paper Masks, Party Craft, Classroom Activity, Digital Download`
-      .replace(/\s+/g, ' ')
-      .trim();
+  const title = [
+    `${theme} Printable Bundle for Kids`,
+    maskCount > 0 ? `${maskCount} PNG Paper Masks` : 'PNG Paper Masks',
+    'Party Craft',
+    'Classroom Activity',
+    'Digital Download',
+  ]
+    .join(', ')
+    .replace(/\s+/g, ' ')
+    .trim();
   const tags = [
     `${theme.toLowerCase()}`,
     'printable masks',
