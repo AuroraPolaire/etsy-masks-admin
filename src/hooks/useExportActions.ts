@@ -4,7 +4,7 @@ import { downloadBlob, fileToText, groupFilesForExport } from '../lib/files';
 import { slugify } from '../lib/slugify';
 import { createProjectBackup, parseProjectBackup } from '../lib/storage';
 
-import type { AddActivity, ManagedFile, Project, RunBusyAction } from '../types';
+import type { AddActivity, BusyActionContext, ManagedFile, Project, RunBusyAction } from '../types';
 
 type UseExportActionsParams = {
   project: Project;
@@ -26,6 +26,15 @@ type UseExportActionsParams = {
   }) => Promise<boolean>;
 };
 
+const throwIfAborted = (signal: AbortSignal): void => {
+  if (signal.aborted) {
+    throw new DOMException('Action cancelled', 'AbortError');
+  }
+};
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError';
+
 export const useExportActions = ({
   project,
   files,
@@ -38,8 +47,9 @@ export const useExportActions = ({
   confirmAction,
 }: UseExportActionsParams) => {
   const generatePdfs = () =>
-    runBusyAction('pdfs', async () => {
+    runBusyAction('pdfs', async ({ setProgress, signal }: BusyActionContext) => {
       try {
+        setProgress('Preparing approved images for PDFs...');
         const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
         if (approvedFiles.length === 0) {
           addActivity(
@@ -50,8 +60,11 @@ export const useExportActions = ({
           return;
         }
 
+        throwIfAborted(signal);
+        setProgress(`Creating PDFs for ${approvedFiles.length} approved image(s)...`);
         const { generatePrintablePdfs } = await import('../lib/pdf');
         const generatedFiles = await generatePrintablePdfs(project, approvedFiles);
+        throwIfAborted(signal);
         replaceGeneratedFilesByKind(generatedFiles, 'generated-pdf');
         updateProject((currentProject) => ({
           ...currentProject,
@@ -63,6 +76,11 @@ export const useExportActions = ({
           `Created ${generatedFiles.length} printable PDF(s).`,
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('pdf-generated', 'warning', 'PDF generation was cancelled.');
+          return;
+        }
+
         addActivity(
           'error',
           'error',
@@ -72,8 +90,9 @@ export const useExportActions = ({
     });
 
   const generatePreviews = () =>
-    runBusyAction('previews', async () => {
+    runBusyAction('previews', async ({ setProgress, signal }: BusyActionContext) => {
       try {
+        setProgress('Preparing approved images for previews...');
         const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
         if (approvedFiles.length === 0) {
           addActivity(
@@ -84,8 +103,11 @@ export const useExportActions = ({
           return;
         }
 
+        throwIfAborted(signal);
+        setProgress('Creating marketplace preview images...');
         const { generateMarketplacePreviewImages } = await import('../lib/previewImages');
         const generatedFiles = await generateMarketplacePreviewImages(project, approvedFiles);
+        throwIfAborted(signal);
         replaceGeneratedFilesByKind(generatedFiles, 'generated-preview');
         updateProject((currentProject) => ({
           ...currentProject,
@@ -97,6 +119,11 @@ export const useExportActions = ({
           `Created ${generatedFiles.length} preview image(s).`,
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('preview-generated', 'warning', 'Preview generation was cancelled.');
+          return;
+        }
+
         addActivity(
           'error',
           'error',
@@ -106,8 +133,10 @@ export const useExportActions = ({
     });
 
   const exportProjectJson = () =>
-    runBusyAction('project-json', () => {
+    runBusyAction('project-json', ({ setProgress, signal }) => {
       try {
+        setProgress('Preparing project metadata JSON...');
+        throwIfAborted(signal);
         const exportedAt = nowIso();
         const nextProject = {
           ...project,
@@ -120,6 +149,11 @@ export const useExportActions = ({
         replaceProject(nextProject);
         addActivity('project-exported', 'success', 'Exported project metadata JSON.');
       } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('project-exported', 'warning', 'Project JSON export was cancelled.');
+          return;
+        }
+
         addActivity(
           'error',
           'error',
@@ -129,9 +163,11 @@ export const useExportActions = ({
     });
 
   const importProjectJson = (file: File) =>
-    runBusyAction('import', async () => {
+    runBusyAction('import', async ({ setProgress, signal }) => {
       try {
+        setProgress('Reading project metadata JSON...');
         const rawJson = await fileToText(file);
+        throwIfAborted(signal);
         const importedProject = parseProjectBackup(rawJson);
         clearFiles();
         replaceProject(importedProject);
@@ -141,6 +177,11 @@ export const useExportActions = ({
           'Imported project metadata. Re-upload source files because JSON backups do not include them.',
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('project-imported', 'warning', 'Project JSON import was cancelled.');
+          return;
+        }
+
         addActivity(
           'error',
           'error',
@@ -150,11 +191,13 @@ export const useExportActions = ({
     });
 
   const exportArchive = () =>
-    runBusyAction('archive', async () => {
+    runBusyAction('archive', async ({ setProgress, signal }: BusyActionContext) => {
       try {
+        setProgress('Creating review archive...');
         const { exportArchive: createArchive } = await import('../lib/zipExport');
         const result = await createArchive(project, files);
         const exportedAt = nowIso();
+        throwIfAborted(signal);
 
         updateProject((currentProject) => ({
           ...currentProject,
@@ -162,6 +205,7 @@ export const useExportActions = ({
           nestedEtsyUploadZipSizeBytes: result.nestedEtsyUploadZipSizeBytes,
         }));
 
+        setProgress('Checking QA blockers before download...');
         if (result.needsReview) {
           const shouldDownload = await confirmAction({
             title: 'Download ZIP with open blockers?',
@@ -179,6 +223,8 @@ export const useExportActions = ({
           }
         }
 
+        throwIfAborted(signal);
+        setProgress('Starting ZIP download...');
         downloadBlob(result.blob, result.fileName);
         addActivity(
           'archive-exported',
@@ -186,6 +232,11 @@ export const useExportActions = ({
           `Exported ${result.fileName} with app version ${APP_VERSION}.`,
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('archive-exported', 'warning', 'Archive export was cancelled.');
+          return;
+        }
+
         addActivity(
           'error',
           'error',

@@ -6,7 +6,7 @@ import { IconButton } from './IconButton';
 
 import type { ReactNode } from 'react';
 
-type StepSectionState = 'active' | 'available' | 'complete' | 'locked';
+export type StepSectionState = 'active' | 'available' | 'complete' | 'locked';
 
 type StepSectionProps = {
   number: number;

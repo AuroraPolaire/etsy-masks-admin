@@ -4,11 +4,11 @@ import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
+import { FileInputButton } from './ui/FileInputButton';
 import { IconButton } from './ui/IconButton';
 import { Surface } from './ui/Surface';
 
 import type { BusyAction, QAResult } from '../types';
-import type { ChangeEvent } from 'react';
 
 type ArchiveActionsProps = {
   qaResult: QAResult;
@@ -37,14 +37,6 @@ export const ArchiveActions = ({
 }: ArchiveActionsProps) => {
   const disabled = busyAction !== null;
   const outputActionsDisabled = disabled || !canGenerateOutputs;
-
-  const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      onImportProjectJson(file);
-    }
-    event.target.value = '';
-  };
 
   return (
     <Card>
@@ -97,25 +89,13 @@ export const ArchiveActions = ({
                 disabled={disabled}
                 onClick={onExportProjectJson}
               />
-              <label>
-                <span className="sr-only">Import project JSON</span>
-                <input
-                  className="sr-only"
-                  type="file"
-                  accept=".json,application/json"
-                  disabled={disabled}
-                  onChange={handleImport}
-                />
-                <span
-                  className={`inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-control border border-surface-outline bg-surface-raised text-ink-base shadow-sm transition hover:bg-surface-muted ${
-                    disabled ? 'cursor-not-allowed opacity-50' : ''
-                  }`}
-                  title="Import project JSON"
-                  aria-label="Import project JSON"
-                >
-                  <FileInput aria-hidden="true" size={18} strokeWidth={2.2} />
-                </span>
-              </label>
+              <FileInputButton
+                icon={FileInput}
+                label="Import project JSON"
+                accept=".json,application/json"
+                disabled={disabled}
+                onFileSelected={onImportProjectJson}
+              />
             </div>
           </div>
         </Surface>

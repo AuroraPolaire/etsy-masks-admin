@@ -1,12 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { FileInput } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_SETTINGS } from '../../constants';
 import { createPromptItems } from '../../lib/files';
 import { EtsySeoPanel } from '../EtsySeoPanel';
+import { InitialPromptPanel } from '../InitialPromptPanel';
 import { ProductBriefForm } from '../ProductBriefForm';
 import { PromptManager } from '../PromptManager';
 import { QAPanel } from '../QAPanel';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { FileInputButton } from '../ui/FileInputButton';
 
 import type { Project, SubjectItem, ProjectSettings, QAResult } from '../../types';
 
@@ -137,5 +141,92 @@ describe('ProductBriefForm', () => {
       ...DEFAULT_SETTINGS,
       title: 'New bundle title',
     });
+  });
+});
+
+describe('ConfirmDialog', () => {
+  it('focuses the cancel action, closes on Escape, and restores focus on unmount', () => {
+    const onCancel = vi.fn();
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <>
+        <button type="button">Return focus</button>
+      </>,
+    );
+    const returnButton = screen.getByRole('button', { name: 'Return focus' });
+    returnButton.focus();
+
+    rerender(
+      <>
+        <button type="button">Return focus</button>
+        <ConfirmDialog
+          open
+          title="Clear files?"
+          description="This removes uploaded and generated files from this browser session."
+          confirmLabel="Clear files"
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+        />
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <>
+        <button type="button">Return focus</button>
+        <ConfirmDialog
+          open={false}
+          title="Clear files?"
+          description="This removes uploaded and generated files from this browser session."
+          confirmLabel="Clear files"
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+        />
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Return focus' })).toHaveFocus();
+  });
+});
+
+describe('FileInputButton', () => {
+  it('emits the selected file through a real button control', () => {
+    const onFileSelected = vi.fn();
+    const { container } = render(
+      <FileInputButton
+        icon={FileInput}
+        label="Import project JSON"
+        accept=".json,application/json"
+        onFileSelected={onFileSelected}
+      />,
+    );
+    const file = new File(['{}'], 'project.json', { type: 'application/json' });
+    const input = container.querySelector('input[type="file"]');
+
+    expect(screen.getByRole('button', { name: 'Import project JSON' })).toBeEnabled();
+    expect(input).toBeInstanceOf(HTMLInputElement);
+
+    fireEvent.change(input as HTMLInputElement, { target: { files: [file] } });
+
+    expect(onFileSelected).toHaveBeenCalledWith(file);
+  });
+});
+
+describe('InitialPromptPanel', () => {
+  it('shows the busy label while generating a local draft', () => {
+    render(
+      <InitialPromptPanel
+        hasOpenAIKey={false}
+        disabled={false}
+        isGenerating
+        onFillBrief={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Drafting brief...' })).toBeDisabled();
   });
 });

@@ -7,10 +7,17 @@ import type { ProjectSettings } from '../types';
 
 type ProductBriefFormProps = {
   settings: ProjectSettings;
+  lastSavedAt?: string;
   onChange: (settings: ProjectSettings) => void;
 };
 
-export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) => {
+const formatSavedAt = (value: string): string =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+
+export const ProductBriefForm = ({ settings, lastSavedAt, onChange }: ProductBriefFormProps) => {
   const update = <Key extends keyof ProjectSettings>(key: Key, value: ProjectSettings[Key]) => {
     onChange({ ...settings, [key]: value });
   };
@@ -23,6 +30,11 @@ export const ProductBriefForm = ({ settings, onChange }: ProductBriefFormProps) 
           <p className="mt-1 text-sm text-ink-muted">
             Buyer-facing copy is saved in this browser. Uploaded files stay in memory only.
           </p>
+          {lastSavedAt ? (
+            <p className="mt-1 text-xs text-ink-muted">
+              Last saved locally: {formatSavedAt(lastSavedAt)}
+            </p>
+          ) : null}
         </div>
       </CardHeader>
       <CardBody className="grid gap-4">

@@ -1,10 +1,11 @@
-import { DEFAULT_SETTINGS, OPENAI_BRIEF_MODEL } from '../constants';
+import { DRAFT_TEMPLATE_SETTINGS, OPENAI_BRIEF_MODEL } from '../constants';
 
 import type { ProjectDraft } from '../types';
 
 type OpenAIProjectBriefSettings = {
   apiKey: string;
   initialPrompt: string;
+  signal?: AbortSignal;
 };
 
 type OpenAIResponsesApiResponse = {
@@ -148,21 +149,21 @@ export const normalizeAiProjectDraft = (rawValue: unknown): ProjectDraft => {
 
   return {
     settings: {
-      ...DEFAULT_SETTINGS,
-      title: stringField(rawValue.title, DEFAULT_SETTINGS.title),
-      theme: stringField(rawValue.theme, DEFAULT_SETTINGS.theme),
-      audience: stringField(rawValue.audience, DEFAULT_SETTINGS.audience),
+      ...DRAFT_TEMPLATE_SETTINGS,
+      title: stringField(rawValue.title, DRAFT_TEMPLATE_SETTINGS.title),
+      theme: stringField(rawValue.theme, DRAFT_TEMPLATE_SETTINGS.theme),
+      audience: stringField(rawValue.audience, DRAFT_TEMPLATE_SETTINGS.audience),
       marketplace,
-      style: stringField(rawValue.style, DEFAULT_SETTINGS.style),
-      description: stringField(rawValue.description, DEFAULT_SETTINGS.description),
-      tags: tags.length > 0 ? tags.join(', ') : DEFAULT_SETTINGS.tags,
-      safetyNote: stringField(rawValue.safetyNote, DEFAULT_SETTINGS.safetyNote),
+      style: stringField(rawValue.style, DRAFT_TEMPLATE_SETTINGS.style),
+      description: stringField(rawValue.description, DRAFT_TEMPLATE_SETTINGS.description),
+      tags: tags.length > 0 ? tags.join(', ') : DRAFT_TEMPLATE_SETTINGS.tags,
+      safetyNote: stringField(rawValue.safetyNote, DRAFT_TEMPLATE_SETTINGS.safetyNote),
       printingInstructions: stringField(
         rawValue.printingInstructions,
-        DEFAULT_SETTINGS.printingInstructions,
+        DRAFT_TEMPLATE_SETTINGS.printingInstructions,
       ),
-      license: stringField(rawValue.license, DEFAULT_SETTINGS.license),
-      refundPolicy: stringField(rawValue.refundPolicy, DEFAULT_SETTINGS.refundPolicy),
+      license: stringField(rawValue.license, DRAFT_TEMPLATE_SETTINGS.license),
+      refundPolicy: stringField(rawValue.refundPolicy, DRAFT_TEMPLATE_SETTINGS.refundPolicy),
     },
     subjects: subjects.map((name) => ({
       id: crypto.randomUUID(),
@@ -181,6 +182,7 @@ export const parseOpenAIProjectBriefResponse = (
 export const generateProjectDraftWithOpenAI = async ({
   apiKey,
   initialPrompt,
+  signal,
 }: OpenAIProjectBriefSettings): Promise<ProjectDraft> => {
   if (!apiKey.trim()) {
     throw new Error('Paste an OpenAI API key before using AI brief generation.');
@@ -192,6 +194,7 @@ export const generateProjectDraftWithOpenAI = async ({
       Authorization: `Bearer ${apiKey.trim()}`,
       'Content-Type': 'application/json',
     },
+    ...(signal ? { signal } : {}),
     body: JSON.stringify(buildOpenAIProjectBriefRequestBody(initialPrompt)),
   });
   const result = (await response.json()) as OpenAIResponsesApiResponse;

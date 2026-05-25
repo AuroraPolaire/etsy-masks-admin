@@ -10,10 +10,23 @@ export const DEFAULT_MASK_PROMPT_STYLE =
   'Realistic printable mask for kids with eye holes and white background, front view, no shadows';
 
 export const DEFAULT_SETTINGS: ProjectSettings = {
-  title: 'Printable Paper Mask Bundle for Kids, Party Craft, Classroom Activity, Digital Download',
+  title: '',
+  theme: '',
+  audience: '',
+  marketplace: 'Etsy',
+  style: '',
+  description: '',
+  tags: '',
+  safetyNote: '',
+  printingInstructions: '',
+  license: '',
+  refundPolicy: '',
+};
+
+export const DRAFT_TEMPLATE_SETTINGS: ProjectSettings = {
+  ...DEFAULT_SETTINGS,
   theme: DEFAULT_THEME,
   audience: 'Kids',
-  marketplace: 'Etsy',
   style: DEFAULT_MASK_PROMPT_STYLE,
   description:
     'Create an easy party or classroom activity with this printable paper mask bundle for kids. Use the designs for birthday parties, classroom crafts, storytelling, pretend play, and DIY costume corners. This is a digital download only. No physical item will be shipped.',

@@ -50,7 +50,9 @@ describe('project storage', () => {
 
   it('starts new projects without mocked topics', () => {
     expect(createDefaultProject().subjects).toEqual([]);
+    expect(createDefaultProject().settings.title).toBe('');
     expect(loadProject().subjects).toEqual([]);
+    expect(loadProject().settings.title).toBe('');
     expect(loadProject().lastBriefUpdatedAt).toBeUndefined();
   });
 
@@ -87,10 +89,103 @@ describe('project storage', () => {
     expect(loadedProject.lastBriefUpdatedAt).toBe(project.updatedAt);
   });
 
+  it('preserves intentionally empty brief fields from browser state', () => {
+    const project: Project = {
+      ...createDefaultProject(),
+      settings: {
+        ...createDefaultProject().settings,
+        description: '',
+      },
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+
+    expect(loadProject().settings.description).toBe('');
+  });
+
   it('does not mark untouched default copy as brief progress', () => {
     const project = createDefaultProject();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
 
     expect(loadProject().lastBriefUpdatedAt).toBeUndefined();
+  });
+
+  it('resets the legacy realistic animal mock project back to a blank brief', () => {
+    const project: Project = {
+      ...createProjectWithSubjects(['Lion', 'Tiger', 'Zebra']),
+      settings: {
+        ...createDefaultProject().settings,
+        title:
+          'Realistic Animal Masks Printable Bundle for Kids, 3 PNG Paper Masks, Safari Zoo Party, Classroom Craft, Digital Download',
+        theme: 'Realistic Animal Masks',
+        audience: 'Kids',
+        style: 'Realistic printable mask for kids',
+        description: 'Mock description for a digital download.',
+        tags: 'animal masks, printable masks',
+        safetyNote: 'Adult supervision required.',
+        printingInstructions: 'Print and cut.',
+        license: 'Personal use only.',
+        refundPolicy: 'No refunds.',
+      },
+      lastBriefUpdatedAt: '2026-05-25T10:00:00.000Z',
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+
+    const loadedProject = loadProject();
+
+    expect(loadedProject.settings.title).toBe('');
+    expect(loadedProject.subjects).toEqual([]);
+    expect(loadedProject.lastBriefUpdatedAt).toBeUndefined();
+  });
+
+  it('strips unknown keys from imported project backups', () => {
+    const backup = {
+      appVersion: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      project: {
+        ...createProjectWithSubjects(['Moon']),
+        unexpected: 'value',
+        settings: {
+          ...createDefaultProject().settings,
+          unknownSetting: 'value',
+        },
+      },
+    };
+
+    const project = parseProjectBackup(JSON.stringify(backup));
+
+    expect(project.subjects.map((subject) => subject.name)).toEqual(['Moon']);
+    expect(Object.prototype.hasOwnProperty.call(project, 'unexpected')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(project.settings, 'unknownSetting')).toBe(false);
+  });
+
+  it('normalizes invalid PDF settings from imported project backups', () => {
+    const backup = {
+      appVersion: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      project: {
+        ...createDefaultProject(),
+        pdfSettings: {
+          generateA4: 'yes',
+          generateUSLetter: false,
+          maskScale: 'huge',
+          showAnimalLabel: false,
+          showInstructionFooter: 'no',
+          pageMarginMm: 100,
+          includeCalibrationPage: true,
+        },
+      },
+    };
+
+    const project = parseProjectBackup(JSON.stringify(backup));
+
+    expect(project.pdfSettings).toEqual({
+      generateA4: true,
+      generateUSLetter: false,
+      maskScale: 'medium',
+      showSubjectLabel: false,
+      showInstructionFooter: true,
+      pageMarginMm: 30,
+      includeCalibrationPage: true,
+    });
   });
 });
