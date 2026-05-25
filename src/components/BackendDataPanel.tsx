@@ -1,4 +1,4 @@
-import { Cloud, Database, Download, RefreshCw, Server, Shield, Trash2, Upload } from 'lucide-react';
+import { Cloud, Database, Download, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { formatBytes } from '../lib/files';
@@ -31,7 +31,6 @@ type BackendDataPanelProps = {
   onRestoreRun: (runId: string) => void;
   onTestConnection: () => void;
   onBackupToCloud: () => void;
-  onRestoreFromCloud: () => void;
   onDeleteSelectedRun: () => void;
   onDeleteAllCloudData: () => void;
 };
@@ -82,7 +81,6 @@ export const BackendDataPanel = ({
   onRestoreRun,
   onTestConnection,
   onBackupToCloud,
-  onRestoreFromCloud,
   onDeleteSelectedRun,
   onDeleteAllCloudData,
 }: BackendDataPanelProps) => {
@@ -94,7 +92,14 @@ export const BackendDataPanel = ({
   const oversizedFiles = files.filter((file) => file.size > maxFileBytes);
   const cloudTotalBytes = snapshot?.files.reduce((total, file) => total + file.size, 0) ?? 0;
   const filteredRuns = useMemo(() => filterRuns(runs, runSearchQuery), [runSearchQuery, runs]);
+  const selectedRun = runs.find((run) => run.id === selectedRunId);
   const updatedAt = snapshot?.updatedAt ? formatDateTime(snapshot.updatedAt) : 'Never';
+  const statusTone = backendReachable ? 'success' : health ? 'warning' : 'neutral';
+  const statusLabel = backendReachable
+    ? 'Cloud saves reachable'
+    : health
+      ? 'Needs attention'
+      : 'Not checked';
 
   return (
     <div className="space-y-6">
@@ -102,67 +107,56 @@ export const BackendDataPanel = ({
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-ink-strong">Cloudflare backend</h2>
+              <h2 className="text-lg font-bold text-ink-strong">Save current run</h2>
               <p className="mt-1 text-sm text-ink-muted">
-                Same-origin Worker API, Cloudflare Access authentication, D1 run cache, R2 files,
-                and backend OpenAI proxy.
+                Store the current brief, topics, approved files, PDFs, and previews so this run can
+                be restored later.
               </p>
             </div>
-            <Badge tone={backendReachable ? 'success' : 'warning'}>
-              {backendReachable ? 'Worker reachable' : 'Connection needed'}
-            </Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone={statusTone}>{statusLabel}</Badge>
+              <Badge tone={health?.openaiProxyReady ? 'success' : 'warning'}>
+                {health?.openaiProxyReady ? 'AI ready' : 'AI not ready'}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardBody className="space-y-4">
-          <Alert tone="info">
-            The frontend calls same-origin <code>/api</code> routes. Production access is managed by
-            Cloudflare Access and Worker configuration, not by browser-entered secrets.
-          </Alert>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <Input
               label="Run idea label"
               name="backendRunIdea"
               type="text"
               value={saveIdea}
               placeholder={suggestedIdea}
-              helperText="Saved with each Cloudflare run so older work can be found by idea."
+              helperText="Use a short idea name that will be easy to find later."
               onChange={(event) => onSaveIdeaChange(event.target.value)}
             />
-            <Input
-              label="Search saved runs"
-              name="backendRunSearch"
-              type="search"
-              value={runSearchQuery}
-              placeholder="Search by idea, project id, or run id"
-              helperText="Filters the saved-run table below."
-              onChange={(event) => setRunSearchQuery(event.target.value)}
-            />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button disabled={backendBusy} onClick={onTestConnection}>
+                <RefreshCw aria-hidden="true" className="mr-2" size={17} />
+                Refresh
+              </Button>
+              <Button
+                variant="primary"
+                disabled={!backendReachable || backendBusy || oversizedFiles.length > 0}
+                onClick={onBackupToCloud}
+              >
+                <Upload aria-hidden="true" className="mr-2" size={17} />
+                Save run
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button disabled={backendBusy} onClick={onTestConnection}>
-              <RefreshCw aria-hidden="true" className="mr-2" size={17} />
-              Refresh backend
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!backendReachable || backendBusy || oversizedFiles.length > 0}
-              onClick={onBackupToCloud}
-            >
-              <Upload aria-hidden="true" className="mr-2" size={17} />
-              Save run to Cloudflare
-            </Button>
-            <Button
-              disabled={!backendReachable || backendBusy || !snapshot?.project}
-              onClick={onRestoreFromCloud}
-            >
-              <Download aria-hidden="true" className="mr-2" size={17} />
-              Restore selected run
-            </Button>
-          </div>
+          {!backendReachable && health ? (
+            <Alert tone="warning">
+              Cloud saves are not ready. Check the Worker route, Cloudflare Access, and D1/R2
+              bindings.
+            </Alert>
+          ) : null}
           {oversizedFiles.length > 0 ? (
             <Alert tone="warning">
               {oversizedFiles.length} file{oversizedFiles.length === 1 ? '' : 's'} exceed the{' '}
-              {formatBytes(maxFileBytes)} backend limit. Remove or shrink them before cloud backup.
+              {formatBytes(maxFileBytes)} cloud-save limit. Remove or shrink them before saving.
             </Alert>
           ) : null}
         </CardBody>
@@ -170,19 +164,30 @@ export const BackendDataPanel = ({
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-bold text-ink-strong">Saved runs</h2>
-            <Badge tone="neutral">
-              {filteredRuns.length}/{runs.length}
-            </Badge>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-base font-bold text-ink-strong">Saved runs</h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                Search by idea, check the high-level details, then restore the run you want.
+              </p>
+            </div>
+            <div className="w-full lg:max-w-sm">
+              <Input
+                label="Search saved runs"
+                name="backendRunSearch"
+                type="search"
+                value={runSearchQuery}
+                placeholder="Idea, project id, or run id"
+                helperText={`${filteredRuns.length}/${runs.length} runs shown`}
+                onChange={(event) => setRunSearchQuery(event.target.value)}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardBody>
           {filteredRuns.length === 0 ? (
             <p className="text-sm text-ink-muted">
-              {runs.length === 0
-                ? 'No saved backend runs yet.'
-                : 'No saved runs match the current search.'}
+              {runs.length === 0 ? 'No saved cloud runs yet.' : 'No saved runs match the search.'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -193,7 +198,7 @@ export const BackendDataPanel = ({
                     <th className="px-3 py-2 font-semibold">Updated</th>
                     <th className="px-3 py-2 text-right font-semibold">Files</th>
                     <th className="px-3 py-2 text-right font-semibold">Size</th>
-                    <th className="py-2 pl-3 text-right font-semibold">Action</th>
+                    <th className="py-2 pl-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -225,13 +230,14 @@ export const BackendDataPanel = ({
                               variant={isSelected ? 'primary' : 'secondary'}
                               onClick={() => onRunSelected(run.id)}
                             >
-                              {isSelected ? 'Selected' : 'Select'}
+                              {isSelected ? 'Previewing' : 'Preview'}
                             </Button>
                             <Button
                               disabled={backendBusy}
                               variant="primary"
                               onClick={() => onRestoreRun(run.id)}
                             >
+                              <Download aria-hidden="true" className="mr-2" size={17} />
                               Restore
                             </Button>
                           </div>
@@ -246,152 +252,154 @@ export const BackendDataPanel = ({
         </CardBody>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Surface variant="muted" className="p-4">
-          <div className="flex items-start gap-3">
-            <Cloud aria-hidden="true" className="mt-0.5 text-brand-strong" size={20} />
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-ink-strong">Selected cloud run</h3>
-              <dl className="mt-3 grid gap-2 text-sm text-ink-base">
-                <div className="flex justify-between gap-4">
-                  <dt>Idea</dt>
-                  <dd className="min-w-0 truncate text-right font-semibold">
-                    {getSnapshotTitle(snapshot)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Last backup</dt>
-                  <dd className="font-semibold">{updatedAt}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Saved runs</dt>
-                  <dd className="font-semibold">{runs.length}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Files in run</dt>
-                  <dd className="font-semibold">{snapshot?.files.length ?? 0}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Selected R2 size</dt>
-                  <dd className="font-semibold">{formatBytes(cloudTotalBytes)}</dd>
-                </div>
-              </dl>
-            </div>
+      <Surface variant="muted" className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-ink-strong">Previewed run</h3>
+            <dl className="mt-3 grid gap-2 text-sm text-ink-base sm:grid-cols-2">
+              <div>
+                <dt className="text-xs uppercase text-ink-muted">Idea</dt>
+                <dd className="mt-1 truncate font-semibold">{getSnapshotTitle(snapshot)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase text-ink-muted">Last saved</dt>
+                <dd className="mt-1 font-semibold">{updatedAt}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase text-ink-muted">Files</dt>
+                <dd className="mt-1 font-semibold">{snapshot?.files.length ?? 0}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase text-ink-muted">Size</dt>
+                <dd className="mt-1 font-semibold">{formatBytes(cloudTotalBytes)}</dd>
+              </div>
+            </dl>
           </div>
-        </Surface>
+          <Button
+            disabled={!backendReachable || backendBusy || !snapshot?.project}
+            onClick={() => {
+              if (selectedRunId) {
+                onRestoreRun(selectedRunId);
+              }
+            }}
+          >
+            <Download aria-hidden="true" className="mr-2" size={17} />
+            Restore previewed run
+          </Button>
+        </div>
+      </Surface>
 
-        <Surface variant="muted" className="p-4">
-          <div className="flex items-start gap-3">
-            <Database aria-hidden="true" className="mt-0.5 text-brand-strong" size={20} />
-            <div className="min-w-0">
-              <h3 className="text-sm font-bold text-ink-strong">Local data in this tab</h3>
-              <dl className="mt-3 grid gap-2 text-sm text-ink-base">
-                <div className="flex justify-between gap-4">
-                  <dt>Session files</dt>
-                  <dd className="font-semibold">{files.length}</dd>
+      <details className="rounded-control border border-surface-outline bg-surface-panel">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ink-strong">
+          Diagnostics
+        </summary>
+        <div className="space-y-4 border-t border-surface-divider p-4">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <Surface variant="muted" className="p-4">
+              <div className="flex items-start gap-3">
+                <Cloud aria-hidden="true" className="mt-0.5 text-brand-strong" size={20} />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-ink-strong">Cloud status</h3>
+                  <dl className="mt-3 grid gap-2 text-sm text-ink-base">
+                    <div className="flex justify-between gap-4">
+                      <dt>Saved runs</dt>
+                      <dd className="font-semibold">{runs.length}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>OpenAI proxy</dt>
+                      <dd className="font-semibold">
+                        {health?.openaiProxyReady ? 'Ready' : 'Not configured'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Access auth</dt>
+                      <dd className="font-semibold">
+                        {health?.auth.configured ? health.auth.mode : 'Missing'}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>File limit</dt>
+                      <dd className="font-semibold">{formatBytes(maxFileBytes)}</dd>
+                    </div>
+                  </dl>
                 </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Session size</dt>
-                  <dd className="font-semibold">{formatBytes(localTotalBytes)}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>OpenAI proxy</dt>
-                  <dd className="font-semibold">
-                    {health?.openaiProxyReady ? 'Ready' : 'Not configured'}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt>Access auth</dt>
-                  <dd className="font-semibold">
-                    {health?.auth.configured ? health.auth.mode : 'Missing'}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        </Surface>
-      </div>
+              </div>
+            </Surface>
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-base font-bold text-ink-strong">Data management</h2>
-        </CardHeader>
-        <CardBody className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            <Surface variant="muted" className="p-3">
-              <Server aria-hidden="true" className="mb-2 text-ink-muted" size={18} />
-              <p className="text-sm font-semibold text-ink-strong">D1</p>
-              <p className="mt-1 text-xs leading-5 text-ink-muted">
-                Stores saved run metadata, project JSON, file metadata, and a small backend event
-                log.
-              </p>
-            </Surface>
-            <Surface variant="muted" className="p-3">
-              <Database aria-hidden="true" className="mb-2 text-ink-muted" size={18} />
-              <p className="text-sm font-semibold text-ink-strong">R2</p>
-              <p className="mt-1 text-xs leading-5 text-ink-muted">
-                Stores uploaded and generated files for each run up to the configured per-file
-                limit.
-              </p>
-            </Surface>
-            <Surface variant="muted" className="p-3">
-              <Shield aria-hidden="true" className="mb-2 text-ink-muted" size={18} />
-              <p className="text-sm font-semibold text-ink-strong">Access</p>
-              <p className="mt-1 text-xs leading-5 text-ink-muted">
-                Authentication belongs to Cloudflare Access and Worker verification, not browser
-                token fields.
-              </p>
+            <Surface variant="muted" className="p-4">
+              <div className="flex items-start gap-3">
+                <Database aria-hidden="true" className="mt-0.5 text-brand-strong" size={20} />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-ink-strong">Data in this tab</h3>
+                  <dl className="mt-3 grid gap-2 text-sm text-ink-base">
+                    <div className="flex justify-between gap-4">
+                      <dt>Session files</dt>
+                      <dd className="font-semibold">{files.length}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Session size</dt>
+                      <dd className="font-semibold">{formatBytes(localTotalBytes)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt>Previewed run size</dt>
+                      <dd className="font-semibold">{formatBytes(cloudTotalBytes)}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
             </Surface>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-ink-muted">
-              Delete selected run removes one cached idea and its R2 files. Delete all removes every
-              run, backend events, and all R2 objects.
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                variant="danger"
-                disabled={!backendReachable || backendBusy || !selectedRunId}
-                onClick={onDeleteSelectedRun}
-              >
-                <Trash2 aria-hidden="true" className="mr-2" size={17} />
-                Delete selected run
-              </Button>
-              <Button
-                variant="danger"
-                disabled={!backendReachable || backendBusy || runs.length === 0}
-                onClick={onDeleteAllCloudData}
-              >
-                <Trash2 aria-hidden="true" className="mr-2" size={17} />
-                Delete all cloud data
-              </Button>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
 
-      {snapshot?.events.length ? (
-        <Card>
-          <CardHeader>
-            <h2 className="text-base font-bold text-ink-strong">Backend events</h2>
-          </CardHeader>
-          <CardBody>
-            <ul className="space-y-2">
-              {snapshot.events.slice(0, 5).map((event) => (
-                <li
-                  key={event.id}
-                  className="rounded-control border border-surface-outline bg-surface-muted px-3 py-2 text-sm"
-                >
-                  <p className="font-semibold text-ink-strong">{event.message}</p>
-                  <p className="mt-1 text-xs text-ink-muted">
-                    {event.type} - {new Date(event.createdAt).toLocaleString()}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </CardBody>
-        </Card>
-      ) : null}
+          {snapshot?.events.length ? (
+            <div>
+              <h3 className="text-sm font-bold text-ink-strong">Recent backend events</h3>
+              <ul className="mt-3 space-y-2">
+                {snapshot.events.slice(0, 5).map((event) => (
+                  <li
+                    key={event.id}
+                    className="rounded-control border border-surface-outline bg-surface-muted px-3 py-2 text-sm"
+                  >
+                    <p className="font-semibold text-ink-strong">{event.message}</p>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      {event.type} - {new Date(event.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      </details>
+
+      <details className="rounded-control border border-feedback-danger-border bg-feedback-danger-bg">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-feedback-danger-fg">
+          Danger zone
+        </summary>
+        <div className="space-y-4 border-t border-feedback-danger-border p-4">
+          <p className="text-sm text-feedback-danger-fg">
+            Delete selected run removes one saved idea and its files. Delete all cloud data removes
+            every saved run, backend event, and R2 object.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="danger"
+              disabled={!backendReachable || backendBusy || !selectedRun}
+              onClick={onDeleteSelectedRun}
+            >
+              <Trash2 aria-hidden="true" className="mr-2" size={17} />
+              Delete previewed run
+            </Button>
+            <Button
+              variant="danger"
+              disabled={!backendReachable || backendBusy || runs.length === 0}
+              onClick={onDeleteAllCloudData}
+            >
+              <Trash2 aria-hidden="true" className="mr-2" size={17} />
+              Delete all cloud data
+            </Button>
+          </div>
+        </div>
+      </details>
     </div>
   );
 };

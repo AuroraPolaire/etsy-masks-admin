@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ActivityLog } from './components/ActivityLog';
 import { AppSidebar } from './components/AppSidebar';
@@ -75,6 +75,7 @@ export const App = () => {
   );
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('brief');
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
+  const [hasAutoLoadedCloudSaves, setHasAutoLoadedCloudSaves] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
@@ -134,6 +135,19 @@ export const App = () => {
     runBusyAction,
     confirmAction: requestConfirmation,
   });
+  const backendHealth = backendCache.health;
+  const testBackendConnection = backendCache.testConnection;
+  useEffect(() => {
+    if (
+      activeSectionId === 'backend' &&
+      !hasAutoLoadedCloudSaves &&
+      backendHealth === null &&
+      busyAction === null
+    ) {
+      setHasAutoLoadedCloudSaves(true);
+      testBackendConnection();
+    }
+  }, [activeSectionId, backendHealth, busyAction, hasAutoLoadedCloudSaves, testBackendConnection]);
   const generateImageFile = useCallback(
     async (
       settings: OpenAIImageSettings,
@@ -430,7 +444,7 @@ export const App = () => {
                       Configure the backend OpenAI proxy for AI generation, or upload files manually
                       for each topic.
                     </span>
-                    <Button onClick={() => setActiveSectionId('backend')}>Open Backend</Button>
+                    <Button onClick={() => setActiveSectionId('backend')}>Open Cloud saves</Button>
                   </Alert>
                 ) : null}
                 <PromptManager
@@ -557,14 +571,12 @@ export const App = () => {
       <div className="min-w-0 space-y-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
-            Backend
+            Cloud saves
           </p>
-          <h2 className="mt-1 text-2xl font-bold text-ink-strong">
-            Cloud run cache and OpenAI proxy
-          </h2>
+          <h2 className="mt-1 text-2xl font-bold text-ink-strong">Cloud saves</h2>
           <p className="mt-1 max-w-3xl text-sm text-ink-muted">
-            Manage the optional Cloudflare Worker, selectable saved runs, R2 file backups, and
-            server-side OpenAI key handling.
+            Save the current project, search previous runs by idea, and restore the brief with its
+            files when you need to continue older work.
           </p>
         </div>
         <BackendDataPanel
@@ -581,7 +593,6 @@ export const App = () => {
           onRestoreRun={backendCache.restoreRun}
           onTestConnection={backendCache.testConnection}
           onBackupToCloud={backendCache.backupToCloud}
-          onRestoreFromCloud={backendCache.restoreSelectedRun}
           onDeleteSelectedRun={backendCache.deleteSelectedRun}
           onDeleteAllCloudData={backendCache.deleteAllCloudData}
         />

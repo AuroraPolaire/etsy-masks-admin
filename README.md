@@ -24,8 +24,8 @@ OpenAI proxying.
 - JSZip export for a full review archive plus nested Etsy upload ZIP.
 - localStorage persistence for project metadata.
 - Project JSON export/import for metadata backup.
-- Optional Cloudflare Worker backend with D1 project metadata, R2 file backups, and a Backend
-  sidebar page for data management.
+- Optional Cloudflare Worker backend with D1 project metadata, R2 file backups, and a Cloud saves
+  sidebar page for saved-run restore.
 
 ## Privacy
 
@@ -36,7 +36,7 @@ OpenAI credentials and backend access policy live only in Cloudflare Worker conf
 frontend calls same-origin `/api/*` endpoints and does not contain browser-entered API keys, Worker
 URLs, or admin tokens.
 
-Uploaded binary files are kept in browser memory only unless you explicitly use the Backend page to
+Uploaded binary files are kept in browser memory only unless you explicitly use Cloud saves to
 back up to Cloudflare R2. Export the archive, back up to Cloudflare, or re-upload files after
 refreshing the page.
 
