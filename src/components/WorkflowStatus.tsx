@@ -19,17 +19,21 @@ export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: Workf
   ).length;
   const pdfCount = files.filter((file) => file.kind === 'generated-pdf').length;
   const previewCount = files.filter((file) => file.kind === 'generated-preview').length;
-  const nextStep = !hasOpenAIKey
-    ? 'Add the session OpenAI key in Settings.'
-    : approvedCount < project.subjects.length
-      ? 'Generate and approve missing images.'
-      : pdfCount === 0
-        ? 'Generate printable PDFs.'
-        : previewCount < 5
-          ? 'Generate marketplace previews.'
-          : qaResult.status === 'etsy-ready'
-            ? 'Export the final ZIP.'
-            : 'Fix the remaining QA items.';
+  const nextStep = !project.lastBriefUpdatedAt
+    ? 'Draft the brief or edit listing copy.'
+    : project.subjects.length === 0
+      ? 'Add the mask topics for this bundle.'
+      : !hasOpenAIKey && approvedCount < project.subjects.length
+        ? 'Add an OpenAI key in Settings or upload images.'
+        : approvedCount < project.subjects.length
+          ? 'Generate and approve missing images.'
+          : pdfCount === 0
+            ? 'Generate printable PDFs.'
+            : previewCount < 5
+              ? 'Generate marketplace previews.'
+              : qaResult.status === 'etsy-ready'
+                ? 'Export the final ZIP.'
+                : 'Fix the remaining QA items.';
 
   return (
     <Card>

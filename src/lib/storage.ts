@@ -82,6 +82,38 @@ const readPdfSettings = (
   };
 };
 
+const hasChangedSettings = (
+  settings: Project['settings'],
+  fallbackSettings: Project['settings'],
+): boolean =>
+  (Object.keys(fallbackSettings) as Array<keyof Project['settings']>).some(
+    (key) => settings[key] !== fallbackSettings[key],
+  );
+
+const readLastBriefUpdatedAt = (
+  projectLike: Record<string, unknown>,
+  settings: Project['settings'],
+  subjects: Project['subjects'],
+  fallback: Project,
+): string | undefined => {
+  if (typeof projectLike.lastBriefUpdatedAt === 'string') {
+    return projectLike.lastBriefUpdatedAt;
+  }
+
+  if (subjects.length > 0 || hasChangedSettings(settings, fallback.settings)) {
+    return typeof projectLike.updatedAt === 'string' ? projectLike.updatedAt : fallback.updatedAt;
+  }
+
+  return undefined;
+};
+
+const omitLastBriefUpdatedAt = (projectLike: Record<string, unknown>): Record<string, unknown> => {
+  const sanitizedProject = { ...projectLike };
+  delete sanitizedProject.lastBriefUpdatedAt;
+
+  return sanitizedProject;
+};
+
 export const loadProject = (): Project => {
   const fallback = createDefaultProject();
 
@@ -95,16 +127,20 @@ export const loadProject = (): Project => {
     if (!isRecord(parsed) || !isRecord(parsed.settings)) {
       return fallback;
     }
+    const settings = {
+      ...fallback.settings,
+      ...(isRecord(parsed.settings) ? parsed.settings : {}),
+    };
+    const subjects = removeLegacyMockSubjects(readSubjects(parsed));
+    const lastBriefUpdatedAt = readLastBriefUpdatedAt(parsed, settings, subjects, fallback);
 
     return {
       ...fallback,
-      ...parsed,
-      settings: {
-        ...fallback.settings,
-        ...(isRecord(parsed.settings) ? parsed.settings : {}),
-      },
+      ...omitLastBriefUpdatedAt(parsed),
+      settings,
       pdfSettings: readPdfSettings(parsed.pdfSettings, fallback.pdfSettings),
-      subjects: removeLegacyMockSubjects(readSubjects(parsed)),
+      subjects,
+      ...(lastBriefUpdatedAt ? { lastBriefUpdatedAt } : {}),
       updatedAt: new Date().toISOString(),
     };
   } catch {
@@ -132,17 +168,20 @@ export const parseProjectBackup = (rawJson: string): Project => {
   const backup = parsed as { appVersion?: string; project: Record<string, unknown> };
   const fallback = createDefaultProject();
   const project = backup.project;
-  const settings = isRecord(project.settings) ? project.settings : {};
+  const settings = {
+    ...fallback.settings,
+    ...(isRecord(project.settings) ? project.settings : {}),
+  };
+  const subjects = removeLegacyMockSubjects(readSubjects(project));
+  const lastBriefUpdatedAt = readLastBriefUpdatedAt(project, settings, subjects, fallback);
 
   return {
     ...fallback,
-    ...project,
-    settings: {
-      ...fallback.settings,
-      ...settings,
-    },
+    ...omitLastBriefUpdatedAt(project),
+    settings,
     pdfSettings: readPdfSettings(project.pdfSettings, fallback.pdfSettings),
-    subjects: removeLegacyMockSubjects(readSubjects(project)),
+    subjects,
+    ...(lastBriefUpdatedAt ? { lastBriefUpdatedAt } : {}),
     updatedAt: new Date().toISOString(),
   };
 };

@@ -29,7 +29,11 @@ export const useProjectState = () => {
 
   const updateSettings = useCallback(
     (settings: ProjectSettings) => {
-      updateProject((currentProject) => ({ ...currentProject, settings }));
+      updateProject((currentProject) => ({
+        ...currentProject,
+        settings,
+        lastBriefUpdatedAt: nowIso(),
+      }));
     },
     [updateProject],
   );
@@ -47,6 +51,7 @@ export const useProjectState = () => {
         ...currentProject,
         settings: draft.settings,
         subjects: draft.subjects,
+        lastBriefUpdatedAt: nowIso(),
       }));
     },
     [updateProject],

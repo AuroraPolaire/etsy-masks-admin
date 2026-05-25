@@ -21,10 +21,13 @@ type PromptManagerProps = {
   files: ManagedFile[];
   canGenerateImages: boolean;
   generatingSubjectId: string | null;
+  missingImageCount?: number;
+  imageGenerationHint?: string;
   allowTopicEditing?: boolean;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
+  onGenerateMissingImages?: () => void;
   onApprove: (fileId: string) => void;
   onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
@@ -55,10 +58,13 @@ export const PromptManager = ({
   files,
   canGenerateImages,
   generatingSubjectId,
+  missingImageCount = 0,
+  imageGenerationHint,
   allowTopicEditing = true,
   onAddSubject,
   onRemoveSubject,
   onGenerateImage,
+  onGenerateMissingImages,
   onApprove,
   onReject,
   onDelete,
@@ -88,6 +94,25 @@ export const PromptManager = ({
               Generate, copy, and review one image per topic.
             </p>
           </div>
+          {!allowTopicEditing && prompts.length > 0 ? (
+            <div className="flex flex-col items-start gap-2 md:items-end">
+              <AIButton
+                disabled={
+                  !onGenerateMissingImages ||
+                  !canGenerateImages ||
+                  missingImageCount === 0 ||
+                  generatingSubjectId !== null
+                }
+                onClick={onGenerateMissingImages}
+              >
+                Generate missing images
+              </AIButton>
+              <p className="max-w-sm text-sm text-ink-muted md:text-right">
+                {imageGenerationHint ??
+                  `${missingImageCount} topic${missingImageCount === 1 ? '' : 's'} still need an approved image.`}
+              </p>
+            </div>
+          ) : null}
           {allowTopicEditing ? (
             <div className="flex w-full gap-2 md:w-auto">
               <Input

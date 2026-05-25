@@ -93,6 +93,7 @@ export type Project = {
   lastPdfGeneratedAt?: string;
   lastPreviewGeneratedAt?: string;
   lastImageApprovalAt?: string;
+  lastBriefUpdatedAt?: string;
   nestedEtsyUploadZipSizeBytes?: number;
 };
 
