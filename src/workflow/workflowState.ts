@@ -41,7 +41,7 @@ type CreateWorkflowStateParams = {
   project: Project;
   files: ManagedFile[];
   qaResult: QAResult;
-  hasOpenAIKey: boolean;
+  hasAIProvider: boolean;
   activeStepId: WorkflowStepId;
 };
 
@@ -52,7 +52,7 @@ export const createWorkflowState = ({
   project,
   files,
   qaResult,
-  hasOpenAIKey,
+  hasAIProvider,
   activeStepId,
 }: CreateWorkflowStateParams): WorkflowState => {
   const approvedImageCount = project.subjects.filter((subject) =>
@@ -168,8 +168,8 @@ export const createWorkflowState = ({
     ? 'Draft the brief or edit listing copy.'
     : !topicsComplete
       ? 'Add the mask topics for this bundle.'
-      : !hasOpenAIKey && !imagesComplete
-        ? 'Add an OpenAI key in Settings or upload images.'
+      : !hasAIProvider && !imagesComplete
+        ? 'Add an OpenAI key, configure the Backend proxy, or upload images.'
         : !imagesComplete
           ? 'Generate and approve missing images.'
           : !hasRequiredPdfs

@@ -9,7 +9,7 @@ module.exports = {
   },
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ['./tsconfig.eslint.json'],
+    project: ['./tsconfig.eslint.json', './worker/tsconfig.json'],
     tsconfigRootDir: __dirname,
     ecmaFeatures: {
       jsx: true,
@@ -54,7 +54,7 @@ module.exports = {
       config: path.join(__dirname, 'tailwind.config.ts'),
     },
   },
-  ignorePatterns: ['dist', 'coverage', 'node_modules'],
+  ignorePatterns: ['dist', 'coverage', 'node_modules', '.wrangler'],
   rules: {
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',

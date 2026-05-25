@@ -21,6 +21,11 @@ type UseOpenAIImageGenerationParams = {
   filesRef: MutableRefObject<ManagedFile[]>;
   appendFiles: (files: ManagedFile[]) => void;
   addActivity: AddActivity;
+  generateImageFile?: (
+    settings: OpenAIImageSettings,
+    prompt: PromptItem,
+    signal?: AbortSignal,
+  ) => Promise<File>;
 };
 
 const createGeneratedManagedFile = async (
@@ -41,6 +46,15 @@ const createGeneratedManagedFile = async (
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError';
 
+const generateImageWithSessionKey = async (
+  settings: OpenAIImageSettings,
+  prompt: PromptItem,
+  signal?: AbortSignal,
+): Promise<File> => {
+  const { generateImageWithOpenAI } = await import('../lib/openaiImages');
+  return generateImageWithOpenAI(settings, prompt, signal);
+};
+
 export const useOpenAIImageGeneration = ({
   subjects,
   prompts,
@@ -48,6 +62,7 @@ export const useOpenAIImageGeneration = ({
   filesRef,
   appendFiles,
   addActivity,
+  generateImageFile = generateImageWithSessionKey,
 }: UseOpenAIImageGenerationParams) => {
   const [settings, setSettings] = useState<OpenAIImageSettings>(DEFAULT_OPENAI_IMAGE_SETTINGS);
   const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);
@@ -63,8 +78,7 @@ export const useOpenAIImageGeneration = ({
       context?.setProgress(`Generating ${prompt.subjectName}...`);
 
       try {
-        const { generateImageWithOpenAI } = await import('../lib/openaiImages');
-        const generatedFile = await generateImageWithOpenAI(settings, prompt, context?.signal);
+        const generatedFile = await generateImageFile(settings, prompt, context?.signal);
         if (context?.signal.aborted) {
           return;
         }
@@ -92,7 +106,7 @@ export const useOpenAIImageGeneration = ({
         setGeneratingSubjectId(null);
       }
     },
-    [addActivity, appendFiles, filesRef, prompts, settings, subjects],
+    [addActivity, appendFiles, filesRef, generateImageFile, prompts, settings, subjects],
   );
 
   const generateMissingSubjectImages = useCallback(
@@ -102,7 +116,6 @@ export const useOpenAIImageGeneration = ({
       }
 
       try {
-        const { generateImageWithOpenAI } = await import('../lib/openaiImages');
         const generatedManagedFiles: ManagedFile[] = [];
         let workingFiles = filesRef.current;
 
@@ -117,7 +130,7 @@ export const useOpenAIImageGeneration = ({
               prompt.subjectName
             }...`,
           );
-          const generatedFile = await generateImageWithOpenAI(settings, prompt, context?.signal);
+          const generatedFile = await generateImageFile(settings, prompt, context?.signal);
           if (context?.signal.aborted) {
             break;
           }
@@ -159,7 +172,15 @@ export const useOpenAIImageGeneration = ({
         setGeneratingSubjectId(null);
       }
     },
-    [addActivity, appendFiles, filesRef, missingImagePrompts, settings, subjects],
+    [
+      addActivity,
+      appendFiles,
+      filesRef,
+      generateImageFile,
+      missingImagePrompts,
+      settings,
+      subjects,
+    ],
   );
 
   return {

@@ -1,0 +1,18 @@
+name = "etsy-masks-admin-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+APP_VERSION = "1.0.0"
+ALLOWED_ORIGINS = "http://localhost:5173,https://aurorapolaire.github.io"
+MAX_FILE_BYTES = "52428800"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "etsy_masks_admin"
+database_id = "replace-with-d1-database-id"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "etsy-masks-admin-backups"

@@ -70,9 +70,17 @@ test.describe('accessibility smoke checks', () => {
     await prepareCleanPage(page);
   });
 
-  test('home and settings have no obvious axe violations', async ({ page }) => {
+  test('home, backend, and settings have no obvious axe violations', async ({ page }) => {
     await waitForUiToSettle(page);
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+    expect(results.violations).toEqual([]);
+
+    await page.getByRole('button', { name: 'Backend' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Cloud run cache and OpenAI proxy' }),
+    ).toBeVisible();
+    await waitForUiToSettle(page);
+    results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
     await page.getByRole('button', { name: 'Settings' }).click();

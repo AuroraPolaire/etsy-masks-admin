@@ -25,6 +25,7 @@ export type ActivityType =
   | 'project-imported'
   | 'project-exported'
   | 'archive-exported'
+  | 'cloud-synced'
   | 'error';
 
 export type AddActivity = (type: ActivityType, level: ActivityLevel, message: string) => void;
@@ -36,6 +37,7 @@ export type BusyAction =
   | 'pdfs'
   | 'previews'
   | 'archive'
+  | 'backend-sync'
   | 'project-json'
   | 'import'
   | null;
@@ -231,4 +233,66 @@ export type ProjectJsonBackup = {
   appVersion: string;
   exportedAt: string;
   project: Project;
+};
+
+export type BackendHealth = {
+  ok: boolean;
+  version: string;
+  storage: {
+    d1: boolean;
+    r2: boolean;
+  };
+  authConfigured: boolean;
+  openaiProxyReady: boolean;
+  maxFileBytes: number;
+};
+
+export type BackendFileRecord = {
+  id: string;
+  runId: string;
+  projectId: string;
+  name: string;
+  originalName: string;
+  size: number;
+  type: string;
+  kind: ManagedFileKind;
+  addedAt: string;
+  reviewState: FileReviewState;
+  reviewNotes: string;
+  mappedSubjectId?: string;
+  explicitlyConfirmed: boolean;
+  imageMetadata?: ImageMetadata;
+  updatedAt: string;
+};
+
+export type BackendEvent = {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: string;
+};
+
+export type BackendProjectSnapshot = {
+  runId?: string;
+  idea?: string;
+  project: Project | null;
+  updatedAt?: string;
+  files: BackendFileRecord[];
+  events: BackendEvent[];
+};
+
+export type BackendRunSummary = {
+  id: string;
+  projectId: string;
+  idea: string;
+  createdAt: string;
+  updatedAt: string;
+  fileCount: number;
+  totalSizeBytes: number;
+};
+
+export type BackendImageResponse = {
+  fileName: string;
+  mimeType: string;
+  base64: string;
 };

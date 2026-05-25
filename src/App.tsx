@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityLog } from './components/ActivityLog';
 import { AppSidebar } from './components/AppSidebar';
 import { ArchiveActions } from './components/ArchiveActions';
+import { BackendDataPanel } from './components/BackendDataPanel';
 import { BrowserSupportWarning } from './components/BrowserSupportWarning';
 import { EtsySeoPanel } from './components/EtsySeoPanel';
 import { FileUploader } from './components/FileUploader';
@@ -25,6 +26,7 @@ import { StepAdvanceButton, StepSection } from './components/ui/StepSection';
 import { useToast } from './components/ui/toastContext';
 import { WorkflowStatus } from './components/WorkflowStatus';
 import { useActivityLog } from './hooks/useActivityLog';
+import { useBackendCache } from './hooks/useBackendCache';
 import { useBusyAction } from './hooks/useBusyAction';
 import { useExportActions } from './hooks/useExportActions';
 import { useManagedFiles } from './hooks/useManagedFiles';
@@ -38,7 +40,13 @@ import { createWorkflowState } from './workflow/workflowState';
 
 import type { AppSectionId } from './components/AppSidebar';
 import type { ConfirmDialogRequest } from './components/ui/ConfirmDialog';
-import type { ActivityLevel, ActivityType, ProjectDraft } from './types';
+import type {
+  ActivityLevel,
+  ActivityType,
+  OpenAIImageSettings,
+  ProjectDraft,
+  PromptItem,
+} from './types';
 import type { WorkflowStepId } from './workflow/workflowState';
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
@@ -50,6 +58,9 @@ const toastTitles: Record<ActivityLevel, string> = {
   warning: 'Needs attention',
   error: 'Something went wrong',
 };
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError';
 
 export const App = () => {
   const browserSupport = useMemo(() => checkBrowserSupport(), []);
@@ -96,6 +107,7 @@ export const App = () => {
     clearAllMappings,
     clearSubjectMapping,
     clearFiles,
+    replaceFiles,
     replaceGeneratedFilesByKind,
   } = useManagedFiles({
     subjects: project.subjects,
@@ -103,6 +115,11 @@ export const App = () => {
     onImageApproved: markImageApproved,
   });
   const { busyAction, busyProgress, cancelBusyAction, runBusyAction } = useBusyAction();
+  const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
+    return new Promise<boolean>((resolve) => {
+      setConfirmRequest({ ...request, resolve });
+    });
+  }, []);
   const prompts = useMemo(
     () => createPromptItems(project.subjects, project.settings),
     [project.settings, project.subjects],
@@ -111,6 +128,30 @@ export const App = () => {
   const missingImagePrompts = useMemo(
     () => prompts.filter((prompt) => !getFileForSubject(files, prompt.subjectId)),
     [files, prompts],
+  );
+  const backendCache = useBackendCache({
+    project,
+    files,
+    replaceProject,
+    replaceFiles,
+    addActivity,
+    runBusyAction,
+    confirmAction: requestConfirmation,
+  });
+  const generateImageFile = useCallback(
+    async (
+      settings: OpenAIImageSettings,
+      prompt: PromptItem,
+      signal?: AbortSignal,
+    ): Promise<File> => {
+      if (backendCache.canUseOpenAIProxy) {
+        return backendCache.generateImage(settings, prompt, signal);
+      }
+
+      const { generateImageWithOpenAI } = await import('./lib/openaiImages');
+      return generateImageWithOpenAI(settings, prompt, signal);
+    },
+    [backendCache],
   );
   const {
     openAISettings,
@@ -125,30 +166,26 @@ export const App = () => {
     filesRef,
     appendFiles,
     addActivity,
+    generateImageFile,
   });
   const hasOpenAIKey = openAISettings.apiKey.trim().length > 0;
+  const hasAIProvider = hasOpenAIKey || backendCache.canUseOpenAIProxy;
   const workflow = useMemo(
     () =>
       createWorkflowState({
         project,
         files,
         qaResult,
-        hasOpenAIKey,
+        hasAIProvider,
         activeStepId,
       }),
-    [activeStepId, files, hasOpenAIKey, project, qaResult],
+    [activeStepId, files, hasAIProvider, project, qaResult],
   );
-  const imageGenerationHint = !hasOpenAIKey
-    ? 'Add an OpenAI key in Settings to generate images.'
+  const imageGenerationHint = !hasAIProvider
+    ? 'Add an OpenAI key in Settings or configure the Backend proxy to generate images.'
     : missingImagePrompts.length === 0
       ? 'All topics have approved images.'
       : `${missingImagePrompts.length} topic${missingImagePrompts.length === 1 ? '' : 's'} still need an approved image.`;
-  const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
-    return new Promise<boolean>((resolve) => {
-      setConfirmRequest({ ...request, resolve });
-    });
-  }, []);
-
   const handleConfirmCancel = useCallback(() => {
     confirmRequest?.resolve(false);
     setConfirmRequest(null);
@@ -199,6 +236,31 @@ export const App = () => {
         setProgress('Drafting product brief...');
         const apiKey = openAISettings.apiKey.trim();
 
+        if (backendCache.canUseOpenAIProxy) {
+          try {
+            const draft = await backendCache.generateProjectDraft(initialPrompt, signal);
+            if (signal.aborted) {
+              return;
+            }
+            await applyDraftToProject(
+              draft,
+              `Drafted the brief through the backend proxy and added ${draft.subjects.length} topics.`,
+            );
+          } catch (error) {
+            if (isAbortError(error)) {
+              addActivity('project-imported', 'warning', 'Brief generation was cancelled.');
+              return;
+            }
+
+            addActivity(
+              'error',
+              'error',
+              getErrorMessage(error, 'Could not draft the brief through the backend proxy.'),
+            );
+          }
+          return;
+        }
+
         if (!apiKey) {
           if (signal.aborted) {
             return;
@@ -238,7 +300,7 @@ export const App = () => {
         }
       });
     },
-    [addActivity, applyDraftToProject, openAISettings.apiKey, runBusyAction],
+    [addActivity, applyDraftToProject, backendCache, openAISettings.apiKey, runBusyAction],
   );
 
   const handleAddSubject = useCallback(
@@ -337,6 +399,7 @@ export const App = () => {
       settings={openAISettings}
       missingImageCount={missingImagePrompts.length}
       subjectCount={project.subjects.length}
+      backendOpenAIReady={backendCache.canUseOpenAIProxy}
       onChange={setOpenAISettings}
     />
   );
@@ -365,7 +428,7 @@ export const App = () => {
             {step.id === 'brief' ? (
               <div className="space-y-6">
                 <InitialPromptPanel
-                  hasOpenAIKey={hasOpenAIKey}
+                  hasOpenAIKey={hasAIProvider}
                   disabled={busyAction !== null}
                   isGenerating={busyAction === 'brief-generation'}
                   onFillBrief={handleFillProductBrief}
@@ -401,22 +464,26 @@ export const App = () => {
             ) : null}
             {step.id === 'images' ? (
               <div className="space-y-6">
-                {!hasOpenAIKey ? (
+                {!hasAIProvider ? (
                   <Alert
                     tone="info"
                     className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <span>
-                      Add an OpenAI key in Settings to generate images, or upload files manually.
+                      Add an OpenAI key in Settings, configure the Backend proxy, or upload files
+                      manually.
                     </span>
-                    <Button onClick={() => setActiveSectionId('settings')}>Open Settings</Button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button onClick={() => setActiveSectionId('settings')}>Open Settings</Button>
+                      <Button onClick={() => setActiveSectionId('backend')}>Open Backend</Button>
+                    </div>
                   </Alert>
                 ) : null}
                 <PromptManager
                   subjects={project.subjects}
                   prompts={prompts}
                   files={files}
-                  canGenerateImages={hasOpenAIKey && busyAction === null}
+                  canGenerateImages={hasAIProvider && busyAction === null}
                   generatingSubjectId={generatingSubjectId}
                   missingImageCount={missingImagePrompts.length}
                   imageGenerationHint={imageGenerationHint}
@@ -531,6 +598,57 @@ export const App = () => {
     </main>
   );
 
+  const renderBackendView = () => (
+    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
+      <div className="min-w-0 space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
+            Backend
+          </p>
+          <h2 className="mt-1 text-2xl font-bold text-ink-strong">
+            Cloud run cache and OpenAI proxy
+          </h2>
+          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
+            Manage the optional Cloudflare Worker, selectable saved runs, R2 file backups, and
+            server-side OpenAI key handling.
+          </p>
+        </div>
+        <BackendDataPanel
+          settings={backendCache.settings}
+          health={backendCache.health}
+          runs={backendCache.runs}
+          selectedRunId={backendCache.selectedRunId}
+          snapshot={backendCache.snapshot}
+          saveIdea={backendCache.saveIdea}
+          suggestedIdea={backendCache.suggestedIdea}
+          files={files}
+          busyAction={busyAction}
+          onSettingsChange={backendCache.setSettings}
+          onSaveIdeaChange={backendCache.setSaveIdea}
+          onRunSelected={backendCache.selectRun}
+          onTestConnection={backendCache.testConnection}
+          onBackupToCloud={backendCache.backupToCloud}
+          onRestoreFromCloud={backendCache.restoreSelectedRun}
+          onDeleteSelectedRun={backendCache.deleteSelectedRun}
+          onDeleteAllCloudData={backendCache.deleteAllCloudData}
+        />
+      </div>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+        <WorkflowStatus
+          workflow={workflow}
+          qaResult={qaResult}
+          busyAction={busyAction}
+          busyProgress={busyProgress}
+          onCancelBusyAction={cancelBusyAction}
+        />
+        <ActivityLog items={activityLog} />
+        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
+          Clear session files
+        </Button>
+      </aside>
+    </main>
+  );
+
   const renderInsightsView = () => (
     <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
       <div className="min-w-0 space-y-6">
@@ -578,6 +696,10 @@ export const App = () => {
   );
 
   const renderActiveSection = () => {
+    if (activeSectionId === 'backend') {
+      return renderBackendView();
+    }
+
     if (activeSectionId === 'settings') {
       return renderSettingsView();
     }

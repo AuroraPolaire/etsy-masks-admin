@@ -12,6 +12,7 @@ type OpenAIImagePanelProps = {
   settings: OpenAIImageSettings;
   missingImageCount: number;
   subjectCount: number;
+  backendOpenAIReady: boolean;
   onChange: (settings: OpenAIImageSettings) => void;
 };
 
@@ -19,6 +20,7 @@ export const OpenAIImagePanel = ({
   settings,
   missingImageCount,
   subjectCount,
+  backendOpenAIReady,
   onChange,
 }: OpenAIImagePanelProps) => {
   const update = <Key extends keyof OpenAIImageSettings>(
@@ -28,6 +30,7 @@ export const OpenAIImagePanel = ({
     onChange({ ...settings, [key]: value });
   };
   const hasApiKey = settings.apiKey.trim().length > 0;
+  const hasAIProvider = hasApiKey || backendOpenAIReady;
   const transparentUnsupported =
     settings.background === 'transparent' &&
     (settings.model === 'gpt-image-2' ||
@@ -49,12 +52,17 @@ export const OpenAIImagePanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">OpenAI configuration</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Add a session-only OpenAI key for brief drafting and image generation.
+              Use the Cloudflare proxy when it is configured, or add a session-only key for direct
+              browser calls.
             </p>
           </div>
           <div>
-            <Badge tone={hasApiKey ? 'success' : 'warning'}>
-              {hasApiKey ? 'Session key ready' : 'API key required'}
+            <Badge tone={hasAIProvider ? 'success' : 'warning'}>
+              {backendOpenAIReady
+                ? 'Backend proxy ready'
+                : hasApiKey
+                  ? 'Session key ready'
+                  : 'API key required'}
             </Badge>
           </div>
         </div>
@@ -66,7 +74,11 @@ export const OpenAIImagePanel = ({
           type="password"
           autoComplete="off"
           value={settings.apiKey}
-          helperText="Kept in memory for this tab only. It is not saved to localStorage, project JSON, manifests, or ZIP files."
+          helperText={
+            backendOpenAIReady
+              ? 'Optional fallback. The backend proxy uses the Worker secret and keeps the OpenAI key out of this browser.'
+              : 'Kept in memory for this tab only. It is not saved to localStorage, project JSON, manifests, or ZIP files.'
+          }
           onChange={(event) => update('apiKey', event.target.value)}
         />
         <div className="grid gap-4">

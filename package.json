@@ -5,11 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run worker:typecheck && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && npm run worker:typecheck",
+    "worker:typecheck": "tsc -p worker/tsconfig.json --noEmit",
+    "worker:dev": "wrangler dev --config worker/wrangler.toml",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.toml",
+    "worker:migrate:local": "wrangler d1 migrations apply etsy_masks_admin --local --config worker/wrangler.toml",
+    "worker:migrate:remote": "wrangler d1 migrations apply etsy_masks_admin --remote --config worker/wrangler.toml",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
@@ -32,6 +37,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "@cloudflare/workers-types": "^4.20260525.1",
     "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
@@ -60,6 +66,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "vite": "^6.4.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.94.0"
   }
 }

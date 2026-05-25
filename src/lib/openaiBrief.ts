@@ -8,7 +8,7 @@ type OpenAIProjectBriefSettings = {
   signal?: AbortSignal;
 };
 
-type OpenAIResponsesApiResponse = {
+export type OpenAIResponsesApiResponse = {
   output_text?: string;
   output?: Array<{
     type?: string;
