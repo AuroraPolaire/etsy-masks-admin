@@ -9,13 +9,13 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'border-teal-500/70 bg-teal-700/90 text-white shadow-sm hover:bg-teal-800 focus:ring-teal-700',
+    'border-brand bg-brand text-ink-inverse shadow-sm hover:bg-brand-strong focus:ring-brand/25',
   secondary:
-    'border-white/70 bg-white/65 text-slate-900 shadow-sm backdrop-blur-md hover:bg-white/85 focus:ring-slate-500',
+    'border-surface-outline bg-surface-raised text-ink-strong shadow-sm hover:bg-surface-muted focus:ring-brand/20',
   danger:
-    'border-red-600/70 bg-red-700/90 text-white shadow-sm hover:bg-red-800 focus:ring-red-700',
+    'border-feedback-danger-fg bg-feedback-danger-fg text-ink-inverse shadow-sm hover:bg-feedback-danger-fg/90 focus:ring-feedback-danger-border',
   ghost:
-    'border-transparent bg-white/20 text-slate-700 backdrop-blur-md hover:bg-white/55 focus:ring-slate-500',
+    'border-transparent bg-transparent text-ink-base hover:bg-surface-muted focus:ring-brand/20',
 };
 
 export const Button = ({
@@ -27,7 +27,7 @@ export const Button = ({
 }: ButtonProps) => (
   <button
     type={type}
-    className={`inline-flex min-h-10 items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white/60 disabled:cursor-not-allowed disabled:opacity-55 ${variantClasses[variant]} ${className}`}
+    className={`inline-flex min-h-10 max-w-full items-center justify-center rounded-control border px-3 py-2 text-center text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface-panel disabled:cursor-not-allowed disabled:opacity-55 ${variantClasses[variant]} ${className}`}
     {...props}
   >
     {children}

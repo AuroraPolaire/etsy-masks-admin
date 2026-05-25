@@ -1,8 +1,10 @@
 import { MAX_ETSY_FILE_BYTES } from '../constants';
 import { formatBytes, getExpectedFilename, isImageFile } from '../lib/files';
+import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
+import { Surface } from './ui/Surface';
 import { Textarea } from './ui/Textarea';
 
 import type { SubjectItem, ManagedFile } from '../types';
@@ -48,8 +50,8 @@ export const FilePreviewCard = ({
   const mappedSubject = subjects.find((subject) => subject.id === file.mappedSubjectId);
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-lg border border-white/70 bg-white/55 shadow-sm backdrop-blur-md">
-      <div className="flex aspect-square items-center justify-center bg-white/45">
+    <Surface as="article" variant="raised" className="flex flex-col overflow-hidden">
+      <div className="flex aspect-square items-center justify-center bg-surface-muted">
         {image && file.objectUrl ? (
           <img
             className="size-full object-contain p-3"
@@ -57,8 +59,8 @@ export const FilePreviewCard = ({
             alt={`Preview of ${file.name}`}
           />
         ) : (
-          <div className="text-center text-sm text-slate-600">
-            <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-md bg-white/70 text-2xl shadow-sm">
+          <div className="text-center text-sm text-ink-muted">
+            <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-control bg-surface-raised text-2xl shadow-sm">
               {file.name.split('.').pop()?.toUpperCase() ?? 'FILE'}
             </div>
             Non-image file
@@ -67,7 +69,7 @@ export const FilePreviewCard = ({
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
-          <h3 className="break-words text-sm font-bold text-slate-950">{file.name}</h3>
+          <h3 className="break-words text-sm font-bold text-ink-strong">{file.name}</h3>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge tone={reviewTone[file.reviewState]}>{file.reviewState}</Badge>
             <Badge tone="neutral">{formatBytes(file.size)}</Badge>
@@ -75,24 +77,24 @@ export const FilePreviewCard = ({
           </div>
         </div>
         {file.imageMetadata ? (
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-muted">
             Dimensions: {file.imageMetadata.width} x {file.imageMetadata.height}px
           </p>
         ) : null}
         {isLowResolution ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900">
+          <Alert tone="warning" density="compact">
             Below 2000x2000. Prefer 3000x3000 or higher for good print quality.
-          </p>
+          </Alert>
         ) : null}
         {isRecommendedResolution ? (
-          <p className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-900">
+          <Alert tone="success" density="compact">
             Meets the 3000x3000 recommended print-quality target.
-          </p>
+          </Alert>
         ) : null}
         {isLarge ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900">
+          <Alert tone="warning" density="compact">
             Over 20MB. Etsy upload files may need manual splitting or smaller source images.
-          </p>
+          </Alert>
         ) : null}
         {file.kind === 'uploaded' && image ? (
           <>
@@ -110,7 +112,7 @@ export const FilePreviewCard = ({
               onChange={(event) => onMap(file.id, event.target.value || undefined)}
             />
             {mappedSubject ? (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-muted">
                 Export rename: {getExpectedFilename(mappedSubject.name)}
               </p>
             ) : null}
@@ -142,6 +144,6 @@ export const FilePreviewCard = ({
           </div>
         )}
       </div>
-    </article>
+    </Surface>
   );
 };

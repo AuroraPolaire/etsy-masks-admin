@@ -23,6 +23,11 @@ describe('PromptManager', () => {
         onAddSubject={vi.fn()}
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onDelete={vi.fn()}
+        onNotesChange={vi.fn()}
+        onConfirmReview={vi.fn()}
         onCopy={vi.fn()}
       />,
     );

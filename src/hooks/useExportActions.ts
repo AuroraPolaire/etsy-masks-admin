@@ -18,6 +18,12 @@ type UseExportActionsParams = {
   clearFiles: () => void;
   addActivity: AddActivity;
   runBusyAction: RunBusyAction;
+  confirmAction: (options: {
+    title: string;
+    description: string;
+    confirmLabel: string;
+    cancelLabel?: string;
+  }) => Promise<boolean>;
 };
 
 export const useExportActions = ({
@@ -29,6 +35,7 @@ export const useExportActions = ({
   clearFiles,
   addActivity,
   runBusyAction,
+  confirmAction,
 }: UseExportActionsParams) => {
   const generatePdfs = () =>
     runBusyAction('pdfs', async () => {
@@ -156,9 +163,12 @@ export const useExportActions = ({
         }));
 
         if (result.needsReview) {
-          const shouldDownload = window.confirm(
-            'This archive is marked needs review. Critical QA checks or Etsy size checks need attention. Download anyway?',
-          );
+          const shouldDownload = await confirmAction({
+            title: 'Download archive marked needs review?',
+            description:
+              'Critical QA checks or Etsy size checks still need attention. The ZIP can be downloaded for inspection, but it should not be uploaded to Etsy until the blockers are resolved.',
+            confirmLabel: 'Download anyway',
+          });
           if (!shouldDownload) {
             addActivity(
               'archive-exported',

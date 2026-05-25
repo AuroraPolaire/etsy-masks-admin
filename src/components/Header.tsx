@@ -7,14 +7,14 @@ type HeaderProps = {
 };
 
 export const Header = ({ qaResult }: HeaderProps) => (
-  <header className="sticky top-0 z-20 border-b border-white/60 bg-white/55 backdrop-blur-xl">
+  <header className="sticky top-0 z-20 border-b border-surface-divider bg-surface-panel/95 backdrop-blur">
     <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-700">
+        <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
           Static Etsy studio
         </p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-950 md:text-3xl">Mask Bundle Admin</h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-600">
+        <h1 className="mt-1 text-2xl font-bold text-ink-strong md:text-3xl">Mask Bundle Admin</h1>
+        <p className="mt-1 max-w-3xl text-sm text-ink-muted">
           Build printable mask bundles for any topic, generate images, create PDFs and previews, and
           export a ready-to-review archive without a backend.
         </p>

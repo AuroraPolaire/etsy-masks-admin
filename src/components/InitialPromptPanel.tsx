@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { AIButton } from './ui/AIButton';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -29,8 +30,8 @@ export const InitialPromptPanel = ({
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">Start from an idea</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <h2 className="text-lg font-bold text-ink-strong">Start from an idea</h2>
+            <p className="mt-1 text-sm text-ink-muted">
               Paste a short bundle idea and draft the brief, tags, description, and topic list.
             </p>
           </div>
@@ -48,22 +49,24 @@ export const InitialPromptPanel = ({
           value={initialPrompt}
           onChange={(event) => setInitialPrompt(event.target.value)}
         />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-muted">
           {hasOpenAIKey
             ? 'Uses the same pasted OpenAI API key as image generation. The key is not saved.'
             : 'Paste an OpenAI API key above to draft this with AI. Without a key, the app uses a local template.'}
         </p>
-        <Button
-          variant="primary"
-          disabled={disabled || initialPrompt.trim().length === 0}
-          onClick={applyDraft}
-        >
-          {isGenerating
-            ? 'Filling product brief...'
-            : hasOpenAIKey
-              ? 'Fill product brief with AI'
-              : 'Fill product brief locally'}
-        </Button>
+        {hasOpenAIKey ? (
+          <AIButton disabled={disabled || initialPrompt.trim().length === 0} onClick={applyDraft}>
+            {isGenerating ? 'Filling product brief...' : 'Fill product brief with AI'}
+          </AIButton>
+        ) : (
+          <Button
+            variant="primary"
+            disabled={disabled || initialPrompt.trim().length === 0}
+            onClick={applyDraft}
+          >
+            {isGenerating ? 'Filling product brief...' : 'Fill product brief locally'}
+          </Button>
+        )}
       </CardBody>
     </Card>
   );

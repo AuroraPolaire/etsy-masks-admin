@@ -3,8 +3,36 @@
 @tailwind utilities;
 
 :root {
-  color: #172033;
-  background: #f6f8fb;
+  --color-canvas: 245 247 249;
+  --color-surface-panel: 255 255 255;
+  --color-surface-raised: 255 255 255;
+  --color-surface-muted: 248 250 251;
+  --color-surface-inset: 239 244 243;
+  --color-surface-outline: 216 225 229;
+  --color-surface-divider: 230 236 239;
+  --color-ink-strong: 16 24 32;
+  --color-ink-base: 38 51 61;
+  --color-ink-muted: 97 112 125;
+  --color-ink-subtle: 137 150 161;
+  --color-ink-inverse: 255 255 255;
+  --color-brand: 15 118 110;
+  --color-brand-strong: 11 79 73;
+  --color-brand-subtle: 231 246 243;
+  --color-brand-border: 169 221 212;
+  --color-success-bg: 234 248 239;
+  --color-success-border: 183 228 199;
+  --color-success-fg: 23 100 60;
+  --color-warning-bg: 255 247 229;
+  --color-warning-border: 247 212 139;
+  --color-warning-fg: 138 75 10;
+  --color-danger-bg: 255 240 240;
+  --color-danger-border: 245 181 181;
+  --color-danger-fg: 155 28 28;
+  --color-info-bg: 238 246 255;
+  --color-info-border: 187 217 255;
+  --color-info-fg: 22 91 156;
+  color: rgb(var(--color-ink-base));
+  background: rgb(var(--color-canvas));
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -15,14 +43,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(247, 251, 255, 0.96),
-      rgba(239, 248, 242, 0.92) 45%,
-      rgba(248, 246, 255, 0.96)
-    ),
-    #f6f8fb;
+  background: rgb(var(--color-canvas));
 }
 
 button,
@@ -33,5 +54,21 @@ textarea {
 }
 
 ::selection {
-  background: #c7f4e9;
+  background: rgb(var(--color-brand-border));
+}
+
+@keyframes workflow-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workflow-reveal {
+  animation: workflow-reveal 180ms ease-out;
 }
