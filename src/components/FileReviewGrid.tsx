@@ -36,9 +36,9 @@ export const FileReviewGrid = ({
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Review files</h2>
+            <h2 className="text-lg font-bold text-ink-strong">File review</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Approve, reject, map, and annotate uploaded images before generating outputs.
+              Map each source image, then approve or reject it before output generation.
             </p>
           </div>
           <p className="text-sm font-semibold text-ink-base">
@@ -49,14 +49,13 @@ export const FileReviewGrid = ({
       <CardBody>
         {sourceTotal > MAX_TOTAL_SOURCE_BYTES ? (
           <Alert tone="warning" className="mb-4">
-            Total uploaded source files exceed 150MB. Browser ZIP/PDF generation can become slow or
-            crash with very large files.
+            Uploaded source files exceed 150MB. Browser ZIP and PDF generation may be slow or fail.
           </Alert>
         ) : null}
         {files.length === 0 ? (
           <EmptyState>
-            Upload generated masks to start reviewing. Filename matches are mapped automatically,
-            and mismatches can be repaired with the topic dropdown.
+            Upload generated masks to start reviewing. Filename matches are assigned automatically,
+            and mismatches can be fixed with the topic dropdown.
           </EmptyState>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

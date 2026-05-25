@@ -122,46 +122,46 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'title-count',
       'critical',
       maskCount > 0 && titleMaskCount === maskCount,
-      'Title contains correct mask count',
+      'Title includes the correct mask count',
       maskCount === 0
         ? 'Add mask topics before finalizing the listing title count.'
         : titleMaskCount
           ? `Title says ${titleMaskCount}; topic list has ${maskCount}.`
-          : `Title must include the mask count ${maskCount}.`,
+          : `Title should include the mask count: ${maskCount}.`,
     ),
     createCheck(
       'description-digital-download',
       'critical',
       includesPhrase(project.settings.description, 'digital download'),
       'Description says digital download',
-      'Customers must understand this is a digital product.',
+      'Buyers need to know this is a digital product.',
     ),
     createCheck(
       'description-no-physical',
       'critical',
       includesPhrase(project.settings.description, 'no physical item will be shipped'),
-      'Description says no physical item will be shipped',
-      'This exact disclaimer prevents physical-delivery confusion.',
+      'Description says no physical item ships',
+      'This disclaimer prevents physical-delivery confusion.',
     ),
     createCheck(
       'safety-adult-supervision',
       'critical',
       includesPhrase(project.settings.safetyNote, 'adult supervision'),
-      'Safety note contains adult supervision',
-      'Required for cutting and use.',
+      'Safety note mentions adult supervision',
+      'Required for printing, cutting, and use.',
     ),
     createCheck(
       'safety-under-three',
       'critical',
       includesPhrase(project.settings.safetyNote, 'under 3'),
-      'Safety note contains under 3 warning',
+      'Safety note mentions under-3 warning',
       'Required for young-child safety.',
     ),
     createCheck(
       'blocked-ip',
       'critical',
       blockedTerms.length === 0,
-      'No obvious blocked IP terms in listing text',
+      'No obvious blocked IP terms',
       blockedTerms.length
         ? `Review these terms: ${blockedTerms.join(', ')}.`
         : 'No blocked terms found.',
@@ -170,7 +170,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'subject-count',
       'critical',
       maskCount > 0 && expectedFilenames.length === maskCount,
-      'Mask topic list length equals mask count',
+      'Topic list matches the mask count',
       maskCount === 0
         ? 'Add at least one mask topic.'
         : `${maskCount} topic records will generate ${expectedFilenames.length} expected files.`,
@@ -179,10 +179,10 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'approved-images',
       'critical',
       maskCount > 0 && everySubjectHasApprovedImage,
-      'Every mask topic has an approved mapped image',
+      'Every topic has an approved image',
       maskCount === 0
         ? 'Add mask topics before approving images.'
-        : `${approvedImages.length} of ${maskCount} topics have approved mapped images.`,
+        : `${approvedImages.length} of ${maskCount} topics have an approved image.`,
     ),
     createCheck(
       'rejected-not-approved',
@@ -190,14 +190,14 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       groups.rejected.every(
         (file) => !groups.approvedMapped.some((approved) => approved.id === file.id),
       ),
-      'No rejected image is included in final approved set',
-      'Rejected files are routed to PNG_Rejected_Do_Not_Upload.',
+      'Rejected images stay out of the final set',
+      'Rejected files go to PNG_Rejected_Do_Not_Upload.',
     ),
     createCheck(
       'a4-pdf',
       'critical',
       !project.pdfSettings.generateA4 || hasA4,
-      'A4 printable PDF exists if enabled',
+      'A4 PDF exists when enabled',
       project.pdfSettings.generateA4
         ? 'Generate the A4 PDF before export.'
         : 'A4 generation is disabled.',
@@ -206,7 +206,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'letter-pdf',
       'critical',
       !project.pdfSettings.generateUSLetter || hasLetter,
-      'US Letter printable PDF exists if enabled',
+      'US Letter PDF exists when enabled',
       project.pdfSettings.generateUSLetter
         ? 'Generate the US Letter PDF before export.'
         : 'US Letter generation is disabled.',
@@ -215,7 +215,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'nested-etsy-size',
       'critical',
       nestedZipSize === undefined || nestedZipSize <= MAX_ETSY_FILE_BYTES,
-      'Nested Etsy upload ZIP is not over 20MB if size is known',
+      'Etsy upload ZIP is 20MB or less when known',
       nestedZipSize === undefined
         ? 'Size will be calculated during archive export.'
         : `${Math.round((nestedZipSize / 1024 / 1024) * 10) / 10}MB nested ZIP.`,
@@ -224,16 +224,16 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'mapping-assignments',
       'critical',
       !duplicateApprovedMappings && !hasInvalidApprovedMapping,
-      'Project has no missing mapped image assignments',
+      'Approved images are assigned correctly',
       duplicateApprovedMappings || hasInvalidApprovedMapping
-        ? 'Fix duplicate or invalid topic mappings.'
-        : 'Approved mappings are unique and valid.',
+        ? 'Fix duplicate or missing topic assignments.'
+        : 'Each approved image is assigned to one topic.',
     ),
     createCheck(
       'preview-count',
       'warning',
       previewFiles.length >= 5,
-      'At least 5 marketplace preview images exist',
+      'At least 5 marketplace previews exist',
       `${previewFiles.length} preview images generated.`,
     ),
     createCheck(
@@ -268,7 +268,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'etsy-tags-count',
       'warning',
       etsyTagsCount?.passed ?? false,
-      'Etsy listing uses all 13 tags',
+      'Listing uses all 13 Etsy tags',
       etsyTagsCount?.details ?? 'Use all available tag slots.',
     ),
     createCheck(
@@ -330,20 +330,20 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'approved-reviewed',
       'warning',
       approvedImages.length > 0 && everyApprovedImageReviewed,
-      'Every approved image has review notes or explicit confirmation',
-      'Use notes or confirmation to record manual review.',
+      'Every approved image is reviewed',
+      'Add notes or mark reviewed to record manual review.',
     ),
     createCheck(
       'etsy-file-count',
       'warning',
       true,
-      'Expected Etsy upload files are 5 or fewer where possible',
-      'The generated nested upload ZIP keeps Etsy upload count low.',
+      'Etsy upload count stays low',
+      'The nested upload ZIP helps keep upload count low.',
     ),
     createInfoCheck(
       'project-json-exported',
       Boolean(project.lastProjectJsonExportAt),
-      'Project JSON exported at least once',
+      'Project JSON has been exported',
       project.lastProjectJsonExportAt
         ? `Last exported ${project.lastProjectJsonExportAt}.`
         : 'Not exported yet.',
@@ -351,7 +351,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     createInfoCheck(
       'archive-exported',
       Boolean(project.lastArchiveExportAt),
-      'Archive exported at least once',
+      'Final archive has been exported',
       project.lastArchiveExportAt
         ? `Last exported ${project.lastArchiveExportAt}.`
         : 'Not exported yet.',
@@ -359,7 +359,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     createInfoCheck(
       'pdf-after-approval',
       generatedAfterApproval,
-      'PDFs generated after last image approval if easy to track',
+      'PDFs are current after image approval',
       generatedAfterApproval
         ? 'PDFs are not older than the last approval.'
         : 'Regenerate PDFs after approvals.',

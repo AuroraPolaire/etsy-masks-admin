@@ -59,7 +59,7 @@ export const StepSection = ({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-bold text-ink-strong">{title}</h2>
-              <Badge tone="success">Complete</Badge>
+              <Badge tone="success">Done</Badge>
             </div>
             <p className="mt-1 text-sm text-ink-muted">{summary}</p>
           </div>
@@ -98,7 +98,7 @@ export const StepSection = ({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-bold text-ink-strong">{title}</h2>
-            <Badge tone="info">Current step</Badge>
+            <Badge tone="info">Now</Badge>
           </div>
           <p className="mt-1 text-sm text-ink-muted">{description}</p>
         </div>

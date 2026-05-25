@@ -50,20 +50,20 @@ export const ArchiveActions = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-ink-strong">Final package</h2>
-          <Badge tone={busyAction ? 'warning' : 'neutral'}>{busyAction ?? 'idle'}</Badge>
+          <h2 className="text-base font-bold text-ink-strong">Export package</h2>
+          <Badge tone={busyAction ? 'warning' : 'neutral'}>{busyAction ?? 'ready'}</Badge>
         </div>
       </CardHeader>
       <CardBody className="space-y-3">
         {!canGenerateOutputs ? (
           <Alert tone="info">
-            Approve at least one mapped image to generate PDFs and previews.
+            Approve at least one topic image before generating PDFs or previews.
           </Alert>
         ) : null}
         <Surface variant="muted" className="p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-strong">Build outputs</p>
+              <p className="text-sm font-semibold text-ink-strong">PDFs and previews</p>
               <p className="mt-1 text-xs text-ink-muted">
                 PDFs: {pdfCount} • Previews: {previewCount}
               </p>
@@ -71,13 +71,13 @@ export const ArchiveActions = ({
             <div className="flex shrink-0 gap-2">
               <IconButton
                 icon={FileText}
-                label="Generate printable PDFs"
+                label="Create printable PDFs"
                 disabled={outputActionsDisabled}
                 onClick={onGeneratePdfs}
               />
               <IconButton
                 icon={Images}
-                label="Generate marketplace previews"
+                label="Create marketplace previews"
                 disabled={outputActionsDisabled}
                 onClick={onGeneratePreviews}
               />
@@ -88,7 +88,7 @@ export const ArchiveActions = ({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink-strong">Project backup</p>
-              <p className="mt-1 text-xs text-ink-muted">JSON metadata only, no uploaded files.</p>
+              <p className="mt-1 text-xs text-ink-muted">JSON metadata only. Files are excluded.</p>
             </div>
             <div className="flex shrink-0 gap-2">
               <IconButton
@@ -130,8 +130,7 @@ export const ArchiveActions = ({
         </Button>
         {qaResult.status !== 'etsy-ready' ? (
           <Alert tone="warning">
-            Export is allowed, but the archive will be marked needs review until critical QA checks
-            pass.
+            You can export now, but the archive stays marked needs review until blockers are fixed.
           </Alert>
         ) : null}
       </CardBody>

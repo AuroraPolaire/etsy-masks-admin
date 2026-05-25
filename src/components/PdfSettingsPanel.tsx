@@ -18,36 +18,36 @@ export const PdfSettingsPanel = ({ settings, onChange }: PdfSettingsPanelProps) 
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-bold text-ink-strong">PDF settings</h2>
+        <h2 className="text-lg font-bold text-ink-strong">PDF output settings</h2>
       </CardHeader>
       <CardBody className="grid gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <CheckboxCard
-            label="Generate A4"
+            label="A4 PDF"
             name="generateA4"
             checked={settings.generateA4}
             onChange={(event) => update('generateA4', event.target.checked)}
           />
           <CheckboxCard
-            label="Generate US Letter"
+            label="US Letter PDF"
             name="generateUSLetter"
             checked={settings.generateUSLetter}
             onChange={(event) => update('generateUSLetter', event.target.checked)}
           />
           <CheckboxCard
-            label="Show topic label"
+            label="Show topic name"
             name="showSubjectLabel"
             checked={settings.showSubjectLabel}
             onChange={(event) => update('showSubjectLabel', event.target.checked)}
           />
           <CheckboxCard
-            label="Show instruction footer"
+            label="Instruction footer"
             name="showInstructionFooter"
             checked={settings.showInstructionFooter}
             onChange={(event) => update('showInstructionFooter', event.target.checked)}
           />
           <CheckboxCard
-            label="Include calibration page"
+            label="Calibration page"
             name="includeCalibrationPage"
             checked={settings.includeCalibrationPage}
             onChange={(event) => update('includeCalibrationPage', event.target.checked)}
@@ -55,7 +55,7 @@ export const PdfSettingsPanel = ({ settings, onChange }: PdfSettingsPanelProps) 
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Select
-            label="Mask scale"
+            label="Mask size on page"
             name="maskScale"
             value={settings.maskScale}
             options={[
@@ -68,7 +68,7 @@ export const PdfSettingsPanel = ({ settings, onChange }: PdfSettingsPanelProps) 
             }
           />
           <Input
-            label="Page margin in mm"
+            label="Page margin (mm)"
             name="pageMarginMm"
             type="number"
             min={5}

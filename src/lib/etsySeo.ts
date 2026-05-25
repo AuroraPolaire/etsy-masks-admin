@@ -149,7 +149,7 @@ export const createOptimizedEtsyDescription = (project: Project): string => {
   return [
     `${project.settings.title} is a printable digital download for kids parties, classroom crafts, pretend play, storytelling, and DIY costume activities.`,
     '',
-    `This ${theme} bundle includes ${project.subjects.length} ready-to-print paper mask designs: ${subjectList}. Each design is prepared as a printable craft asset with clear eye holes and simple home or classroom printing in mind.`,
+    `This ${theme} bundle includes ${project.subjects.length} ready-to-print paper mask designs: ${subjectList}. Each design is prepared as a printable craft file with clear eye holes for simple home or classroom printing.`,
     '',
     'What is included:',
     includedItems,
@@ -160,7 +160,7 @@ export const createOptimizedEtsyDescription = (project: Project): string => {
     '- Cut around the mask and carefully cut out the eye holes',
     '- Use with adult supervision',
     '',
-    'Good for:',
+    'Best for:',
     '- birthday party activities',
     '- classroom crafts',
     '- teacher resources',
@@ -207,11 +207,11 @@ export const analyzeEtsySeo = (project: Project): EtsySeoAnalysis => {
       'title-word-count',
       'Title is concise',
       titleWords.length > 0 && titleWords.length <= TITLE_WORD_LIMIT,
-      `${titleWords.length} words. Etsy guidance favors fewer than 15 words.`,
+      `${titleWords.length} words. Keep Etsy titles under 15 words when possible.`,
     ),
     createSeoCheck(
       'title-front-loaded',
-      'Title front-loads the product',
+      'Title starts with the product',
       firstSegmentIncludesMask,
       `First ${TITLE_VISIBLE_CHAR_LIMIT} characters: ${firstTitleSegment || 'empty title'}.`,
     ),
@@ -231,7 +231,7 @@ export const analyzeEtsySeo = (project: Project): EtsySeoAnalysis => {
     ),
     createSeoCheck(
       'tags-length',
-      'Tags fit Etsy character limits',
+      'Tags fit Etsy limits',
       overlongTags.length === 0,
       overlongTags.length
         ? `Over 20 characters: ${overlongTags.join(', ')}.`
@@ -247,7 +247,7 @@ export const analyzeEtsySeo = (project: Project): EtsySeoAnalysis => {
     ),
     createSeoCheck(
       'description-lead',
-      'Description first sentence is clear',
+      'Description opens clearly',
       /printable/i.test(descriptionLead) &&
         /mask/i.test(descriptionLead) &&
         /digital download|download/i.test(project.settings.description),
@@ -262,18 +262,18 @@ export const analyzeEtsySeo = (project: Project): EtsySeoAnalysis => {
     ),
     createSeoCheck(
       'description-structure',
-      'Description is organized for buyers',
+      'Description is easy to scan',
       descriptionHasSections,
       descriptionHasSections
         ? 'Includes clear sections for contents, use, and important notes.'
-        : 'Add sections for what is included, how to use, and important notes.',
+        : 'Add sections for contents, use, and important notes.',
     ),
     createSeoCheck(
       'description-keywords',
       'Description uses tag phrases naturally',
       descriptionHasTagsNaturally,
       descriptionHasTagsNaturally
-        ? 'At least one leading tag phrase appears naturally in the description.'
+        ? 'A leading tag phrase appears naturally in the description.'
         : 'Use a few important tag phrases in natural sentences.',
     ),
   ];

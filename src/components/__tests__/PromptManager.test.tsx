@@ -73,9 +73,9 @@ describe('QAPanel', () => {
         {
           id: 'approved-images',
           group: 'critical',
-          label: 'Every mask topic has an approved mapped image',
+          label: 'Every topic has an approved image',
           status: 'fail',
-          details: '0 of 1 topics have approved mapped images.',
+          details: '0 of 1 topics have an approved image.',
         },
       ],
     };
@@ -83,15 +83,13 @@ describe('QAPanel', () => {
     render(<QAPanel result={result} />);
 
     expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.getByText('Critical issues')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Every mask topic has an approved mapped image'),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('Blockers')).toBeInTheDocument();
+    expect(screen.queryByText('Every topic has an approved image')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /show qa details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /show qa checks/i }));
 
     expect(screen.getByText('Critical')).toBeInTheDocument();
-    expect(screen.getByText('Every mask topic has an approved mapped image')).toBeInTheDocument();
+    expect(screen.getByText('Every topic has an approved image')).toBeInTheDocument();
   });
 });
 
@@ -116,11 +114,11 @@ describe('EtsySeoPanel', () => {
 
     render(<EtsySeoPanel project={project} onChange={vi.fn()} />);
 
-    expect(screen.getByText('Checks')).toBeInTheDocument();
+    expect(screen.getByText('Checks passed')).toBeInTheDocument();
     expect(screen.getByText('Title words')).toBeInTheDocument();
     expect(screen.queryByText('Suggested title')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /show seo details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /show seo suggestions/i }));
 
     expect(screen.getByText('Suggested title')).toBeInTheDocument();
   });
@@ -131,7 +129,7 @@ describe('ProductBriefForm', () => {
     const onChange = vi.fn<(settings: ProjectSettings) => void>();
     render(<ProductBriefForm settings={DEFAULT_SETTINGS} onChange={onChange} />);
 
-    fireEvent.change(screen.getByLabelText('Title'), {
+    fireEvent.change(screen.getByLabelText('Listing title'), {
       target: { value: 'New bundle title' },
     });
 

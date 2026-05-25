@@ -29,7 +29,7 @@ export const OutputActionsPanel = ({
     <Surface variant="muted" className="p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h3 className="font-bold text-ink-strong">Printable and marketplace outputs</h3>
+          <h3 className="font-bold text-ink-strong">Create output files</h3>
           <p className="mt-1 text-sm text-ink-muted">
             PDFs: {pdfCount} • Previews: {previewCount}
           </p>
@@ -37,13 +37,13 @@ export const OutputActionsPanel = ({
         <div className="flex gap-2">
           <IconButton
             icon={FileText}
-            label="Generate printable PDFs"
+            label="Create printable PDFs"
             disabled={disabled}
             onClick={onGeneratePdfs}
           />
           <IconButton
             icon={Images}
-            label="Generate marketplace previews"
+            label="Create marketplace previews"
             disabled={disabled}
             onClick={onGeneratePreviews}
           />
@@ -51,7 +51,7 @@ export const OutputActionsPanel = ({
       </div>
       {!canGenerateOutputs ? (
         <Alert tone="info" className="mt-4">
-          Approve mapped images before generating buyer-ready output files.
+          Approve topic images before generating buyer-ready files.
         </Alert>
       ) : null}
     </Surface>

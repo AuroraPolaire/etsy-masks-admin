@@ -45,7 +45,7 @@ export const useExportActions = ({
           addActivity(
             'error',
             'warning',
-            'Approve and map at least one image before generating PDFs.',
+            'Approve and map at least one image before creating PDFs.',
           );
           return;
         }
@@ -60,13 +60,13 @@ export const useExportActions = ({
         addActivity(
           'pdf-generated',
           'success',
-          `Generated ${generatedFiles.length} printable PDF(s).`,
+          `Created ${generatedFiles.length} printable PDF(s).`,
         );
       } catch (error) {
         addActivity(
           'error',
           'error',
-          error instanceof Error ? error.message : 'PDF generation failed.',
+          error instanceof Error ? error.message : 'Could not create PDFs.',
         );
       }
     });
@@ -79,7 +79,7 @@ export const useExportActions = ({
           addActivity(
             'error',
             'warning',
-            'Approve and map at least one image before generating previews.',
+            'Approve and map at least one image before creating previews.',
           );
           return;
         }
@@ -94,13 +94,13 @@ export const useExportActions = ({
         addActivity(
           'preview-generated',
           'success',
-          `Generated ${generatedFiles.length} preview image(s).`,
+          `Created ${generatedFiles.length} preview image(s).`,
         );
       } catch (error) {
         addActivity(
           'error',
           'error',
-          error instanceof Error ? error.message : 'Preview generation failed.',
+          error instanceof Error ? error.message : 'Could not create previews.',
         );
       }
     });
@@ -118,12 +118,12 @@ export const useExportActions = ({
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         downloadBlob(blob, `${slugify(project.settings.theme)}_project_backup.json`);
         replaceProject(nextProject);
-        addActivity('project-exported', 'success', 'Exported project JSON metadata backup.');
+        addActivity('project-exported', 'success', 'Exported project metadata JSON.');
       } catch (error) {
         addActivity(
           'error',
           'error',
-          error instanceof Error ? error.message : 'Project JSON export failed.',
+          error instanceof Error ? error.message : 'Could not export project JSON.',
         );
       }
     });
@@ -138,13 +138,13 @@ export const useExportActions = ({
         addActivity(
           'project-imported',
           'warning',
-          'Imported project metadata. Uploaded files are not part of JSON backups and must be re-uploaded.',
+          'Imported project metadata. Re-upload source files because JSON backups do not include them.',
         );
       } catch (error) {
         addActivity(
           'error',
           'error',
-          error instanceof Error ? error.message : 'Project import failed.',
+          error instanceof Error ? error.message : 'Could not import project JSON.',
         );
       }
     });
@@ -164,16 +164,16 @@ export const useExportActions = ({
 
         if (result.needsReview) {
           const shouldDownload = await confirmAction({
-            title: 'Download archive marked needs review?',
+            title: 'Download ZIP with open blockers?',
             description:
-              'Critical QA checks or Etsy size checks still need attention. The ZIP can be downloaded for inspection, but it should not be uploaded to Etsy until the blockers are resolved.',
+              'Some QA or Etsy size checks still need fixes. Download for inspection, but resolve blockers before uploading to Etsy.',
             confirmLabel: 'Download anyway',
           });
           if (!shouldDownload) {
             addActivity(
               'archive-exported',
               'warning',
-              'Archive export was generated but download was cancelled.',
+              'ZIP was created, but the download was cancelled.',
             );
             return;
           }
@@ -189,7 +189,7 @@ export const useExportActions = ({
         addActivity(
           'error',
           'error',
-          error instanceof Error ? error.message : 'Archive export failed.',
+          error instanceof Error ? error.message : 'Could not export the ZIP.',
         );
       }
     });

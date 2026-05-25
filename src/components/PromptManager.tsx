@@ -83,9 +83,9 @@ export const PromptManager = ({
       <CardHeader>
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Mask topics</h2>
+            <h2 className="text-lg font-bold text-ink-strong">AI image prompts</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Generate masks with the OpenAI Images API, or copy prompts for manual use.
+              Generate, copy, and review one image per topic.
             </p>
           </div>
           {allowTopicEditing ? (
@@ -111,7 +111,7 @@ export const PromptManager = ({
       </CardHeader>
       <CardBody>
         {prompts.length === 0 ? (
-          <EmptyState>Add at least one topic to generate image prompts.</EmptyState>
+          <EmptyState>Add topics before generating image prompts.</EmptyState>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {prompts.map((prompt) => {
@@ -146,7 +146,7 @@ export const PromptManager = ({
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge tone={matchingFile ? 'success' : 'neutral'}>
-                            {matchingFile ? 'Filename matched' : 'No filename match'}
+                            {matchingFile ? 'Filename match' : 'Filename missing'}
                           </Badge>
                           <Badge
                             tone={mappedFile ? 'success' : pendingFile ? 'warning' : 'neutral'}
@@ -154,22 +154,22 @@ export const PromptManager = ({
                             {mappedFile
                               ? 'Approved'
                               : pendingFile
-                                ? 'Needs review'
+                                ? 'Review needed'
                                 : 'No approved image'}
                           </Badge>
                         </div>
                       </div>
                       <div className="mt-4 space-y-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase text-ink-muted">Prompt</p>
+                          <p className="text-xs font-semibold uppercase text-ink-muted">
+                            Image prompt
+                          </p>
                           <Surface variant="default" className="mt-1 p-3 text-sm text-ink-base">
                             {prompt.prompt}
                           </Surface>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold uppercase text-ink-muted">
-                            Negative requirements
-                          </p>
+                          <p className="text-xs font-semibold uppercase text-ink-muted">Avoid</p>
                           <Surface variant="default" className="mt-1 p-3 text-sm text-ink-base">
                             {prompt.negativeRequirements}
                           </Surface>
@@ -181,9 +181,9 @@ export const PromptManager = ({
                           onClick={() => onGenerateImage(prompt.subjectId)}
                         >
                           {isGenerating
-                            ? 'Generating...'
+                            ? 'Generating'
                             : previewFile
-                              ? 'Regenerate image'
+                              ? 'Regenerate'
                               : 'Generate image'}
                         </AIButton>
                         <IconButton
@@ -229,7 +229,7 @@ export const PromptManager = ({
                           className="flex aspect-square flex-col items-center justify-center gap-3 p-4 text-center text-sm text-ink-muted"
                         >
                           <RotateCw aria-hidden="true" className="animate-spin" size={26} />
-                          Generating this mask with OpenAI...
+                          Generating with OpenAI...
                         </Surface>
                       ) : previewFile?.objectUrl ? (
                         <Surface variant="default" className="overflow-hidden">
@@ -298,7 +298,7 @@ export const PromptManager = ({
                         </Surface>
                       ) : (
                         <Alert tone="info">
-                          Generate this topic or upload a matching file to review the image here.
+                          Generate or upload a matching image to review it here.
                         </Alert>
                       )}
                     </div>

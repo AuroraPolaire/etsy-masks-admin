@@ -27,7 +27,7 @@ export const FileUploader = ({ onFilesSelected, disabled }: FileUploaderProps) =
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-bold text-ink-strong">Upload files</h2>
+        <h2 className="text-lg font-bold text-ink-strong">Upload source files</h2>
       </CardHeader>
       <CardBody>
         <label
@@ -47,8 +47,7 @@ export const FileUploader = ({ onFilesSelected, disabled }: FileUploaderProps) =
         >
           <span className="text-base font-bold text-ink-strong">Drop files here or browse</span>
           <span className="mt-2 max-w-xl text-sm text-ink-muted">
-            Accepts PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON. Uploaded binary files are not
-            saved after refresh.
+            Supports PNG, JPG, WEBP, PDF, ZIP, TXT, and JSON. Uploaded files clear on refresh.
           </span>
           <input
             ref={inputRef}
@@ -60,7 +59,7 @@ export const FileUploader = ({ onFilesSelected, disabled }: FileUploaderProps) =
             onChange={(event) => handleFiles(event.target.files)}
           />
           <Button className="mt-5" variant="primary" disabled={disabled}>
-            Choose files
+            Browse files
           </Button>
         </label>
       </CardBody>

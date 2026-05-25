@@ -49,7 +49,7 @@ const groupActivityItems = (items: ActivityItem[]) =>
 export const ActivityLog = ({ items }: ActivityLogProps) => (
   <Card>
     <CardHeader>
-      <h2 className="text-base font-bold text-ink-strong">Activity log</h2>
+      <h2 className="text-base font-bold text-ink-strong">Latest activity</h2>
     </CardHeader>
     <CardBody>
       {items.length === 0 ? (

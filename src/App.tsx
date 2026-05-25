@@ -180,10 +180,10 @@ export const App = () => {
     async (draft: ProjectDraft, activityMessage: string) => {
       if (files.length > 0) {
         const shouldApply = await requestConfirmation({
-          title: 'Replace current topic mappings?',
+          title: 'Replace current topics?',
           description:
-            'Applying a new initial prompt replaces the mask topic list and clears existing image mappings. Uploaded files remain in memory, but their topic mappings will be reset.',
-          confirmLabel: 'Apply new brief',
+            'A new brief replaces the topic list and clears assigned images. Uploaded files stay in this session.',
+          confirmLabel: 'Replace topics',
         });
         if (!shouldApply) {
           return;
@@ -206,7 +206,7 @@ export const App = () => {
           const draft = createProjectDraftFromInitialPrompt(initialPrompt);
           await applyDraftToProject(
             draft,
-            `Filled product brief locally with ${draft.subjects.length} topics.`,
+            `Drafted the brief locally with ${draft.subjects.length} topics.`,
           );
           return;
         }
@@ -216,13 +216,13 @@ export const App = () => {
           const draft = await generateProjectDraftWithOpenAI({ apiKey, initialPrompt });
           await applyDraftToProject(
             draft,
-            `Filled product brief with OpenAI using ${draft.subjects.length} topics.`,
+            `Drafted the brief with OpenAI and added ${draft.subjects.length} topics.`,
           );
         } catch (error) {
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'OpenAI product brief generation failed.'),
+            getErrorMessage(error, 'Could not draft the brief with OpenAI.'),
           );
         }
       });
@@ -233,7 +233,7 @@ export const App = () => {
   const handleAddSubject = useCallback(
     (name: string) => {
       addSubject(name);
-      addActivity('file-added', 'info', `Added topic ${name}.`);
+      addActivity('file-added', 'info', `Added ${name} to topics.`);
     },
     [addActivity, addSubject],
   );
@@ -246,7 +246,7 @@ export const App = () => {
         const shouldRemove = await requestConfirmation({
           title: `Remove ${subjectName}?`,
           description:
-            'This removes the topic from the bundle and clears image mappings tied to it. Uploaded files remain in memory.',
+            'This removes the topic and clears its assigned image. Uploaded files stay in this session.',
           confirmLabel: 'Remove topic',
           tone: 'danger',
         });
@@ -260,7 +260,7 @@ export const App = () => {
         addActivity(
           'file-removed',
           'warning',
-          `Removed ${subjectName} and cleared related mappings.`,
+          `Removed ${subjectName} and cleared its assigned image.`,
         );
       })();
     },
@@ -274,7 +274,7 @@ export const App = () => {
         const shouldDelete = await requestConfirmation({
           title: `Delete ${fileName}?`,
           description:
-            'This removes the file from the current browser session. If you still need it, you will have to upload or generate it again.',
+            'This removes the file from this session. Upload or generate it again if you need it later.',
           confirmLabel: 'Delete file',
           tone: 'danger',
         });
@@ -290,15 +290,15 @@ export const App = () => {
   const handleClearFiles = useCallback(() => {
     void (async () => {
       const shouldClear = await requestConfirmation({
-        title: 'Clear uploaded and generated files?',
+        title: 'Clear session files?',
         description:
-          'This removes all in-memory files from the current browser session. Project text remains saved, but files must be uploaded or generated again.',
+          'This removes uploaded and generated files from this browser session. Project text stays saved.',
         confirmLabel: 'Clear files',
         tone: 'danger',
       });
 
       if (shouldClear) {
-        clearFiles('Cleared in-memory files.');
+        clearFiles('Cleared session files.');
       }
     })();
   }, [clearFiles, requestConfirmation]);
@@ -359,52 +359,52 @@ export const App = () => {
   }> = [
     {
       id: 'brief',
-      title: 'Idea and product brief',
-      description: 'Draft or refine the listing copy before creating images.',
+      title: 'Idea and brief',
+      description: 'Turn a product idea into buyer-facing listing copy.',
       summary: briefComplete
-        ? `${project.settings.theme} brief is ready.`
+        ? `${project.settings.theme} brief is ready`
         : 'Complete title, description, tags, safety, license, and refund copy.',
       complete: briefComplete,
       unlocked: true,
     },
     {
       id: 'topics',
-      title: 'Mask topics',
-      description: 'Choose the exact masks that will appear in the bundle.',
+      title: 'Topics',
+      description: 'Choose the masks included in the bundle.',
       summary: `${project.subjects.length} topic${project.subjects.length === 1 ? '' : 's'} configured.`,
       complete: topicsComplete,
       unlocked: briefComplete,
-      lockedReason: 'Complete the product brief first.',
+      lockedReason: 'Finish the brief first.',
     },
     {
       id: 'images',
-      title: 'Generate and review images',
-      description: 'Generate images with OpenAI, review them inline, and approve one per topic.',
+      title: 'AI images',
+      description: 'Generate or upload images, then approve one per topic.',
       summary: `${approvedImageCount}/${project.subjects.length} topics have approved images.`,
       complete: imagesComplete,
       unlocked: topicsComplete,
-      lockedReason: 'Add at least one mask topic first.',
+      lockedReason: 'Add at least one topic first.',
     },
     {
       id: 'outputs',
-      title: 'Generate outputs',
+      title: 'PDFs and previews',
       description: 'Create printable PDFs and marketplace preview images.',
       summary: `${pdfCount} PDF files and ${previewCount} preview images generated.`,
       complete: outputsComplete,
       unlocked: imagesComplete,
-      lockedReason: 'Approve one image for every topic first.',
+      lockedReason: 'Approve one image per topic first.',
     },
     {
       id: 'export',
-      title: 'Final QA and ZIP',
-      description: 'Review readiness and export the final package.',
+      title: 'QA and export',
+      description: 'Check readiness and export the final ZIP.',
       summary:
         qaResult.status === 'etsy-ready'
-          ? 'The package is Etsy-ready.'
+          ? 'Package is Etsy-ready.'
           : `QA is ${qaResult.readinessPercentage}% ready.`,
       complete: qaResult.status === 'etsy-ready',
       unlocked: outputsComplete,
-      lockedReason: 'Generate required PDFs and at least five preview images first.',
+      lockedReason: 'Generate required PDFs and at least five previews first.',
     },
   ];
   const stepById = new Map(stepMeta.map((step) => [step.id, step]));
@@ -455,8 +455,8 @@ export const App = () => {
           <BrowserSupportWarning result={browserSupport} />
           <PrivacyNotice />
           <Alert>
-            Project text is saved in this browser. Uploaded files are not saved after refresh;
-            export your archive or re-upload files.
+            Listing copy is saved in this browser. Uploaded files clear on refresh, so export the
+            ZIP or re-upload files before continuing later.
           </Alert>
           <div className="lg:hidden">{renderOpenAIImagePanel()}</div>
           <Stepper steps={stepperItems} />
@@ -485,7 +485,7 @@ export const App = () => {
                     disabled={!briefComplete}
                     onClick={() => setActiveStepId('topics')}
                   >
-                    Continue to topics
+                    Next: topics
                   </StepAdvanceButton>
                 </div>
               ) : null}
@@ -500,7 +500,7 @@ export const App = () => {
                     disabled={!topicsComplete}
                     onClick={() => setActiveStepId('images')}
                   >
-                    Continue to image generation
+                    Next: AI images
                   </StepAdvanceButton>
                 </div>
               ) : null}
@@ -533,7 +533,7 @@ export const App = () => {
                     disabled={!imagesComplete}
                     onClick={() => setActiveStepId('outputs')}
                   >
-                    Continue to outputs
+                    Next: PDFs and previews
                   </StepAdvanceButton>
                 </div>
               ) : null}
@@ -552,7 +552,7 @@ export const App = () => {
                     disabled={!outputsComplete}
                     onClick={() => setActiveStepId('export')}
                   >
-                    Continue to final QA
+                    Next: QA and export
                   </StepAdvanceButton>
                 </div>
               ) : null}
@@ -587,7 +587,7 @@ export const App = () => {
           <QAPanel result={qaResult} />
           <ActivityLog items={activityLog} />
           <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-            Clear uploaded/generated files
+            Clear session files
           </Button>
         </aside>
       </main>

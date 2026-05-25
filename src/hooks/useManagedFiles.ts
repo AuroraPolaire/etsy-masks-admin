@@ -34,10 +34,10 @@ export const useManagedFiles = ({
       try {
         const { accepted, duplicates, unsupported } = dedupeIncomingFiles(files, incomingFiles);
         duplicates.forEach((name) =>
-          addActivity('file-added', 'warning', `Skipped duplicate file ${name}.`),
+          addActivity('file-added', 'warning', `Skipped duplicate file: ${name}.`),
         );
         unsupported.forEach((name) =>
-          addActivity('file-added', 'warning', `Skipped unsupported file ${name}.`),
+          addActivity('file-added', 'warning', `Skipped unsupported file: ${name}.`),
         );
 
         const managedFiles: ManagedFile[] = [];
@@ -82,7 +82,7 @@ export const useManagedFiles = ({
         explicitlyConfirmed: true,
       }));
       onImageApproved();
-      addActivity('image-approved', 'success', 'Approved image.');
+      addActivity('image-approved', 'success', 'Image approved.');
     },
     [addActivity, onImageApproved, updateFile],
   );
@@ -93,7 +93,7 @@ export const useManagedFiles = ({
         ...file,
         reviewState: 'rejected',
       }));
-      addActivity('image-rejected', 'warning', 'Rejected image.');
+      addActivity('image-rejected', 'warning', 'Image rejected.');
     },
     [addActivity, updateFile],
   );
@@ -114,8 +114,9 @@ export const useManagedFiles = ({
   const mapFile = useCallback(
     (fileId: string, subjectId: string | undefined) => {
       updateFile(fileId, (file) => withMappedSubject(file, subjectId));
-      const subjectName = subjects.find((subject) => subject.id === subjectId)?.name ?? 'unmapped';
-      addActivity('image-mapped', 'info', `Updated image mapping to ${subjectName}.`);
+      const subjectName =
+        subjects.find((subject) => subject.id === subjectId)?.name ?? 'unassigned';
+      addActivity('image-mapped', 'info', `Assigned image to ${subjectName}.`);
     },
     [addActivity, subjects, updateFile],
   );
@@ -136,7 +137,7 @@ export const useManagedFiles = ({
         ...file,
         explicitlyConfirmed: true,
       }));
-      addActivity('notes-updated', 'success', 'Confirmed manual review for image.');
+      addActivity('notes-updated', 'success', 'Image marked reviewed.');
     },
     [addActivity, updateFile],
   );

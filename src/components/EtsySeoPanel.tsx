@@ -39,9 +39,9 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Etsy SEO assistant</h2>
+            <h2 className="text-lg font-bold text-ink-strong">Etsy SEO</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Keep titles readable, tags useful, and the product clear in the first sentence.
+              Check title, tags, and description for buyer-ready Etsy copy.
             </p>
           </div>
           <div className="self-start">
@@ -53,10 +53,10 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
       </CardHeader>
       <CardBody className="space-y-4">
         <dl className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
-          <StatCard label="Checks" value={`${passedCount}/${analysis.checks.length}`} />
+          <StatCard label="Checks passed" value={`${passedCount}/${analysis.checks.length}`} />
           <StatCard label="Title words" value={titleWordCount} />
-          <StatCard label="Tags" value={tagCount} />
-          <StatCard label="Repeated words" value={repeatedWordCount} />
+          <StatCard label="Tag count" value={tagCount} />
+          <StatCard label="Repeated title words" value={repeatedWordCount} />
         </dl>
         <Button
           className="w-full gap-2"
@@ -65,7 +65,7 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
           aria-controls={detailsId}
           onClick={() => setDetailsOpen((isOpen) => !isOpen)}
         >
-          {detailsOpen ? 'Hide SEO details' : 'Show SEO details'}
+          {detailsOpen ? 'Hide SEO suggestions' : 'Show SEO suggestions'}
           <ChevronDown
             aria-hidden="true"
             className={`transition ${detailsOpen ? 'rotate-180' : ''}`}
@@ -83,7 +83,7 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
                     {analysis.suggestedTitle}
                   </p>
                   <p className="mt-1 text-xs text-ink-muted">
-                    {analysis.suggestedTitle.split(/\s+/).length} words, product-first, count
+                    {analysis.suggestedTitle.split(/\s+/).length} words, product first, count
                     included.
                   </p>
                 </div>
@@ -113,8 +113,8 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
                     Suggested description
                   </p>
                   <p className="mt-1 text-sm text-ink-base">
-                    Structured buyer copy with included files, use cases, instructions, disclaimers,
-                    and natural keyword phrases.
+                    Buyer-ready copy with contents, use cases, instructions, disclaimers, and
+                    natural keyword phrases.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -146,7 +146,7 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
                   <div className="flex items-start justify-between gap-3">
                     <span className="font-semibold text-ink-strong">{check.label}</span>
                     <Badge tone={check.passed ? 'success' : 'warning'}>
-                      {check.passed ? 'Pass' : 'Review'}
+                      {check.passed ? 'Pass' : 'Fix'}
                     </Badge>
                   </div>
                   <p className="mt-1 text-ink-muted">{check.details}</p>

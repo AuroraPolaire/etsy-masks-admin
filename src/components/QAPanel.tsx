@@ -43,7 +43,7 @@ export const QAPanel = ({ result }: QAPanelProps) => {
           <div className="min-w-0">
             <h2 className="text-base font-bold text-ink-strong">QA readiness</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              {result.criticalPassed ? 'Critical checks pass.' : 'Critical checks need attention.'}
+              {result.criticalPassed ? 'Critical checks pass.' : 'Critical checks need fixes.'}
             </p>
           </div>
           <Badge tone={result.status === 'etsy-ready' ? 'success' : 'warning'}>
@@ -53,10 +53,10 @@ export const QAPanel = ({ result }: QAPanelProps) => {
       </CardHeader>
       <CardBody className="space-y-4">
         <dl className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
-          <StatCard label="Ready" value={`${result.readinessPercentage}%`} />
-          <StatCard label="Critical issues" value={criticalIssues} />
+          <StatCard label="Readiness" value={`${result.readinessPercentage}%`} />
+          <StatCard label="Blockers" value={criticalIssues} />
           <StatCard label="Warnings" value={warningIssues} />
-          <StatCard label="Passed" value={`${passedCount}/${result.checks.length}`} />
+          <StatCard label="Checks passed" value={`${passedCount}/${result.checks.length}`} />
         </dl>
         <Button
           className="w-full gap-2"
@@ -65,7 +65,7 @@ export const QAPanel = ({ result }: QAPanelProps) => {
           aria-controls={detailsId}
           onClick={() => setDetailsOpen((isOpen) => !isOpen)}
         >
-          {detailsOpen ? 'Hide QA details' : 'Show QA details'}
+          {detailsOpen ? 'Hide QA checks' : 'Show QA checks'}
           <ChevronDown
             aria-hidden="true"
             className={`transition ${detailsOpen ? 'rotate-180' : ''}`}

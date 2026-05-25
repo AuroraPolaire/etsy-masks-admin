@@ -54,7 +54,7 @@ export const OpenAIImagePanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">AI setup</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Paste the session key once. It powers AI brief drafting and mask image generation.
+              Add a session-only OpenAI key for brief drafting and image generation.
             </p>
           </div>
           <div>
@@ -66,12 +66,12 @@ export const OpenAIImagePanel = ({
       </CardHeader>
       <CardBody className="space-y-4">
         <Input
-          label="OpenAI API key for this session"
+          label="Session OpenAI API key"
           name="openaiApiKey"
           type="password"
           autoComplete="off"
           value={settings.apiKey}
-          helperText="Stored only in React state. Reused for AI brief drafting and image generation. It is not saved to localStorage, project JSON, manifests, or ZIP files."
+          helperText="Kept in memory for this tab only. It is not saved to localStorage, project JSON, manifests, or ZIP files."
           onChange={(event) => update('apiKey', event.target.value)}
         />
         <div className="grid gap-4">
@@ -80,7 +80,7 @@ export const OpenAIImagePanel = ({
             name="openaiModel"
             value={settings.model}
             options={[
-              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (print mask recommended)' },
+              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (recommended)' },
               { value: 'gpt-image-1', label: 'gpt-image-1' },
               { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
               { value: 'gpt-image-2', label: 'gpt-image-2 (no transparent background)' },
@@ -120,8 +120,8 @@ export const OpenAIImagePanel = ({
             name="openaiBackground"
             value={settings.background}
             options={[
-              { value: 'opaque', label: 'Opaque white print background' },
-              { value: 'transparent', label: 'Transparent cutout' },
+              { value: 'opaque', label: 'White print background' },
+              { value: 'transparent', label: 'Transparent PNG/WEBP' },
               { value: 'auto', label: 'Auto' },
             ]}
             onChange={(event) =>
@@ -144,17 +144,16 @@ export const OpenAIImagePanel = ({
         </div>
         {transparentUnsupported ? (
           <Alert tone="warning">
-            Transparent mask assets require a GPT Image 1.x model with PNG or WEBP output. For
-            `gpt-image-2`, this app sends an opaque background request.
+            Transparent output needs GPT Image 1.x with PNG or WEBP. With `gpt-image-2`, requests
+            use an opaque background.
           </Alert>
         ) : null}
         <Surface variant="muted" className="p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="text-sm font-bold text-ink-strong">Approximate generation cost</h3>
+              <h3 className="text-sm font-bold text-ink-strong">Estimated image cost</h3>
               <p className="mt-1 text-xs text-ink-muted">
-                Estimated from selected quality and size. Actual API billing can vary with token
-                usage and OpenAI pricing changes. Switch the selected model before generating.
+                Based on the selected size and quality. Actual OpenAI billing can vary.
               </p>
             </div>
             <Badge tone="neutral">
@@ -186,7 +185,7 @@ export const OpenAIImagePanel = ({
           </div>
           {hasCostFallbackAssumption ? (
             <p className="mt-3 text-xs text-ink-muted">
-              Auto settings are estimated as medium quality at 1024 x 1024.
+              Auto is estimated as medium quality at 1024 x 1024.
             </p>
           ) : null}
         </Surface>
@@ -195,10 +194,11 @@ export const OpenAIImagePanel = ({
             disabled={!hasApiKey || missingImageCount === 0 || busy}
             onClick={onGenerateMissingImages}
           >
-            Generate remaining bundle
+            Generate missing images
           </AIButton>
           <p className="text-sm text-ink-muted">
-            {missingImageCount} topic{missingImageCount === 1 ? '' : 's'} missing a usable image.
+            {missingImageCount} topic{missingImageCount === 1 ? '' : 's'} still need an approved
+            image.
           </p>
         </div>
       </CardBody>

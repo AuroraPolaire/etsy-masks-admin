@@ -33,7 +33,7 @@ const createGeneratedManagedFile = async (
   return {
     ...managedFile,
     mappedSubjectId: prompt.subjectId,
-    reviewNotes: `Generated with OpenAI ${settings.model}. Review before approval.`,
+    reviewNotes: `Generated with OpenAI ${settings.model}. Review before approving.`,
   };
 };
 
@@ -73,9 +73,7 @@ export const useOpenAIImageGeneration = ({
         addActivity(
           'error',
           'error',
-          error instanceof Error
-            ? error.message
-            : `Image generation failed for ${prompt.subjectName}.`,
+          error instanceof Error ? error.message : `Could not generate ${prompt.subjectName}.`,
         );
       } finally {
         setGeneratingSubjectId(null);
@@ -105,7 +103,7 @@ export const useOpenAIImageGeneration = ({
 
         generatedManagedFiles.push(mappedFile);
         workingFiles = [...workingFiles, mappedFile];
-        addActivity('image-generated', 'success', `Generated image for ${prompt.subjectName}.`);
+        addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
       }
 
       if (generatedManagedFiles.length > 0) {
@@ -115,7 +113,7 @@ export const useOpenAIImageGeneration = ({
       addActivity(
         'error',
         'error',
-        error instanceof Error ? error.message : 'Image generation failed.',
+        error instanceof Error ? error.message : 'Could not generate images.',
       );
     } finally {
       setGeneratingSubjectId(null);
