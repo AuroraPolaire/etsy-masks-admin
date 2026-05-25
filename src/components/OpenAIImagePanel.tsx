@@ -52,7 +52,7 @@ export const OpenAIImagePanel = ({
       <CardHeader>
         <div className="flex flex-col gap-2">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">AI setup</h2>
+            <h2 className="text-lg font-bold text-ink-strong">OpenAI configuration</h2>
             <p className="mt-1 text-sm text-ink-muted">
               Add a session-only OpenAI key for brief drafting and image generation.
             </p>

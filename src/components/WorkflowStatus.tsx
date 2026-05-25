@@ -20,7 +20,7 @@ export const WorkflowStatus = ({ project, files, qaResult, hasOpenAIKey }: Workf
   const pdfCount = files.filter((file) => file.kind === 'generated-pdf').length;
   const previewCount = files.filter((file) => file.kind === 'generated-preview').length;
   const nextStep = !hasOpenAIKey
-    ? 'Add the session OpenAI key in AI setup.'
+    ? 'Add the session OpenAI key in Settings.'
     : approvedCount < project.subjects.length
       ? 'Generate and approve missing images.'
       : pdfCount === 0

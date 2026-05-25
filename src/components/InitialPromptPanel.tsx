@@ -51,8 +51,8 @@ export const InitialPromptPanel = ({
         />
         <p className="text-xs text-ink-muted">
           {hasOpenAIKey
-            ? 'Uses the session OpenAI key from AI setup. The key is not saved.'
-            : 'Add an OpenAI key in AI setup for an AI draft, or use the local template.'}
+            ? 'Uses the session OpenAI key from Settings. The key is not saved.'
+            : 'Add an OpenAI key in Settings for an AI draft, or use the local template.'}
         </p>
         {hasOpenAIKey ? (
           <AIButton disabled={disabled || initialPrompt.trim().length === 0} onClick={applyDraft}>

@@ -7,7 +7,7 @@ type HeaderProps = {
 };
 
 export const Header = ({ qaResult }: HeaderProps) => (
-  <header className="sticky top-0 z-20 border-b border-surface-divider bg-surface-panel/95 backdrop-blur">
+  <header className="border-b border-surface-divider bg-surface-panel/95 backdrop-blur">
     <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { ActivityLog } from './components/ActivityLog';
+import { AppSidebar } from './components/AppSidebar';
 import { ArchiveActions } from './components/ArchiveActions';
 import { BrowserSupportWarning } from './components/BrowserSupportWarning';
 import { EtsySeoPanel } from './components/EtsySeoPanel';
@@ -16,8 +17,11 @@ import { PromptManager } from './components/PromptManager';
 import { QAPanel } from './components/QAPanel';
 import { TopicSetupPanel } from './components/TopicSetupPanel';
 import { Alert } from './components/ui/Alert';
+import { Badge } from './components/ui/Badge';
 import { Button } from './components/ui/Button';
+import { Card, CardBody, CardHeader } from './components/ui/Card';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
+import { EmptyState } from './components/ui/EmptyState';
 import { Stepper } from './components/ui/Stepper';
 import { StepAdvanceButton, StepSection } from './components/ui/StepSection';
 import { useToast } from './components/ui/toastContext';
@@ -33,6 +37,7 @@ import { checkBrowserSupport } from './lib/browserSupport';
 import { createPromptItems, getFileForSubject } from './lib/files';
 import { runQA } from './lib/qa';
 
+import type { AppSectionId } from './components/AppSidebar';
 import type { ConfirmDialogRequest } from './components/ui/ConfirmDialog';
 import type { StepperItem } from './components/ui/Stepper';
 import type { ActivityLevel, ActivityType, ProjectDraft } from './types';
@@ -65,6 +70,8 @@ export const App = () => {
     [recordActivity, showToast],
   );
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('topics');
+  const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
@@ -447,150 +454,233 @@ export const App = () => {
     />
   );
 
-  return (
-    <div className="min-h-screen bg-canvas">
-      <Header qaResult={qaResult} />
-      <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
-        <div className="min-w-0 space-y-6">
-          <BrowserSupportWarning result={browserSupport} />
-          <PrivacyNotice />
-          <Alert>
-            Listing copy is saved in this browser. Uploaded files clear on refresh, so export the
-            ZIP or re-upload files before continuing later.
-          </Alert>
-          <div className="lg:hidden">{renderOpenAIImagePanel()}</div>
-          <Stepper steps={stepperItems} />
-          {stepMeta.map((step, index) => (
-            <StepSection
-              key={step.id}
-              number={index + 1}
-              title={step.title}
-              description={step.description}
-              state={getStepState(step.id)}
-              summary={step.summary}
-              lockedReason={step.lockedReason}
-              onActivate={() => setActiveStepId(step.id)}
-            >
-              {step.id === 'brief' ? (
-                <div className="space-y-6">
-                  <InitialPromptPanel
-                    hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
-                    disabled={busyAction !== null}
-                    isGenerating={busyAction === 'brief-generation'}
-                    onFillBrief={handleFillProductBrief}
-                  />
-                  <ProductBriefForm settings={project.settings} onChange={updateSettings} />
-                  <EtsySeoPanel project={project} onChange={updateSettings} />
-                  <StepAdvanceButton
-                    disabled={!briefComplete}
-                    onClick={() => setActiveStepId('topics')}
-                  >
-                    Next: topics
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'topics' ? (
-                <div className="space-y-6">
-                  <TopicSetupPanel
-                    subjects={project.subjects}
-                    onAddSubject={handleAddSubject}
-                    onRemoveSubject={handleRemoveSubject}
-                  />
-                  <StepAdvanceButton
-                    disabled={!topicsComplete}
-                    onClick={() => setActiveStepId('images')}
-                  >
-                    Next: AI images
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'images' ? (
-                <div className="space-y-6">
-                  <PromptManager
-                    subjects={project.subjects}
-                    prompts={prompts}
-                    files={files}
-                    canGenerateImages={
-                      openAISettings.apiKey.trim().length > 0 && busyAction === null
-                    }
-                    generatingSubjectId={generatingSubjectId}
-                    allowTopicEditing={false}
-                    onAddSubject={handleAddSubject}
-                    onRemoveSubject={handleRemoveSubject}
-                    onGenerateImage={handleGenerateSubjectImage}
-                    onApprove={approveFile}
-                    onReject={rejectFile}
-                    onDelete={handleDeleteFile}
-                    onNotesChange={updateNotes}
-                    onConfirmReview={confirmReview}
-                    onCopy={(message) => addActivity('notes-updated', 'success', message)}
-                  />
-                  <FileUploader
-                    onFilesSelected={handleFilesSelected}
-                    disabled={busyAction !== null}
-                  />
-                  <StepAdvanceButton
-                    disabled={!imagesComplete}
-                    onClick={() => setActiveStepId('outputs')}
-                  >
-                    Next: PDFs and previews
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'outputs' ? (
-                <div className="space-y-6">
-                  <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
-                  <OutputActionsPanel
-                    busyAction={busyAction}
-                    canGenerateOutputs={canGenerateOutputs}
-                    pdfCount={pdfCount}
-                    previewCount={previewCount}
-                    onGeneratePdfs={generatePdfs}
-                    onGeneratePreviews={generatePreviews}
-                  />
-                  <StepAdvanceButton
-                    disabled={!outputsComplete}
-                    onClick={() => setActiveStepId('export')}
-                  >
-                    Next: QA and export
-                  </StepAdvanceButton>
-                </div>
-              ) : null}
-              {step.id === 'export' ? (
-                <div className="space-y-6">
-                  <QAPanel result={qaResult} />
-                  <ArchiveActions
-                    qaResult={qaResult}
-                    busyAction={busyAction}
-                    canGenerateOutputs={canGenerateOutputs}
-                    pdfCount={pdfCount}
-                    previewCount={previewCount}
-                    onGeneratePdfs={generatePdfs}
-                    onGeneratePreviews={generatePreviews}
-                    onExportArchive={exportArchive}
-                    onExportProjectJson={exportProjectJson}
-                    onImportProjectJson={importProjectJson}
-                  />
-                </div>
-              ) : null}
-            </StepSection>
-          ))}
+  const renderHomeView = () => (
+    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
+      <div className="min-w-0 space-y-6">
+        <BrowserSupportWarning result={browserSupport} />
+        <PrivacyNotice />
+        <Alert>
+          Listing copy is saved in this browser. Uploaded files clear on refresh, so export the ZIP
+          or re-upload files before continuing later.
+        </Alert>
+        <Stepper steps={stepperItems} />
+        {stepMeta.map((step, index) => (
+          <StepSection
+            key={step.id}
+            number={index + 1}
+            title={step.title}
+            description={step.description}
+            state={getStepState(step.id)}
+            summary={step.summary}
+            lockedReason={step.lockedReason}
+            onActivate={() => setActiveStepId(step.id)}
+          >
+            {step.id === 'brief' ? (
+              <div className="space-y-6">
+                <InitialPromptPanel
+                  hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+                  disabled={busyAction !== null}
+                  isGenerating={busyAction === 'brief-generation'}
+                  onFillBrief={handleFillProductBrief}
+                />
+                <ProductBriefForm settings={project.settings} onChange={updateSettings} />
+                <EtsySeoPanel project={project} onChange={updateSettings} />
+                <StepAdvanceButton
+                  disabled={!briefComplete}
+                  onClick={() => setActiveStepId('topics')}
+                >
+                  Next: topics
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'topics' ? (
+              <div className="space-y-6">
+                <TopicSetupPanel
+                  subjects={project.subjects}
+                  onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                />
+                <StepAdvanceButton
+                  disabled={!topicsComplete}
+                  onClick={() => setActiveStepId('images')}
+                >
+                  Next: AI images
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'images' ? (
+              <div className="space-y-6">
+                <PromptManager
+                  subjects={project.subjects}
+                  prompts={prompts}
+                  files={files}
+                  canGenerateImages={openAISettings.apiKey.trim().length > 0 && busyAction === null}
+                  generatingSubjectId={generatingSubjectId}
+                  allowTopicEditing={false}
+                  onAddSubject={handleAddSubject}
+                  onRemoveSubject={handleRemoveSubject}
+                  onGenerateImage={handleGenerateSubjectImage}
+                  onApprove={approveFile}
+                  onReject={rejectFile}
+                  onDelete={handleDeleteFile}
+                  onNotesChange={updateNotes}
+                  onConfirmReview={confirmReview}
+                  onCopy={(message) => addActivity('notes-updated', 'success', message)}
+                />
+                <FileUploader
+                  onFilesSelected={handleFilesSelected}
+                  disabled={busyAction !== null}
+                />
+                <StepAdvanceButton
+                  disabled={!imagesComplete}
+                  onClick={() => setActiveStepId('outputs')}
+                >
+                  Next: PDFs and previews
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'outputs' ? (
+              <div className="space-y-6">
+                <PdfSettingsPanel settings={project.pdfSettings} onChange={updatePdfSettings} />
+                <OutputActionsPanel
+                  busyAction={busyAction}
+                  canGenerateOutputs={canGenerateOutputs}
+                  pdfCount={pdfCount}
+                  previewCount={previewCount}
+                  onGeneratePdfs={generatePdfs}
+                  onGeneratePreviews={generatePreviews}
+                />
+                <StepAdvanceButton
+                  disabled={!outputsComplete}
+                  onClick={() => setActiveStepId('export')}
+                >
+                  Next: QA and export
+                </StepAdvanceButton>
+              </div>
+            ) : null}
+            {step.id === 'export' ? (
+              <div className="space-y-6">
+                <QAPanel result={qaResult} />
+                <ArchiveActions
+                  qaResult={qaResult}
+                  busyAction={busyAction}
+                  canGenerateOutputs={canGenerateOutputs}
+                  pdfCount={pdfCount}
+                  previewCount={previewCount}
+                  onGeneratePdfs={generatePdfs}
+                  onGeneratePreviews={generatePreviews}
+                  onExportArchive={exportArchive}
+                  onExportProjectJson={exportProjectJson}
+                  onImportProjectJson={importProjectJson}
+                />
+              </div>
+            ) : null}
+          </StepSection>
+        ))}
+      </div>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+        <WorkflowStatus
+          project={project}
+          files={files}
+          qaResult={qaResult}
+          hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+        />
+        <QAPanel result={qaResult} />
+        <ActivityLog items={activityLog} />
+        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
+          Clear session files
+        </Button>
+      </aside>
+    </main>
+  );
+
+  const renderAnalyticsView = () => (
+    <main className="mx-auto max-w-[1500px] px-4 py-6 lg:px-6">
+      <div className="max-w-4xl space-y-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
+              Analytics
+            </p>
+            <h2 className="mt-1 text-2xl font-bold text-ink-strong">Production analytics</h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              Cost, output, approval, and export metrics will live here.
+            </p>
+          </div>
+          <Badge tone="neutral">Todo</Badge>
         </div>
-        <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
-          <div className="hidden lg:block">{renderOpenAIImagePanel()}</div>
-          <WorkflowStatus
-            project={project}
-            files={files}
-            qaResult={qaResult}
-            hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
-          />
-          <QAPanel result={qaResult} />
-          <ActivityLog items={activityLog} />
-          <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
-            Clear session files
-          </Button>
-        </aside>
-      </main>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-ink-strong">Analytics dashboard</h3>
+              <Badge tone="neutral">Not wired yet</Badge>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <EmptyState>
+              Analytics is planned for a future pass. Current production status remains available
+              from Home and the activity feed.
+            </EmptyState>
+          </CardBody>
+        </Card>
+      </div>
+    </main>
+  );
+
+  const renderSettingsView = () => (
+    <main className="mx-auto grid max-w-[1500px] gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:px-6">
+      <div className="min-w-0 space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand-strong">
+            Settings
+          </p>
+          <h2 className="mt-1 text-2xl font-bold text-ink-strong">OpenAI configuration</h2>
+          <p className="mt-1 max-w-3xl text-sm text-ink-muted">
+            Manage the session key, model, image size, quality, background, output format, and cost
+            estimate for AI actions.
+          </p>
+        </div>
+        {renderOpenAIImagePanel()}
+      </div>
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+        <WorkflowStatus
+          project={project}
+          files={files}
+          qaResult={qaResult}
+          hasOpenAIKey={openAISettings.apiKey.trim().length > 0}
+        />
+        <ActivityLog items={activityLog} />
+        <Button className="w-full" variant="ghost" onClick={handleClearFiles}>
+          Clear session files
+        </Button>
+      </aside>
+    </main>
+  );
+
+  const renderActiveSection = () => {
+    if (activeSectionId === 'analytics') {
+      return renderAnalyticsView();
+    }
+
+    if (activeSectionId === 'settings') {
+      return renderSettingsView();
+    }
+
+    return renderHomeView();
+  };
+
+  return (
+    <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[auto_minmax(0,1fr)]">
+      <AppSidebar
+        activeSection={activeSectionId}
+        expanded={isSidebarExpanded}
+        onExpandedChange={setIsSidebarExpanded}
+        onSectionChange={setActiveSectionId}
+      />
+      <div className="min-w-0">
+        <Header qaResult={qaResult} />
+        {renderActiveSection()}
+      </div>
       {confirmRequest ? (
         <ConfirmDialog
           open
