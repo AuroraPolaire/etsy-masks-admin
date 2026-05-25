@@ -7,7 +7,6 @@ import {
 } from '../lib/backendFiles';
 import { getProjectIdeaLabel } from '../lib/backendIdea';
 
-import type { BackendSettings } from '../components/BackendDataPanel';
 import type {
   AddActivity,
   BackendHealth,
@@ -21,8 +20,6 @@ import type {
   PromptItem,
   RunBusyAction,
 } from '../types';
-
-const BACKEND_API_BASE_URL_STORAGE_KEY = 'etsy-masks-admin/backend-api-base-url-v1';
 
 type ConfirmAction = (request: {
   title: string;
@@ -42,20 +39,6 @@ type UseBackendCacheParams = {
   confirmAction: ConfirmAction;
 };
 
-const readInitialBackendSettings = (): BackendSettings => {
-  try {
-    return {
-      apiBaseUrl: window.localStorage.getItem(BACKEND_API_BASE_URL_STORAGE_KEY) ?? '',
-      adminToken: '',
-    };
-  } catch {
-    return {
-      apiBaseUrl: '',
-      adminToken: '',
-    };
-  }
-};
-
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError';
 
@@ -72,17 +55,14 @@ export const useBackendCache = ({
   confirmAction,
 }: UseBackendCacheParams) => {
   const suggestedIdea = useMemo(() => getProjectIdeaLabel(project), [project]);
-  const [settings, setSettingsState] = useState<BackendSettings>(readInitialBackendSettings);
   const [health, setHealth] = useState<BackendHealth | null>(null);
   const [runs, setRuns] = useState<BackendRunSummary[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [snapshot, setSnapshot] = useState<BackendProjectSnapshot | null>(null);
   const [saveIdea, setSaveIdea] = useState(suggestedIdea);
   const [lastSuggestedIdea, setLastSuggestedIdea] = useState(suggestedIdea);
-  const client = useMemo(() => createBackendClient(settings), [settings]);
-  const canUseOpenAIProxy = Boolean(
-    settings.apiBaseUrl.trim() && settings.adminToken.trim() && health?.openaiProxyReady,
-  );
+  const client = useMemo(() => createBackendClient(), []);
+  const canUseOpenAIProxy = Boolean(health?.openaiProxyReady);
 
   useEffect(() => {
     setSaveIdea((currentIdea) =>
@@ -93,20 +73,6 @@ export const useBackendCache = ({
     setLastSuggestedIdea(suggestedIdea);
   }, [lastSuggestedIdea, suggestedIdea]);
 
-  const setSettings = useCallback((nextSettings: BackendSettings) => {
-    setSettingsState(nextSettings);
-    setHealth(null);
-    setRuns([]);
-    setSelectedRunId('');
-    setSnapshot(null);
-
-    try {
-      window.localStorage.setItem(BACKEND_API_BASE_URL_STORAGE_KEY, nextSettings.apiBaseUrl);
-    } catch {
-      // The API URL is non-secret convenience state. Ignore storage failures.
-    }
-  }, []);
-
   const loadRunCache = useCallback(
     async (
       preferredRunId: string | undefined,
@@ -115,13 +81,6 @@ export const useBackendCache = ({
       setProgress('Checking Cloudflare Worker health...');
       const nextHealth = await client.getHealth(signal);
       setHealth(nextHealth);
-
-      if (!settings.adminToken.trim()) {
-        setRuns([]);
-        setSelectedRunId('');
-        setSnapshot(null);
-        return;
-      }
 
       setProgress('Reading saved runs from D1...');
       const { runs: nextRuns } = await client.listRuns(signal);
@@ -141,20 +100,14 @@ export const useBackendCache = ({
       setProgress('Reading selected run metadata...');
       setSnapshot(await client.getRun(runId, signal));
     },
-    [client, settings.adminToken],
+    [client],
   );
 
   const testConnection = useCallback(() => {
     void runBusyAction('backend-sync', async (context) => {
       try {
         await loadRunCache(selectedRunId || undefined, context);
-        addActivity(
-          'cloud-synced',
-          'success',
-          settings.adminToken.trim()
-            ? 'Cloudflare Worker and run cache are reachable.'
-            : 'Cloudflare Worker is reachable. Add the admin token to read saved runs.',
-        );
+        addActivity('cloud-synced', 'success', 'Cloudflare Worker and run cache are reachable.');
       } catch (error) {
         if (isAbortError(error)) {
           addActivity('cloud-synced', 'warning', 'Backend connection check was cancelled.');
@@ -168,7 +121,7 @@ export const useBackendCache = ({
         );
       }
     });
-  }, [addActivity, loadRunCache, runBusyAction, selectedRunId, settings.adminToken]);
+  }, [addActivity, loadRunCache, runBusyAction, selectedRunId]);
 
   const selectRun = useCallback(
     (runId: string) => {
@@ -265,72 +218,92 @@ export const useBackendCache = ({
     suggestedIdea,
   ]);
 
-  const restoreSelectedRun = useCallback(() => {
-    void (async () => {
-      if (!selectedRunId) {
-        addActivity('cloud-synced', 'warning', 'Select a saved backend run first.');
-        return;
-      }
+  const restoreRun = useCallback(
+    (runId?: string) => {
+      const targetRunId = runId ?? selectedRunId;
 
-      const shouldRestore = await confirmAction({
-        title: 'Restore selected run?',
-        description:
-          'This replaces the current browser project and session files with the selected Cloudflare run.',
-        confirmLabel: 'Restore run',
-      });
+      void (async () => {
+        if (!targetRunId) {
+          addActivity('cloud-synced', 'warning', 'Select a saved backend run first.');
+          return;
+        }
 
-      if (!shouldRestore) {
-        return;
-      }
+        const selectedRun = runs.find((run) => run.id === targetRunId);
+        const shouldRestore = await confirmAction({
+          title: 'Restore selected run?',
+          description: `This replaces the current browser project and session files with "${
+            selectedRun?.idea ?? 'the selected Cloudflare run'
+          }".`,
+          confirmLabel: 'Restore run',
+        });
 
-      void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
-        try {
-          setProgress('Reading selected run metadata...');
-          const nextSnapshot = await client.getRun(selectedRunId, signal);
-          setSnapshot(nextSnapshot);
+        if (!shouldRestore) {
+          return;
+        }
 
-          if (!nextSnapshot.project) {
-            addActivity('cloud-synced', 'warning', 'The selected run no longer exists.');
-            return;
-          }
+        void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
+          try {
+            setSelectedRunId(targetRunId);
+            setProgress('Reading selected run metadata...');
+            const nextSnapshot = await client.getRun(targetRunId, signal);
+            setSnapshot(nextSnapshot);
 
-          const restoredFiles: ManagedFile[] = [];
-          for (const [index, file] of nextSnapshot.files.entries()) {
-            if (signal.aborted) {
-              throw new DOMException('Backend restore cancelled', 'AbortError');
+            if (!nextSnapshot.project) {
+              addActivity('cloud-synced', 'warning', 'The selected run no longer exists.');
+              return;
             }
 
-            setProgress(`Downloading ${index + 1}/${nextSnapshot.files.length}: ${file.name}`);
-            const blob = await client.downloadFile(selectedRunId, file.id, signal);
-            restoredFiles.push(createManagedFileFromBackendRecord(file, blob));
-          }
+            const restoredFiles: ManagedFile[] = [];
+            for (const [index, file] of nextSnapshot.files.entries()) {
+              if (signal.aborted) {
+                throw new DOMException('Backend restore cancelled', 'AbortError');
+              }
 
-          replaceProject(nextSnapshot.project);
-          replaceFiles(restoredFiles, `Restored ${restoredFiles.length} file(s) from Cloudflare.`);
-          addActivity('cloud-synced', 'success', `Restored "${nextSnapshot.idea ?? 'saved run'}".`);
-        } catch (error) {
-          if (isAbortError(error)) {
-            addActivity('cloud-synced', 'warning', 'Cloud restore was cancelled.');
-            return;
-          }
+              setProgress(`Downloading ${index + 1}/${nextSnapshot.files.length}: ${file.name}`);
+              const blob = await client.downloadFile(targetRunId, file.id, signal);
+              restoredFiles.push(createManagedFileFromBackendRecord(file, blob));
+            }
 
-          addActivity(
-            'error',
-            'error',
-            getErrorMessage(error, 'Could not restore the selected Cloudflare run.'),
-          );
-        }
-      });
-    })();
-  }, [
-    addActivity,
-    client,
-    confirmAction,
-    replaceFiles,
-    replaceProject,
-    runBusyAction,
-    selectedRunId,
-  ]);
+            replaceProject(nextSnapshot.project);
+            replaceFiles(
+              restoredFiles,
+              `Restored ${restoredFiles.length} file(s) from Cloudflare.`,
+            );
+            addActivity(
+              'cloud-synced',
+              'success',
+              `Restored "${nextSnapshot.idea ?? 'saved run'}".`,
+            );
+          } catch (error) {
+            if (isAbortError(error)) {
+              addActivity('cloud-synced', 'warning', 'Cloud restore was cancelled.');
+              return;
+            }
+
+            addActivity(
+              'error',
+              'error',
+              getErrorMessage(error, 'Could not restore the selected Cloudflare run.'),
+            );
+          }
+        });
+      })();
+    },
+    [
+      addActivity,
+      client,
+      confirmAction,
+      replaceFiles,
+      replaceProject,
+      runBusyAction,
+      runs,
+      selectedRunId,
+    ],
+  );
+
+  const restoreSelectedRun = useCallback(() => {
+    restoreRun();
+  }, [restoreRun]);
 
   const deleteSelectedRun = useCallback(() => {
     void (async () => {
@@ -424,7 +397,6 @@ export const useBackendCache = ({
   );
 
   return {
-    settings,
     health,
     runs,
     selectedRunId,
@@ -432,7 +404,6 @@ export const useBackendCache = ({
     saveIdea,
     suggestedIdea,
     canUseOpenAIProxy,
-    setSettings,
     setSaveIdea,
     testConnection,
     selectRun,
@@ -440,6 +411,7 @@ export const useBackendCache = ({
     restoreSelectedRun,
     deleteSelectedRun,
     deleteAllCloudData,
+    restoreRun,
     generateProjectDraft,
     generateImage,
   };

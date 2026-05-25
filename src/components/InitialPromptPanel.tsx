@@ -2,19 +2,18 @@ import { useState } from 'react';
 
 import { AIButton } from './ui/AIButton';
 import { Badge } from './ui/Badge';
-import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Textarea } from './ui/Textarea';
 
 type InitialPromptPanelProps = {
-  hasOpenAIKey: boolean;
+  aiReady: boolean;
   disabled: boolean;
   isGenerating: boolean;
   onFillBrief: (initialPrompt: string) => void;
 };
 
 export const InitialPromptPanel = ({
-  hasOpenAIKey,
+  aiReady,
   disabled,
   isGenerating,
   onFillBrief,
@@ -35,8 +34,8 @@ export const InitialPromptPanel = ({
               Describe the bundle once. The app drafts listing copy and a topic list.
             </p>
           </div>
-          <Badge tone={hasOpenAIKey ? 'success' : 'neutral'}>
-            {hasOpenAIKey ? 'AI ready' : 'Local draft'}
+          <Badge tone={aiReady ? 'success' : 'warning'}>
+            {aiReady ? 'Backend AI ready' : 'Backend required'}
           </Badge>
         </div>
       </CardHeader>
@@ -50,23 +49,15 @@ export const InitialPromptPanel = ({
           onChange={(event) => setInitialPrompt(event.target.value)}
         />
         <p className="text-xs text-ink-muted">
-          {hasOpenAIKey
-            ? 'Uses the session OpenAI key from Settings. The key is not saved.'
-            : 'Add an OpenAI key in Settings for an AI draft, or use the local template.'}
+          Brief drafting is handled by the backend OpenAI proxy. Configure Cloudflare Access and the
+          Worker OpenAI secret before using AI actions.
         </p>
-        {hasOpenAIKey ? (
-          <AIButton disabled={disabled || initialPrompt.trim().length === 0} onClick={applyDraft}>
-            {isGenerating ? 'Drafting brief...' : 'Draft brief with AI'}
-          </AIButton>
-        ) : (
-          <Button
-            variant="primary"
-            disabled={disabled || initialPrompt.trim().length === 0}
-            onClick={applyDraft}
-          >
-            {isGenerating ? 'Drafting brief...' : 'Draft brief locally'}
-          </Button>
-        )}
+        <AIButton
+          disabled={disabled || !aiReady || initialPrompt.trim().length === 0}
+          onClick={applyDraft}
+        >
+          {isGenerating ? 'Drafting brief...' : 'Draft brief with backend AI'}
+        </AIButton>
       </CardBody>
     </Card>
   );

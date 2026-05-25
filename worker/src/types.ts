@@ -1,7 +1,10 @@
 export type Env = {
   DB: D1Database;
   FILES: R2Bucket;
-  ADMIN_TOKEN?: string;
+  AUTH_MODE?: string;
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN?: string;
+  CLOUDFLARE_ACCESS_AUD?: string;
+  CLOUDFLARE_ACCESS_ALLOWED_EMAILS?: string;
   OPENAI_API_KEY?: string;
   ALLOWED_ORIGINS?: string;
   MAX_FILE_BYTES?: string;

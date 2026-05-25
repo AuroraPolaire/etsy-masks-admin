@@ -6,6 +6,14 @@ export default defineConfig({
   // https://<USERNAME>.github.io/<REPO>/ should use VITE_BASE_PATH="/<REPO>/".
   base: process.env.VITE_BASE_PATH ?? '/',
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

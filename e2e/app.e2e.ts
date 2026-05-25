@@ -26,14 +26,32 @@ test.describe('production workflow', () => {
     await prepareCleanPage(page);
   });
 
-  test('drafts locally, unlocks image review, and keeps Settings key session-only', async ({
+  test('starts from an empty brief, unlocks image review, and has no frontend secret fields', async ({
     page,
   }) => {
     await expect(page.getByRole('heading', { name: 'Mask Bundle Studio' })).toBeVisible();
-    await page.getByLabel('Bundle idea').fill('Moon mask for a kids birthday party');
-    await page.getByRole('button', { name: 'Draft brief locally' }).click();
+    await page.getByLabel('Listing title').fill('Moon Printable Mask, 1 Kids Paper Mask');
+    await page.getByLabel('Bundle theme').fill('Moon party masks');
+    await page.getByLabel('Target buyer').fill('Parents and teachers');
+    await page.getByLabel('Visual style').fill('Realistic printable paper mask');
+    await page
+      .getByLabel('Listing description')
+      .fill('Printable moon mask for parties, classrooms, and pretend play.');
+    await page
+      .getByLabel('Etsy tags')
+      .fill('printable mask, moon mask, kids craft, party printable');
+    await page
+      .getByLabel('Safety note')
+      .fill('Adult supervision required. Not intended for children under 3.');
+    await page
+      .getByLabel('Print instructions')
+      .fill('Print at 100% scale on cardstock, cut, and use with supervision.');
+    await page.getByLabel('Usage license').fill('Personal and classroom use only.');
+    await page.getByLabel('Refund note').fill('Digital downloads are not refundable.');
 
     await page.getByRole('button', { name: 'Next: topics' }).click();
+    await page.getByLabel('Add mask topic').fill('Moon');
+    await page.getByRole('button', { name: 'Add topic' }).click();
     await expect(page.getByText('moon.png')).toBeVisible();
     await page.getByRole('button', { name: 'Next: AI images' }).click();
 
@@ -48,10 +66,14 @@ test.describe('production workflow', () => {
     await expect(page.getByRole('heading', { name: 'Create output files' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Settings' }).click();
-    await page.getByLabel('Session OpenAI API key').fill('sk-session-only-test');
-    await page.reload();
-    await page.getByRole('button', { name: 'Settings' }).click();
-    await expect(page.getByLabel('Session OpenAI API key')).toHaveValue('');
+    await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
+    await expect(page.getByText('Session OpenAI API key')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Backend', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Saved runs' })).toBeVisible();
+    await expect(page.getByLabel('Search saved runs')).toBeVisible();
+    await expect(page.getByText('Worker API URL')).toHaveCount(0);
+    await expect(page.getByText('Admin token')).toHaveCount(0);
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {
@@ -75,7 +97,7 @@ test.describe('accessibility smoke checks', () => {
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
-    await page.getByRole('button', { name: 'Backend' }).click();
+    await page.getByRole('button', { name: 'Backend', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Cloud run cache and OpenAI proxy' }),
     ).toBeVisible();

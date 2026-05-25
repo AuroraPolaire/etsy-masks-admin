@@ -217,14 +217,9 @@ describe('FileInputButton', () => {
 });
 
 describe('InitialPromptPanel', () => {
-  it('shows the busy label while generating a local draft', () => {
+  it('shows the busy label while generating through backend AI', () => {
     render(
-      <InitialPromptPanel
-        hasOpenAIKey={false}
-        disabled={false}
-        isGenerating
-        onFillBrief={vi.fn()}
-      />,
+      <InitialPromptPanel aiReady={false} disabled={false} isGenerating onFillBrief={vi.fn()} />,
     );
 
     expect(screen.getByRole('button', { name: 'Drafting brief...' })).toBeDisabled();

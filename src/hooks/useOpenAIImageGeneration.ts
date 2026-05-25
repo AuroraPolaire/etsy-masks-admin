@@ -21,7 +21,7 @@ type UseOpenAIImageGenerationParams = {
   filesRef: MutableRefObject<ManagedFile[]>;
   appendFiles: (files: ManagedFile[]) => void;
   addActivity: AddActivity;
-  generateImageFile?: (
+  generateImageFile: (
     settings: OpenAIImageSettings,
     prompt: PromptItem,
     signal?: AbortSignal,
@@ -46,15 +46,6 @@ const createGeneratedManagedFile = async (
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError';
 
-const generateImageWithSessionKey = async (
-  settings: OpenAIImageSettings,
-  prompt: PromptItem,
-  signal?: AbortSignal,
-): Promise<File> => {
-  const { generateImageWithOpenAI } = await import('../lib/openaiImages');
-  return generateImageWithOpenAI(settings, prompt, signal);
-};
-
 export const useOpenAIImageGeneration = ({
   subjects,
   prompts,
@@ -62,7 +53,7 @@ export const useOpenAIImageGeneration = ({
   filesRef,
   appendFiles,
   addActivity,
-  generateImageFile = generateImageWithSessionKey,
+  generateImageFile,
 }: UseOpenAIImageGenerationParams) => {
   const [settings, setSettings] = useState<OpenAIImageSettings>(DEFAULT_OPENAI_IMAGE_SETTINGS);
   const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);

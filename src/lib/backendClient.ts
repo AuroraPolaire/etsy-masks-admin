@@ -1,4 +1,3 @@
-import type { BackendManagedFileMetadata } from './backendFiles';
 import type {
   BackendHealth,
   BackendImageResponse,
@@ -9,14 +8,10 @@ import type {
   ProjectDraft,
   PromptItem,
 } from '../types';
+import type { BackendManagedFileMetadata } from './backendFiles';
 import type { OpenAIResponsesApiResponse } from './openaiBrief';
 
 export const MAX_BACKEND_FILE_BYTES = 50 * 1024 * 1024;
-
-export type BackendClientConfig = {
-  apiBaseUrl: string;
-  adminToken: string;
-};
 
 export class BackendApiError extends Error {
   status: number;
@@ -26,26 +21,6 @@ export class BackendApiError extends Error {
     this.status = status;
   }
 }
-
-const normalizeBaseUrl = (apiBaseUrl: string): string => apiBaseUrl.trim().replace(/\/+$/, '');
-
-const getBaseUrl = (apiBaseUrl: string): string => {
-  const baseUrl = normalizeBaseUrl(apiBaseUrl);
-  if (!baseUrl) {
-    throw new BackendApiError(400, 'Add the Cloudflare Worker API URL first.');
-  }
-
-  return baseUrl;
-};
-
-const getAdminToken = (adminToken: string): string => {
-  const token = adminToken.trim();
-  if (!token) {
-    throw new BackendApiError(401, 'Add the backend admin token first.');
-  }
-
-  return token;
-};
 
 const readErrorMessage = async (response: Response): Promise<string> => {
   try {
@@ -66,28 +41,22 @@ const readErrorMessage = async (response: Response): Promise<string> => {
 };
 
 const requestJson = async <Result>(
-  config: BackendClientConfig,
   path: string,
   options: {
     method?: string | undefined;
     body?: unknown;
-    auth?: boolean | undefined;
     signal?: AbortSignal | undefined;
   } = {},
 ): Promise<Result> => {
   const headers = new Headers();
-  const auth = options.auth ?? true;
-  if (auth) {
-    headers.set('Authorization', `Bearer ${getAdminToken(config.adminToken)}`);
-  }
-
   if (options.body !== undefined) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${getBaseUrl(config.apiBaseUrl)}${path}`, {
+  const response = await fetch(path, {
     method: options.method ?? 'GET',
     headers,
+    credentials: 'include',
     ...(options.signal ? { signal: options.signal } : {}),
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
@@ -99,15 +68,9 @@ const requestJson = async <Result>(
   return (await response.json()) as Result;
 };
 
-const requestBlob = async (
-  config: BackendClientConfig,
-  path: string,
-  signal?: AbortSignal,
-): Promise<Blob> => {
-  const response = await fetch(`${getBaseUrl(config.apiBaseUrl)}${path}`, {
-    headers: {
-      Authorization: `Bearer ${getAdminToken(config.adminToken)}`,
-    },
+const requestBlob = async (path: string, signal?: AbortSignal): Promise<Blob> => {
+  const response = await fetch(path, {
+    credentials: 'include',
     ...(signal ? { signal } : {}),
   });
 
@@ -129,15 +92,14 @@ const base64ToFile = (payload: BackendImageResponse): File => {
   return new File([bytes], payload.fileName, { type: payload.mimeType || 'image/png' });
 };
 
-export const createBackendClient = (config: BackendClientConfig) => ({
-  getHealth: (signal?: AbortSignal) =>
-    requestJson<BackendHealth>(config, '/api/health', { auth: false, signal }),
+export const createBackendClient = () => ({
+  getHealth: (signal?: AbortSignal) => requestJson<BackendHealth>('/api/health', { signal }),
 
   listRuns: (signal?: AbortSignal) =>
-    requestJson<{ runs: BackendRunSummary[] }>(config, '/api/runs', { signal }),
+    requestJson<{ runs: BackendRunSummary[] }>('/api/runs', { signal }),
 
   createRun: (project: Project, idea: string, signal?: AbortSignal) =>
-    requestJson<{ ok: true; run: BackendRunSummary }>(config, '/api/runs', {
+    requestJson<{ ok: true; run: BackendRunSummary }>('/api/runs', {
       method: 'POST',
       body: {
         project,
@@ -147,12 +109,12 @@ export const createBackendClient = (config: BackendClientConfig) => ({
     }),
 
   getRun: (runId: string, signal?: AbortSignal) =>
-    requestJson<BackendProjectSnapshot>(config, `/api/runs/${encodeURIComponent(runId)}`, {
+    requestJson<BackendProjectSnapshot>(`/api/runs/${encodeURIComponent(runId)}`, {
       signal,
     }),
 
   getLatestRun: (signal?: AbortSignal) =>
-    requestJson<BackendProjectSnapshot>(config, '/api/project', { signal }),
+    requestJson<BackendProjectSnapshot>('/api/project', { signal }),
 
   uploadFile: async (
     runId: string,
@@ -165,15 +127,11 @@ export const createBackendClient = (config: BackendClientConfig) => ({
     formData.append('file', file, metadata.name);
 
     const response = await fetch(
-      `${getBaseUrl(config.apiBaseUrl)}/api/runs/${encodeURIComponent(
-        runId,
-      )}/files/${encodeURIComponent(metadata.id)}`,
+      `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(metadata.id)}`,
       {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${getAdminToken(config.adminToken)}`,
-        },
         body: formData,
+        credentials: 'include',
         ...(signal ? { signal } : {}),
       },
     );
@@ -185,30 +143,28 @@ export const createBackendClient = (config: BackendClientConfig) => ({
 
   downloadFile: (runId: string, fileId: string, signal?: AbortSignal) =>
     requestBlob(
-      config,
       `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(fileId)}`,
       signal,
     ),
 
   deleteRun: (runId: string, signal?: AbortSignal) =>
-    requestJson<{ ok: true }>(config, `/api/runs/${encodeURIComponent(runId)}`, {
+    requestJson<{ ok: true }>(`/api/runs/${encodeURIComponent(runId)}`, {
       method: 'DELETE',
       signal,
     }),
 
   deleteProject: (signal?: AbortSignal) =>
-    requestJson<{ ok: true }>(config, '/api/project', { method: 'DELETE', signal }),
+    requestJson<{ ok: true }>('/api/project', { method: 'DELETE', signal }),
 
   generateProjectDraft: async (
     initialPrompt: string,
     signal?: AbortSignal,
   ): Promise<ProjectDraft> => {
-    const { buildOpenAIProjectBriefRequestBody, parseOpenAIProjectBriefResponse } =
-      await import('./openaiBrief');
-    const response = await requestJson<OpenAIResponsesApiResponse>(config, '/api/openai/brief', {
+    const { parseOpenAIProjectBriefResponse } = await import('./openaiBrief');
+    const response = await requestJson<OpenAIResponsesApiResponse>('/api/openai/brief', {
       method: 'POST',
       body: {
-        requestBody: buildOpenAIProjectBriefRequestBody(initialPrompt),
+        initialPrompt,
       },
       signal,
     });
@@ -221,13 +177,11 @@ export const createBackendClient = (config: BackendClientConfig) => ({
     promptItem: PromptItem,
     signal?: AbortSignal,
   ): Promise<File> => {
-    const { buildOpenAIImageRequestBody } = await import('./openaiImages');
-    const response = await requestJson<BackendImageResponse>(config, '/api/openai/images', {
+    const response = await requestJson<BackendImageResponse>('/api/openai/images', {
       method: 'POST',
       body: {
-        requestBody: buildOpenAIImageRequestBody(settings, promptItem),
-        fileName: promptItem.expectedFilename,
-        outputFormat: settings.outputFormat,
+        settings,
+        promptItem,
       },
       signal,
     });

@@ -169,7 +169,7 @@ export const createWorkflowState = ({
     : !topicsComplete
       ? 'Add the mask topics for this bundle.'
       : !hasAIProvider && !imagesComplete
-        ? 'Add an OpenAI key, configure the Backend proxy, or upload images.'
+        ? 'Configure the backend OpenAI proxy or upload images.'
         : !imagesComplete
           ? 'Generate and approve missing images.'
           : !hasRequiredPdfs

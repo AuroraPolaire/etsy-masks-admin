@@ -8,13 +8,13 @@ OpenAI proxying.
 
 - Product brief editor for title, theme, audience, marketplace, style, description, tags, safety
   note, printing instructions, license, and refund policy.
-- Optional initial idea prompt that drafts the listing fields and mask topic list with OpenAI when
-  a session key is pasted, or with a local fallback when no key is present.
+- Initial idea prompt that drafts the listing fields and mask topic list through the backend OpenAI
+  proxy when the Worker is configured.
 - Mask topic list and copyable AI image prompts with expected filenames.
 - Default prompts target realistic, front-view printable masks with clear eye holes, a white
   background, and no shadows.
-- OpenAI Images API generation with either a session-only pasted API key or the optional
-  Cloudflare OpenAI proxy.
+- OpenAI Images API generation through the Cloudflare Worker. The frontend never stores OpenAI
+  keys, Worker URLs, or backend tokens.
 - Approximate OpenAI image cost estimates for one mask, missing images, and the full bundle.
 - Drag-and-drop multi-file upload for PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON.
 - Image preview, dimension reading, approval/rejection, review notes, and topic mapping.
@@ -30,11 +30,11 @@ OpenAI proxying.
 ## Privacy
 
 Most processing happens in your browser. Uploaded files are not sent anywhere unless you explicitly
-back up to Cloudflare, generate through OpenAI, or export files from the browser.
+back up to Cloudflare, generate through the backend OpenAI proxy, or export files from the browser.
 
-The session OpenAI API key and backend admin token are stored only in React state for the current tab
-session. They are not saved to localStorage, project JSON, ZIP manifests, or exports. The Worker
-stores its OpenAI key and admin token as Cloudflare secrets.
+OpenAI credentials and backend access policy live only in Cloudflare Worker configuration. The
+frontend calls same-origin `/api/*` endpoints and does not contain browser-entered API keys, Worker
+URLs, or admin tokens.
 
 Uploaded binary files are kept in browser memory only unless you explicitly use the Backend page to
 back up to Cloudflare R2. Export the archive, back up to Cloudflare, or re-upload files after
@@ -129,15 +129,23 @@ npx wrangler r2 bucket create etsy-masks-admin-backups
 
 Copy the returned D1 `database_id` into `worker/wrangler.toml`.
 
-Create Worker secrets:
+Create the Worker OpenAI secret:
 
 ```bash
-npx wrangler secret put ADMIN_TOKEN --config worker/wrangler.toml
 npx wrangler secret put OPENAI_API_KEY --config worker/wrangler.toml
 ```
 
-For local Worker development, copy `worker/.dev.vars.example` to `worker/.dev.vars` and replace the
-placeholder values.
+Configure Cloudflare Access for the Worker in production:
+
+1. Create a Cloudflare Access application that protects the Worker route.
+2. Set `AUTH_MODE=access` in `worker/wrangler.toml`.
+3. Set `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD` as Worker vars.
+4. Optionally set `CLOUDFLARE_ACCESS_ALLOWED_EMAILS` to a comma-separated allowlist.
+
+The Worker verifies the `Cf-Access-Jwt-Assertion` JWT. There is no browser-managed backend token.
+
+For local Worker development, copy `worker/.dev.vars.example` to `worker/.dev.vars` and keep
+`AUTH_MODE=none`. Do not use `AUTH_MODE=none` in production.
 
 Run migrations and start the Worker locally:
 
@@ -145,6 +153,9 @@ Run migrations and start the Worker locally:
 npm run worker:migrate:local
 npm run worker:dev
 ```
+
+In another terminal, run `npm run dev`. Vite proxies `/api/*` to `http://127.0.0.1:8787` for local
+development.
 
 Deploy manually when ready:
 
@@ -162,21 +173,24 @@ Then run the `Deploy Cloudflare Worker` workflow manually.
 
 ### Frontend backend connection
 
-The Backend sidebar page accepts:
+The frontend always calls same-origin `/api/*` routes. It does not accept a Worker URL or token.
 
-- Worker API URL, for example `https://etsy-masks-admin-api.<account>.workers.dev`
-- Admin token matching the `ADMIN_TOKEN` Worker secret
+For production, use a Cloudflare-managed custom domain:
 
-The app does not use build-time frontend env variables for backend behavior. The Worker owns backend
-capabilities and limits through its bindings, vars, and secrets. The API URL is stored in
-localStorage only for browser convenience. The admin token is session-only.
+1. Serve the GitHub Pages site from that domain using a Pages custom domain and Cloudflare DNS.
+2. Add a Worker route for `https://<your-domain>/api/*`.
+3. Keep the static app on GitHub Pages for all non-API paths.
+4. If the app is served from the domain root, set `VITE_BASE_PATH: '/'` in the GitHub Pages workflow.
+
+The default `https://<user>.github.io/<repo>/` URL cannot route same-origin `/api/*` requests to a
+Worker because GitHub Pages does not proxy those paths. Use it for static/manual workflows or add the
+custom domain for backend features.
 
 ## Image Generation Workflow
 
-1. Optionally paste an OpenAI API key for the current session, or configure the Backend OpenAI
-   proxy.
-2. Paste an initial bundle idea and fill the product brief with AI, or use the local fallback
-   without a key.
+1. Configure the Cloudflare Worker OpenAI proxy.
+2. Paste an initial bundle idea and fill the product brief with backend AI, or write the brief
+   manually.
 3. Edit the product brief and mask topic list.
 4. Generate one topic image or generate all missing images.
 5. Review generated files, repair mappings if needed, and approve or reject each image.
@@ -197,10 +211,9 @@ You can still upload externally generated files manually and map them to topics.
 ## Limitations
 
 - Uploaded files do not persist after refresh unless you explicitly back them up to Cloudflare.
-- The pasted OpenAI API key does not persist after refresh.
-- The backend admin token does not persist after refresh.
-- OpenAI image generation requires a valid browser session key or a configured Worker OpenAI
-  secret.
+- OpenAI brief and image generation require a configured Worker OpenAI secret.
+- Backend features require a same-origin `/api/*` Worker route. A plain `github.io` project URL
+  cannot provide that route without a Cloudflare-managed custom domain.
 - Cloudflare direct backup uploads are capped by the Worker `MAX_FILE_BYTES` setting, defaulting to
   50 MB per file.
 - Large browser ZIP/PDF generation can be slow or fail if source files are very large.
@@ -222,12 +235,11 @@ You can still upload externally generated files manually and map them to topics.
 - Blank page on GitHub Pages usually means the Vite `base` path is wrong. Set `VITE_BASE_PATH` to
   `"/<REPO>/"`.
 - Files disappear after refresh because binary files are not persisted.
-- API keys disappear after refresh because they are intentionally session-only.
-- Backend admin tokens disappear after refresh because they are intentionally session-only.
-- Cloud backup fails with 401 when the Backend page token does not match the Worker `ADMIN_TOKEN`.
+- Cloud backup fails with 401 when Cloudflare Access does not provide a valid Access JWT.
+- Cloud backup fails with 503 when `AUTH_MODE=access` is enabled but Access vars are missing.
 - Cloud backup fails with 413 when a file is larger than the Worker `MAX_FILE_BYTES` setting.
-- If OpenAI generation fails, check the key, model access, browser network access, and selected
-  transparency/model settings.
+- If OpenAI generation fails, check the Worker `OPENAI_API_KEY`, model access, Access policy, and
+  selected transparency/model settings.
 - Large ZIP generation can be slow in the browser. Reduce image dimensions or split the upload.
 - If image dimensions are too small for print, regenerate at 3000x3000 or higher.
 - If the generated Etsy upload ZIP is over 20MB, reduce image sizes or split files manually before

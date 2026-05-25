@@ -1,6 +1,7 @@
 import {
   ApiError,
   getCorsHeaders,
+  getAuthStatus,
   getMaxFileBytes,
   isRecord,
   jsonResponse,
@@ -35,7 +36,7 @@ const getHealth = (request: Request, env: Env): Response =>
       d1: true,
       r2: true,
     },
-    authConfigured: Boolean(env.ADMIN_TOKEN?.trim()),
+    auth: getAuthStatus(env),
     openaiProxyReady: Boolean(env.OPENAI_API_KEY?.trim()),
     maxFileBytes: getMaxFileBytes(env),
   });
@@ -171,7 +172,7 @@ const routeRequest = async (request: Request, env: Env): Promise<Response> => {
     return jsonResponse(request, env, { error: 'Not found.' }, { status: 404 });
   }
 
-  requireAuth(request, env);
+  await requireAuth(request, env);
   return routeAuthenticatedRequest(request, env, parts);
 };
 

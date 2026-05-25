@@ -216,7 +216,6 @@ export type OpenAIImageBackground = 'transparent' | 'opaque' | 'auto';
 export type OpenAIImageOutputFormat = 'png' | 'webp' | 'jpeg';
 
 export type OpenAIImageSettings = {
-  apiKey: string;
   model: OpenAIImageModel;
   size: OpenAIImageSize;
   quality: OpenAIImageQuality;
@@ -242,7 +241,10 @@ export type BackendHealth = {
     d1: boolean;
     r2: boolean;
   };
-  authConfigured: boolean;
+  auth: {
+    mode: 'access' | 'none';
+    configured: boolean;
+  };
   openaiProxyReady: boolean;
   maxFileBytes: number;
 };

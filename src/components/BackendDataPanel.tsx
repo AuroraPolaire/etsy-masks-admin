@@ -1,4 +1,5 @@
 import { Cloud, Database, Download, RefreshCw, Server, Shield, Trash2, Upload } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { formatBytes } from '../lib/files';
 import { Alert } from './ui/Alert';
@@ -6,7 +7,6 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Input } from './ui/Input';
-import { Select } from './ui/Select';
 import { Surface } from './ui/Surface';
 
 import type {
@@ -17,13 +17,7 @@ import type {
   ManagedFile,
 } from '../types';
 
-export type BackendSettings = {
-  apiBaseUrl: string;
-  adminToken: string;
-};
-
 type BackendDataPanelProps = {
-  settings: BackendSettings;
   health: BackendHealth | null;
   runs: BackendRunSummary[];
   selectedRunId: string;
@@ -32,15 +26,21 @@ type BackendDataPanelProps = {
   suggestedIdea: string;
   files: ManagedFile[];
   busyAction: BusyAction;
-  onSettingsChange: (settings: BackendSettings) => void;
   onSaveIdeaChange: (idea: string) => void;
   onRunSelected: (runId: string) => void;
+  onRestoreRun: (runId: string) => void;
   onTestConnection: () => void;
   onBackupToCloud: () => void;
   onRestoreFromCloud: () => void;
   onDeleteSelectedRun: () => void;
   onDeleteAllCloudData: () => void;
 };
+
+const formatDateTime = (value: string): string =>
+  new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 
 const getSnapshotTitle = (snapshot: BackendProjectSnapshot | null): string => {
   if (snapshot?.idea?.trim()) {
@@ -55,8 +55,20 @@ const getSnapshotTitle = (snapshot: BackendProjectSnapshot | null): string => {
   return snapshot?.project ? 'Untitled project' : 'No selected run';
 };
 
+const filterRuns = (runs: BackendRunSummary[], query: string): BackendRunSummary[] => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return runs;
+  }
+
+  return runs.filter((run) =>
+    [run.idea, run.projectId, run.id].some((value) =>
+      value.toLowerCase().includes(normalizedQuery),
+    ),
+  );
+};
+
 export const BackendDataPanel = ({
-  settings,
   health,
   runs,
   selectedRunId,
@@ -65,35 +77,24 @@ export const BackendDataPanel = ({
   suggestedIdea,
   files,
   busyAction,
-  onSettingsChange,
   onSaveIdeaChange,
   onRunSelected,
+  onRestoreRun,
   onTestConnection,
   onBackupToCloud,
   onRestoreFromCloud,
   onDeleteSelectedRun,
   onDeleteAllCloudData,
 }: BackendDataPanelProps) => {
+  const [runSearchQuery, setRunSearchQuery] = useState('');
   const backendBusy = busyAction === 'backend-sync';
-  const hasConnectionSettings =
-    settings.apiBaseUrl.trim().length > 0 && settings.adminToken.trim().length > 0;
+  const backendReachable = Boolean(health?.ok);
   const localTotalBytes = files.reduce((total, file) => total + file.size, 0);
   const maxFileBytes = health?.maxFileBytes ?? 50 * 1024 * 1024;
   const oversizedFiles = files.filter((file) => file.size > maxFileBytes);
   const cloudTotalBytes = snapshot?.files.reduce((total, file) => total + file.size, 0) ?? 0;
-  const runOptions = [
-    { value: '', label: runs.length ? 'Select a saved run' : 'No saved runs yet' },
-    ...runs.map((run) => ({
-      value: run.id,
-      label: `${run.idea} - ${new Date(run.updatedAt).toLocaleString()}`,
-    })),
-  ];
-  const updatedAt = snapshot?.updatedAt
-    ? new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      }).format(new Date(snapshot.updatedAt))
-    : 'Never';
+  const filteredRuns = useMemo(() => filterRuns(runs, runSearchQuery), [runSearchQuery, runs]);
+  const updatedAt = snapshot?.updatedAt ? formatDateTime(snapshot.updatedAt) : 'Never';
 
   return (
     <div className="space-y-6">
@@ -103,39 +104,20 @@ export const BackendDataPanel = ({
             <div>
               <h2 className="text-lg font-bold text-ink-strong">Cloudflare backend</h2>
               <p className="mt-1 text-sm text-ink-muted">
-                Optional D1/R2 run cache and OpenAI proxy for the GitHub Pages app.
+                Same-origin Worker API, Cloudflare Access authentication, D1 run cache, R2 files,
+                and backend OpenAI proxy.
               </p>
             </div>
-            <Badge tone={health?.ok ? 'success' : 'warning'}>
-              {health?.ok ? 'Worker reachable' : 'Not connected'}
+            <Badge tone={backendReachable ? 'success' : 'warning'}>
+              {backendReachable ? 'Worker reachable' : 'Connection needed'}
             </Badge>
           </div>
         </CardHeader>
         <CardBody className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Input
-              label="Worker API URL"
-              name="backendApiBaseUrl"
-              type="url"
-              value={settings.apiBaseUrl}
-              placeholder="https://etsy-masks-admin-api.<account>.workers.dev"
-              helperText="Stored in this browser so GitHub Pages can call the Worker."
-              onChange={(event) =>
-                onSettingsChange({ ...settings, apiBaseUrl: event.target.value })
-              }
-            />
-            <Input
-              label="Admin token"
-              name="backendAdminToken"
-              type="password"
-              autoComplete="off"
-              value={settings.adminToken}
-              helperText="Kept in React state for this tab only. It is not persisted."
-              onChange={(event) =>
-                onSettingsChange({ ...settings, adminToken: event.target.value })
-              }
-            />
-          </div>
+          <Alert tone="info">
+            The frontend calls same-origin <code>/api</code> routes. Production access is managed by
+            Cloudflare Access and Worker configuration, not by browser-entered secrets.
+          </Alert>
           <div className="grid gap-4 lg:grid-cols-2">
             <Input
               label="Run idea label"
@@ -146,34 +128,31 @@ export const BackendDataPanel = ({
               helperText="Saved with each Cloudflare run so older work can be found by idea."
               onChange={(event) => onSaveIdeaChange(event.target.value)}
             />
-            <Select
-              label="Saved backend run"
-              name="backendRun"
-              value={selectedRunId}
-              options={runOptions}
-              helperText="Selecting a run loads its metadata and files for restore."
-              disabled={!hasConnectionSettings || backendBusy || runs.length === 0}
-              onChange={(event) => onRunSelected(event.target.value)}
+            <Input
+              label="Search saved runs"
+              name="backendRunSearch"
+              type="search"
+              value={runSearchQuery}
+              placeholder="Search by idea, project id, or run id"
+              helperText="Filters the saved-run table below."
+              onChange={(event) => setRunSearchQuery(event.target.value)}
             />
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              disabled={!settings.apiBaseUrl.trim() || backendBusy}
-              onClick={onTestConnection}
-            >
+            <Button disabled={backendBusy} onClick={onTestConnection}>
               <RefreshCw aria-hidden="true" className="mr-2" size={17} />
-              Test connection
+              Refresh backend
             </Button>
             <Button
               variant="primary"
-              disabled={!hasConnectionSettings || backendBusy || oversizedFiles.length > 0}
+              disabled={!backendReachable || backendBusy || oversizedFiles.length > 0}
               onClick={onBackupToCloud}
             >
               <Upload aria-hidden="true" className="mr-2" size={17} />
               Save run to Cloudflare
             </Button>
             <Button
-              disabled={!hasConnectionSettings || backendBusy || !snapshot?.project}
+              disabled={!backendReachable || backendBusy || !snapshot?.project}
               onClick={onRestoreFromCloud}
             >
               <Download aria-hidden="true" className="mr-2" size={17} />
@@ -189,15 +168,93 @@ export const BackendDataPanel = ({
         </CardBody>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-bold text-ink-strong">Saved runs</h2>
+            <Badge tone="neutral">
+              {filteredRuns.length}/{runs.length}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardBody>
+          {filteredRuns.length === 0 ? (
+            <p className="text-sm text-ink-muted">
+              {runs.length === 0
+                ? 'No saved backend runs yet.'
+                : 'No saved runs match the current search.'}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-surface-divider text-xs uppercase text-ink-muted">
+                    <th className="py-2 pr-3 font-semibold">Idea</th>
+                    <th className="px-3 py-2 font-semibold">Updated</th>
+                    <th className="px-3 py-2 text-right font-semibold">Files</th>
+                    <th className="px-3 py-2 text-right font-semibold">Size</th>
+                    <th className="py-2 pl-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRuns.map((run) => {
+                    const isSelected = run.id === selectedRunId;
+
+                    return (
+                      <tr
+                        key={run.id}
+                        className={`border-b border-surface-divider ${
+                          isSelected ? 'bg-brand-subtle' : ''
+                        }`}
+                      >
+                        <td className="max-w-80 py-3 pr-3">
+                          <p className="truncate font-semibold text-ink-strong">{run.idea}</p>
+                          <p className="mt-1 truncate text-xs text-ink-muted">
+                            {run.projectId} / {run.id}
+                          </p>
+                        </td>
+                        <td className="p-3 text-ink-base">{formatDateTime(run.updatedAt)}</td>
+                        <td className="p-3 text-right text-ink-base">{run.fileCount}</td>
+                        <td className="p-3 text-right text-ink-base">
+                          {formatBytes(run.totalSizeBytes)}
+                        </td>
+                        <td className="py-3 pl-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              disabled={backendBusy}
+                              variant={isSelected ? 'primary' : 'secondary'}
+                              onClick={() => onRunSelected(run.id)}
+                            >
+                              {isSelected ? 'Selected' : 'Select'}
+                            </Button>
+                            <Button
+                              disabled={backendBusy}
+                              variant="primary"
+                              onClick={() => onRestoreRun(run.id)}
+                            >
+                              Restore
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
       <div className="grid gap-4 xl:grid-cols-2">
         <Surface variant="muted" className="p-4">
           <div className="flex items-start gap-3">
             <Cloud aria-hidden="true" className="mt-0.5 text-brand-strong" size={20} />
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-ink-strong">Cloud data stored</h3>
+              <h3 className="text-sm font-bold text-ink-strong">Selected cloud run</h3>
               <dl className="mt-3 grid gap-2 text-sm text-ink-base">
                 <div className="flex justify-between gap-4">
-                  <dt>Selected run</dt>
+                  <dt>Idea</dt>
                   <dd className="min-w-0 truncate text-right font-semibold">
                     {getSnapshotTitle(snapshot)}
                   </dd>
@@ -244,9 +301,9 @@ export const BackendDataPanel = ({
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt>Auth secret</dt>
+                  <dt>Access auth</dt>
                   <dd className="font-semibold">
-                    {health?.authConfigured ? 'Configured' : 'Missing'}
+                    {health?.auth.configured ? health.auth.mode : 'Missing'}
                   </dd>
                 </div>
               </dl>
@@ -279,9 +336,10 @@ export const BackendDataPanel = ({
             </Surface>
             <Surface variant="muted" className="p-3">
               <Shield aria-hidden="true" className="mb-2 text-ink-muted" size={18} />
-              <p className="text-sm font-semibold text-ink-strong">Secrets</p>
+              <p className="text-sm font-semibold text-ink-strong">Access</p>
               <p className="mt-1 text-xs leading-5 text-ink-muted">
-                The admin token and OpenAI key live as Worker secrets, not in GitHub Pages.
+                Authentication belongs to Cloudflare Access and Worker verification, not browser
+                token fields.
               </p>
             </Surface>
           </div>
@@ -293,7 +351,7 @@ export const BackendDataPanel = ({
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 variant="danger"
-                disabled={!hasConnectionSettings || backendBusy || !selectedRunId}
+                disabled={!backendReachable || backendBusy || !selectedRunId}
                 onClick={onDeleteSelectedRun}
               >
                 <Trash2 aria-hidden="true" className="mr-2" size={17} />
@@ -301,7 +359,7 @@ export const BackendDataPanel = ({
               </Button>
               <Button
                 variant="danger"
-                disabled={!hasConnectionSettings || backendBusy || runs.length === 0}
+                disabled={!backendReachable || backendBusy || runs.length === 0}
                 onClick={onDeleteAllCloudData}
               >
                 <Trash2 aria-hidden="true" className="mr-2" size={17} />

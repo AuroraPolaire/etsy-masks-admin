@@ -54,9 +54,7 @@ describe('workflow state', () => {
 
     expect(workflow.topicsComplete).toBe(true);
     expect(workflow.imagesComplete).toBe(false);
-    expect(workflow.nextAction).toBe(
-      'Add an OpenAI key, configure the Backend proxy, or upload images.',
-    );
+    expect(workflow.nextAction).toBe('Configure the backend OpenAI proxy or upload images.');
     expect(workflow.stepperItems.map((step) => step.status)).toEqual([
       'active',
       'complete',
