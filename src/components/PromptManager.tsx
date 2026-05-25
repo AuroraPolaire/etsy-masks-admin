@@ -21,6 +21,7 @@ type PromptManagerProps = {
   files: ManagedFile[];
   canGenerateImages: boolean;
   generatingSubjectId: string | null;
+  allowTopicEditing?: boolean;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
@@ -54,6 +55,7 @@ export const PromptManager = ({
   files,
   canGenerateImages,
   generatingSubjectId,
+  allowTopicEditing = true,
   onAddSubject,
   onRemoveSubject,
   onGenerateImage,
@@ -86,23 +88,25 @@ export const PromptManager = ({
               Generate masks with the OpenAI Images API, or copy prompts for manual use.
             </p>
           </div>
-          <div className="flex w-full gap-2 md:w-auto">
-            <Input
-              label="Add topic"
-              name="addSubject"
-              value={subjectName}
-              onChange={(event) => setSubjectName(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  addSubject();
-                }
-              }}
-            />
-            <Button className="self-end" variant="primary" onClick={addSubject}>
-              Add
-            </Button>
-          </div>
+          {allowTopicEditing ? (
+            <div className="flex w-full gap-2 md:w-auto">
+              <Input
+                label="Add topic"
+                name="addSubject"
+                value={subjectName}
+                onChange={(event) => setSubjectName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addSubject();
+                  }
+                }}
+              />
+              <Button className="self-end" variant="primary" onClick={addSubject}>
+                Add
+              </Button>
+            </div>
+          ) : null}
         </div>
       </CardHeader>
       <CardBody>
@@ -204,16 +208,18 @@ export const PromptManager = ({
                               );
                           }}
                         />
-                        <IconButton
-                          icon={Trash2}
-                          label={`Remove ${prompt.subjectName}`}
-                          variant="danger"
-                          onClick={() => {
-                            if (subject) {
-                              onRemoveSubject(subject.id);
-                            }
-                          }}
-                        />
+                        {allowTopicEditing ? (
+                          <IconButton
+                            icon={Trash2}
+                            label={`Remove ${prompt.subjectName}`}
+                            variant="danger"
+                            onClick={() => {
+                              if (subject) {
+                                onRemoveSubject(subject.id);
+                              }
+                            }}
+                          />
+                        ) : null}
                       </div>
                     </div>
                     <div className="min-w-0">

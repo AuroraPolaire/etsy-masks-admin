@@ -511,6 +511,7 @@ export const App = () => {
                       openAISettings.apiKey.trim().length > 0 && busyAction === null
                     }
                     generatingSubjectId={generatingSubjectId}
+                    allowTopicEditing={false}
                     onAddSubject={handleAddSubject}
                     onRemoveSubject={handleRemoveSubject}
                     onGenerateImage={handleGenerateSubjectImage}

@@ -35,6 +35,31 @@ describe('PromptManager', () => {
     expect(screen.getByText('lion.png')).toBeInTheDocument();
     expect(screen.getByText(/white background/i)).toBeInTheDocument();
   });
+
+  it('hides topic editing controls when topic editing is disabled', () => {
+    render(
+      <PromptManager
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
+        files={[]}
+        canGenerateImages={false}
+        generatingSubjectId={null}
+        allowTopicEditing={false}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
+        onGenerateImage={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onDelete={vi.fn()}
+        onNotesChange={vi.fn()}
+        onConfirmReview={vi.fn()}
+        onCopy={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Add topic')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Remove Lion')).not.toBeInTheDocument();
+  });
 });
 
 describe('QAPanel', () => {
