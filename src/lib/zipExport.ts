@@ -1,11 +1,10 @@
+import { jsPDF } from 'jspdf';
 import JSZip from 'jszip';
 
 import { APP_VERSION, MAX_ETSY_FILE_BYTES } from '../constants';
 import {
   createPngBlobFromImage,
   fileToText,
-  formatBytes,
-  createPromptItems,
   getExpectedFilename,
   getSourceFiles,
   groupFilesForExport,
@@ -23,10 +22,6 @@ type ArchiveResult = {
   needsReview: boolean;
 };
 
-const addText = (zip: JSZip, path: string, value: string): void => {
-  zip.file(path, `${value.trim()}\n`);
-};
-
 export const createListingCopy = (project: Project): string => {
   const tags = project.settings.tags
     .split(',')
@@ -41,10 +36,8 @@ export const createListingCopy = (project: Project): string => {
     '',
     'What is included:',
     `- ${project.subjects.length} printable mask designs`,
-    '- Printable PNG mask files',
-    project.pdfSettings.generateA4 ? '- A4 printable PDF' : '',
-    project.pdfSettings.generateUSLetter ? '- US Letter printable PDF' : '',
-    '- Printing and cutting instructions',
+    '- Individual PNG mask files',
+    '- One listing details PDF',
     '- Digital download only',
     '',
     'Printing instructions:',
@@ -65,37 +58,6 @@ export const createListingCopy = (project: Project): string => {
     .join('\n');
 };
 
-const createReadMeFirst = (project: Project): string =>
-  [
-    'READ ME FIRST',
-    '',
-    'This is a digital download only. No physical item will be shipped.',
-    '',
-    'Printing instructions:',
-    project.settings.printingInstructions,
-    '',
-    'Safety note:',
-    project.settings.safetyNote,
-    '',
-    'License:',
-    project.settings.license,
-    '',
-    'Refund note:',
-    project.settings.refundPolicy,
-  ].join('\n');
-
-const createPromptText = (project: Project): string =>
-  createPromptItems(project.subjects, project.settings)
-    .map((prompt) =>
-      [
-        prompt.subjectName,
-        `Filename: ${prompt.expectedFilename}`,
-        `Prompt: ${prompt.prompt}`,
-        `Negative requirements: ${prompt.negativeRequirements}`,
-      ].join('\n'),
-    )
-    .join('\n\n');
-
 const addApprovedPngs = async (
   zip: JSZip,
   basePath: string,
@@ -113,33 +75,53 @@ const addApprovedPngs = async (
   }
 };
 
-const addFiles = (zip: JSZip, basePath: string, files: ManagedFile[]): void => {
-  files.forEach((file) => {
-    zip.file(`${basePath}/${file.name}`, file.file);
-  });
-};
-
-const createNestedEtsyZip = async (
+export const createListingPdf = (
   project: Project,
-  files: ManagedFile[],
-  listingCopy: string,
-): Promise<Blob> => {
-  const groups = groupFilesForExport(files, project.subjects);
-  const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
-  const previewFiles = files.filter((file) => file.kind === 'generated-preview');
-  const zip = new JSZip();
+  listingCopy = createListingCopy(project),
+): Blob => {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const margin = 48;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxLineWidth = pageWidth - margin * 2;
+  const lineHeight = 14;
+  let y = margin;
 
-  await addApprovedPngs(zip, 'PNG_Approved', project, groups.approvedMapped);
-  addFiles(zip, 'Printable_PDFs', pdfFiles);
-  addFiles(zip, 'Preview_Images', previewFiles);
-  addText(zip, 'listing_copy.txt', listingCopy);
-  addText(zip, 'READ_ME_FIRST.txt', createReadMeFirst(project));
+  const addPageIfNeeded = (height = lineHeight) => {
+    if (y + height <= pageHeight - margin) {
+      return;
+    }
 
-  return zip.generateAsync({
-    type: 'blob',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 7 },
+    doc.addPage();
+    y = margin;
+  };
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('Etsy Listing Details', margin, y);
+  y += 24;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toISOString()}`, margin, y);
+  y += 22;
+
+  doc.setFontSize(11);
+  listingCopy.split('\n').forEach((paragraph) => {
+    if (!paragraph.trim()) {
+      y += 8;
+      return;
+    }
+
+    const lines = doc.splitTextToSize(paragraph, maxLineWidth) as string[];
+    lines.forEach((line) => {
+      addPageIfNeeded();
+      doc.text(line, margin, y);
+      y += lineHeight;
+    });
   });
+
+  return doc.output('blob');
 };
 
 const createManifest = (
@@ -150,8 +132,6 @@ const createManifest = (
 ): ExportManifest => {
   const groups = groupFilesForExport(files, project.subjects);
   const sourceFiles = getSourceFiles(files);
-  const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
-  const previewFiles = files.filter((file) => file.kind === 'generated-preview');
   const mappedImages = groups.approvedMapped.reduce<Record<string, string>>((mapped, file) => {
     const subject = project.subjects.find((item) => item.id === file.mappedSubjectId);
     if (subject) {
@@ -175,8 +155,8 @@ const createManifest = (
     unusedImages: groups.unused.map((file) => file.name),
     mappedImages,
     imageDimensions: createManifestImageDimensions(files),
-    pdfFiles: pdfFiles.map((file) => file.name),
-    marketplacePreviewFiles: previewFiles.map((file) => file.name),
+    pdfFiles: ['listing_details.pdf'],
+    marketplacePreviewFiles: [],
     sourceFileCount: sourceFiles.length,
     sourceTotalSizeBytes: sourceFiles.reduce((total, file) => total + file.size, 0),
     nestedEtsyUploadZipSizeBytes,
@@ -186,106 +166,34 @@ const createManifest = (
   };
 };
 
-const createArchiveReadme = (
-  project: Project,
-  qaStatus: QAResult['status'],
-  nestedSizeBytes: number,
-): string =>
-  [
-    'Etsy printable mask bundle archive',
-    '',
-    `QA status: ${qaStatus}`,
-    `Mask count: ${project.subjects.length}`,
-    `Nested Etsy upload ZIP size: ${formatBytes(nestedSizeBytes)}`,
-    '',
-    'Manual final checklist:',
-    '1. Open the PDFs.',
-    '2. Print one sample page.',
-    '3. Check mask size and eye-hole placement.',
-    '4. Confirm files open.',
-    '5. Confirm listing count matches actual files.',
-    '6. Confirm no copyrighted or branded characters.',
-    '7. Confirm digital download disclaimer is present.',
-    '8. Upload manually to Etsy.',
-    '9. Keep Etsy file limits in mind.',
-  ].join('\n');
-
 export const exportArchive = async (
   project: Project,
   files: ManagedFile[],
 ): Promise<ArchiveResult> => {
   const themeSlug = slugify(project.settings.theme);
-  const basePath = `${themeSlug}_etsy_bundle`;
   const listingCopy = createListingCopy(project);
+  const listingPdf = createListingPdf(project, listingCopy);
   const groups = groupFilesForExport(files, project.subjects);
-  const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
-  const previewFiles = files.filter((file) => file.kind === 'generated-preview');
-  const nestedZipBlob = await createNestedEtsyZip(project, files, listingCopy);
-  const nestedSize = nestedZipBlob.size;
-  const qaWithNestedSize = runQA({ ...project, nestedEtsyUploadZipSizeBytes: nestedSize }, files);
-  const manifest = createManifest(project, files, qaWithNestedSize, nestedSize);
   const zip = new JSZip();
 
-  addText(zip, `${basePath}/01_Etsy_Listing/title.txt`, project.settings.title);
-  addText(zip, `${basePath}/01_Etsy_Listing/description.txt`, project.settings.description);
-  addText(zip, `${basePath}/01_Etsy_Listing/tags.txt`, project.settings.tags);
-  addText(zip, `${basePath}/01_Etsy_Listing/safety_note.txt`, project.settings.safetyNote);
-  addText(
-    zip,
-    `${basePath}/01_Etsy_Listing/printing_instructions.txt`,
-    project.settings.printingInstructions,
-  );
-  addText(zip, `${basePath}/01_Etsy_Listing/license.txt`, project.settings.license);
-  addText(zip, `${basePath}/01_Etsy_Listing/refund_policy.txt`, project.settings.refundPolicy);
-  addText(zip, `${basePath}/01_Etsy_Listing/full_listing_copy.txt`, listingCopy);
-
-  zip.file(
-    `${basePath}/02_Image_Prompts/image_prompts.json`,
-    JSON.stringify(
-      createPromptItems(project.subjects, project.settings).map((prompt) => ({
-        subject: prompt.subjectName,
-        expectedFilename: prompt.expectedFilename,
-        prompt: prompt.prompt,
-        negativeRequirements: prompt.negativeRequirements,
-      })),
-      null,
-      2,
-    ),
-  );
-  addText(zip, `${basePath}/02_Image_Prompts/image_prompts.txt`, createPromptText(project));
-
-  await addApprovedPngs(zip, `${basePath}/03_Assets/PNG_Approved`, project, groups.approvedMapped);
-  addFiles(zip, `${basePath}/03_Assets/PNG_Rejected_Do_Not_Upload`, groups.rejected);
-  addFiles(zip, `${basePath}/03_Assets/Extra_Unused_Do_Not_Upload`, groups.unused);
-  addFiles(zip, `${basePath}/03_Assets/Printable_PDFs`, pdfFiles);
-  addFiles(zip, `${basePath}/03_Assets/Marketplace_Preview_Images`, previewFiles);
-
-  zip.file(`${basePath}/04_Etsy_Upload_Files/${themeSlug}_etsy_upload_bundle.zip`, nestedZipBlob);
-  addText(zip, `${basePath}/04_Etsy_Upload_Files/listing_copy.txt`, listingCopy);
-  zip.file(`${basePath}/05_QA/qa_report.json`, JSON.stringify(qaWithNestedSize, null, 2));
-  zip.file(`${basePath}/manifest.json`, JSON.stringify(manifest, null, 2));
-  zip.file(
-    `${basePath}/project_backup.json`,
-    JSON.stringify({ appVersion: APP_VERSION, project }, null, 2),
-  );
-  addText(
-    zip,
-    `${basePath}/README.txt`,
-    createArchiveReadme(project, qaWithNestedSize.status, nestedSize),
-  );
+  await addApprovedPngs(zip, 'mask_pngs', project, groups.approvedMapped);
+  zip.file('listing_details.pdf', listingPdf);
 
   const archiveBlob = await zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
     compressionOptions: { level: 7 },
   });
+  const archiveSize = archiveBlob.size;
+  const qaWithArchiveSize = runQA({ ...project, nestedEtsyUploadZipSizeBytes: archiveSize }, files);
+  const manifest = createManifest(project, files, qaWithArchiveSize, archiveSize);
 
   return {
     blob: archiveBlob,
-    fileName: `${themeSlug}_etsy_ready_archive.zip`,
+    fileName: `${themeSlug}_etsy_final_files.zip`,
     manifest,
-    nestedEtsyUploadZipSizeBytes: nestedSize,
-    needsReview: qaWithNestedSize.status !== 'etsy-ready' || nestedSize > MAX_ETSY_FILE_BYTES,
+    nestedEtsyUploadZipSizeBytes: archiveSize,
+    needsReview: qaWithArchiveSize.status !== 'etsy-ready' || archiveSize > MAX_ETSY_FILE_BYTES,
   };
 };
 

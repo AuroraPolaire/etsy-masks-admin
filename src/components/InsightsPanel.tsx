@@ -39,8 +39,6 @@ export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPa
     { label: 'Project created', value: project.createdAt },
     { label: 'Brief updated', value: project.lastBriefUpdatedAt },
     { label: 'Image approved', value: project.lastImageApprovalAt },
-    { label: 'PDFs generated', value: project.lastPdfGeneratedAt },
-    { label: 'Previews generated', value: project.lastPreviewGeneratedAt },
     { label: 'Project JSON exported', value: project.lastProjectJsonExportAt },
     { label: 'Archive exported', value: project.lastArchiveExportAt },
   ];
@@ -66,11 +64,14 @@ export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPa
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Topics" value={workflow.subjectCount} />
             <StatCard
-              label="Approved images"
+              label="Approved masks"
               value={`${workflow.approvedImageCount}/${workflow.subjectCount}`}
             />
-            <StatCard label="PDFs" value={workflow.pdfCount} />
-            <StatCard label="Previews" value={workflow.previewCount} />
+            <StatCard
+              label="Final ZIP"
+              value={qaResult.status === 'etsy-ready' ? 'Ready' : 'Review'}
+            />
+            <StatCard label="Files" value={files.length} />
           </dl>
           <Surface variant="muted" className="p-4">
             <div className="grid gap-4 md:grid-cols-3">

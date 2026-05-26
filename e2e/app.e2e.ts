@@ -73,8 +73,8 @@ test.describe('production workflow', () => {
     });
     await expect(page.getByText('Review needed')).toBeVisible();
     await page.getByRole('button', { name: 'Approve Moon' }).click();
-    await page.getByRole('button', { name: 'Next: PDFs and previews' }).click();
-    await expect(page.getByRole('heading', { name: 'Create output files' })).toBeVisible();
+    await page.getByRole('button', { name: 'Next: QA and export' }).click();
+    await expect(page.getByRole('heading', { name: 'Export package' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();

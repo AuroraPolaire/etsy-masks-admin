@@ -14,7 +14,7 @@ export const BrowserSupportWarning = ({ result }: BrowserSupportWarningProps) =>
   return (
     <Alert tone="danger" role="alert">
       <strong>Browser issue:</strong> Missing {result.missingFeatures.join(', ')}. Uploads, storage,
-      previews, PDFs, or ZIP export may not work.
+      listing PDFs, or ZIP export may not work.
     </Alert>
   );
 };

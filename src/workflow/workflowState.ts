@@ -3,7 +3,7 @@ import { getFileForSubject } from '../lib/files';
 import type { StepperItem } from '../components/ui/Stepper';
 import type { ManagedFile, Project, QAResult } from '../types';
 
-export type WorkflowStepId = 'brief' | 'topics' | 'images' | 'outputs' | 'export';
+export type WorkflowStepId = 'brief' | 'topics' | 'images' | 'export';
 
 export type WorkflowStepState = 'active' | 'available' | 'complete' | 'locked';
 
@@ -20,15 +20,11 @@ export type WorkflowStep = {
 export type WorkflowState = {
   subjectCount: number;
   approvedImageCount: number;
-  pdfCount: number;
-  previewCount: number;
-  hasRequiredPdfs: boolean;
   briefFieldsComplete: boolean;
   briefComplete: boolean;
   topicsComplete: boolean;
   imagesComplete: boolean;
-  outputsComplete: boolean;
-  canGenerateOutputs: boolean;
+  canExportFinalFiles: boolean;
   recommendedStepId: WorkflowStepId;
   visibleActiveStepId: WorkflowStepId;
   nextAction: string;
@@ -45,9 +41,6 @@ type CreateWorkflowStateParams = {
   activeStepId: WorkflowStepId;
 };
 
-const hasPdfFile = (files: ManagedFile[], suffix: string): boolean =>
-  files.some((file) => file.kind === 'generated-pdf' && file.name.includes(suffix));
-
 export const createWorkflowState = ({
   project,
   files,
@@ -59,11 +52,6 @@ export const createWorkflowState = ({
     getFileForSubject(files, subject.id),
   ).length;
   const subjectCount = project.subjects.length;
-  const pdfCount = files.filter((file) => file.kind === 'generated-pdf').length;
-  const previewCount = files.filter((file) => file.kind === 'generated-preview').length;
-  const hasRequiredPdfs =
-    (!project.pdfSettings.generateA4 || hasPdfFile(files, '_A4_printable.pdf')) &&
-    (!project.pdfSettings.generateUSLetter || hasPdfFile(files, '_US_Letter_printable.pdf'));
   const briefFieldsComplete = [
     project.settings.title,
     project.settings.theme,
@@ -77,17 +65,14 @@ export const createWorkflowState = ({
   const briefComplete = Boolean(project.lastBriefUpdatedAt) && briefFieldsComplete;
   const topicsComplete = subjectCount > 0;
   const imagesComplete = topicsComplete && approvedImageCount === subjectCount;
-  const outputsComplete = imagesComplete && hasRequiredPdfs && previewCount >= 5;
-  const canGenerateOutputs = approvedImageCount > 0;
+  const canExportFinalFiles = approvedImageCount > 0;
   const recommendedStepId: WorkflowStepId = !briefComplete
     ? 'brief'
     : !topicsComplete
       ? 'topics'
       : !imagesComplete
         ? 'images'
-        : !outputsComplete
-          ? 'outputs'
-          : 'export';
+        : 'export';
   const steps: WorkflowStep[] = [
     {
       id: 'brief',
@@ -120,25 +105,16 @@ export const createWorkflowState = ({
       lockedReason: 'Add at least one topic first.',
     },
     {
-      id: 'outputs',
-      title: 'PDFs and previews',
-      description: 'Create printable PDFs and marketplace preview images.',
-      summary: `${pdfCount} PDF files and ${previewCount} preview images generated.`,
-      complete: outputsComplete,
-      unlocked: imagesComplete,
-      lockedReason: 'Approve one image per topic first.',
-    },
-    {
       id: 'export',
       title: 'QA and export',
-      description: 'Check readiness and export the final ZIP.',
+      description: 'Export approved mask PNG files and one listing PDF.',
       summary:
         qaResult.status === 'etsy-ready'
           ? 'Package is Etsy-ready.'
           : `QA is ${qaResult.readinessPercentage}% ready.`,
       complete: qaResult.status === 'etsy-ready',
-      unlocked: outputsComplete,
-      lockedReason: 'Generate required PDFs and at least five previews first.',
+      unlocked: imagesComplete,
+      lockedReason: 'Approve one image per topic first.',
     },
   ];
   const stepById = new Map(steps.map((step) => [step.id, step]));
@@ -172,26 +148,18 @@ export const createWorkflowState = ({
         ? 'Configure the backend OpenAI proxy or upload images.'
         : !imagesComplete
           ? 'Generate and approve missing images.'
-          : !hasRequiredPdfs
-            ? 'Generate printable PDFs.'
-            : previewCount < 5
-              ? 'Generate marketplace previews.'
-              : qaResult.status === 'etsy-ready'
-                ? 'Export the final ZIP.'
-                : 'Fix the remaining QA items.';
+          : qaResult.status === 'etsy-ready'
+            ? 'Export the final ZIP.'
+            : 'Fix the remaining QA items.';
 
   return {
     subjectCount,
     approvedImageCount,
-    pdfCount,
-    previewCount,
-    hasRequiredPdfs,
     briefFieldsComplete,
     briefComplete,
     topicsComplete,
     imagesComplete,
-    outputsComplete,
-    canGenerateOutputs,
+    canExportFinalFiles,
     recommendedStepId,
     visibleActiveStepId,
     nextAction,

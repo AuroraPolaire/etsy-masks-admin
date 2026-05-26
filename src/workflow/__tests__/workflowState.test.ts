@@ -60,22 +60,21 @@ describe('workflow state', () => {
       'complete',
       'available',
       'locked',
-      'locked',
     ]);
   });
 
-  it('unlocks outputs after every topic has an approved image', () => {
+  it('unlocks export after every topic has an approved image', () => {
     const project = createProjectWithBrief();
     const workflow = createWorkflowState({
       project,
       files: [createApprovedImage('moon')],
       qaResult: createQaResult(),
       hasAIProvider: true,
-      activeStepId: 'outputs',
+      activeStepId: 'export',
     });
 
     expect(workflow.imagesComplete).toBe(true);
-    expect(workflow.canGenerateOutputs).toBe(true);
-    expect(workflow.getStepState('outputs')).toBe('active');
+    expect(workflow.canExportFinalFiles).toBe(true);
+    expect(workflow.getStepState('export')).toBe('active');
   });
 });

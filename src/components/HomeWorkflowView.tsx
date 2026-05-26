@@ -3,8 +3,6 @@ import { BrowserSupportWarning } from './BrowserSupportWarning';
 import { EtsySeoPanel } from './EtsySeoPanel';
 import { FileUploader } from './FileUploader';
 import { InitialPromptPanel } from './InitialPromptPanel';
-import { OutputActionsPanel } from './OutputActionsPanel';
-import { PdfSettingsPanel } from './PdfSettingsPanel';
 import { PrivacyNotice } from './PrivacyNotice';
 import { ProductBriefForm } from './ProductBriefForm';
 import { PromptManager } from './PromptManager';
@@ -19,7 +17,6 @@ import type {
   BrowserSupportResult,
   BusyAction,
   ManagedFile,
-  PdfSettings,
   Project,
   ProjectSettings,
   PromptItem,
@@ -43,7 +40,6 @@ type HomeWorkflowViewProps = {
   onOpenCloudSaves: () => void;
   onFillProductBrief: (initialPrompt: string) => void;
   onUpdateSettings: (settings: ProjectSettings) => void;
-  onUpdatePdfSettings: (settings: PdfSettings) => void;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
@@ -56,8 +52,6 @@ type HomeWorkflowViewProps = {
   onConfirmReview: (fileId: string) => void;
   onCopyPrompt: (message: string) => void;
   onFilesSelected: (files: File[]) => void;
-  onGeneratePdfs: () => void;
-  onGeneratePreviews: () => void;
   onExportArchive: () => void;
   onExportProjectJson: () => void;
   onImportProjectJson: (file: File) => void;
@@ -79,7 +73,6 @@ export const HomeWorkflowView = ({
   onOpenCloudSaves,
   onFillProductBrief,
   onUpdateSettings,
-  onUpdatePdfSettings,
   onAddSubject,
   onRemoveSubject,
   onGenerateImage,
@@ -92,8 +85,6 @@ export const HomeWorkflowView = ({
   onConfirmReview,
   onCopyPrompt,
   onFilesSelected,
-  onGeneratePdfs,
-  onGeneratePreviews,
   onExportArchive,
   onExportProjectJson,
   onImportProjectJson,
@@ -192,25 +183,6 @@ export const HomeWorkflowView = ({
             <FileUploader onFilesSelected={onFilesSelected} disabled={busyAction !== null} />
             <StepAdvanceButton
               disabled={!workflow.imagesComplete}
-              onClick={() => onStepSelected('outputs')}
-            >
-              Next: PDFs and previews
-            </StepAdvanceButton>
-          </div>
-        ) : null}
-        {step.id === 'outputs' ? (
-          <div className="space-y-6">
-            <PdfSettingsPanel settings={project.pdfSettings} onChange={onUpdatePdfSettings} />
-            <OutputActionsPanel
-              busyAction={busyAction}
-              canGenerateOutputs={workflow.canGenerateOutputs}
-              pdfCount={workflow.pdfCount}
-              previewCount={workflow.previewCount}
-              onGeneratePdfs={onGeneratePdfs}
-              onGeneratePreviews={onGeneratePreviews}
-            />
-            <StepAdvanceButton
-              disabled={!workflow.outputsComplete}
               onClick={() => onStepSelected('export')}
             >
               Next: QA and export
@@ -223,11 +195,7 @@ export const HomeWorkflowView = ({
             <ArchiveActions
               qaResult={qaResult}
               busyAction={busyAction}
-              canGenerateOutputs={workflow.canGenerateOutputs}
-              pdfCount={workflow.pdfCount}
-              previewCount={workflow.previewCount}
-              onGeneratePdfs={onGeneratePdfs}
-              onGeneratePreviews={onGeneratePreviews}
+              canExportFinalFiles={workflow.canExportFinalFiles}
               onExportArchive={onExportArchive}
               onExportProjectJson={onExportProjectJson}
               onImportProjectJson={onImportProjectJson}

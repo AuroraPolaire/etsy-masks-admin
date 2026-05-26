@@ -34,8 +34,6 @@ export type BusyAction =
   | 'uploading'
   | 'brief-generation'
   | 'image-generation'
-  | 'pdfs'
-  | 'previews'
   | 'archive'
   | 'backend-sync'
   | 'project-json'

@@ -1,4 +1,4 @@
-import { Download, FileInput, FileJson, FileText, Images } from 'lucide-react';
+import { Download, FileInput, FileJson, FileText } from 'lucide-react';
 
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
@@ -13,30 +13,21 @@ import type { BusyAction, QAResult } from '../types';
 type ArchiveActionsProps = {
   qaResult: QAResult;
   busyAction: BusyAction;
-  onGeneratePdfs: () => void;
-  onGeneratePreviews: () => void;
   onExportArchive: () => void;
   onExportProjectJson: () => void;
   onImportProjectJson: (file: File) => void;
-  canGenerateOutputs: boolean;
-  pdfCount: number;
-  previewCount: number;
+  canExportFinalFiles: boolean;
 };
 
 export const ArchiveActions = ({
   qaResult,
   busyAction,
-  onGeneratePdfs,
-  onGeneratePreviews,
   onExportArchive,
   onExportProjectJson,
   onImportProjectJson,
-  canGenerateOutputs,
-  pdfCount,
-  previewCount,
+  canExportFinalFiles,
 }: ArchiveActionsProps) => {
   const disabled = busyAction !== null;
-  const outputActionsDisabled = disabled || !canGenerateOutputs;
 
   return (
     <Card>
@@ -47,33 +38,18 @@ export const ArchiveActions = ({
         </div>
       </CardHeader>
       <CardBody className="space-y-3">
-        {!canGenerateOutputs ? (
-          <Alert tone="info">
-            Approve at least one topic image before generating PDFs or previews.
-          </Alert>
+        {!canExportFinalFiles ? (
+          <Alert tone="info">Approve at least one topic image before exporting final files.</Alert>
         ) : null}
         <Surface variant="muted" className="p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-strong">PDFs and previews</p>
+              <p className="text-sm font-semibold text-ink-strong">Final package</p>
               <p className="mt-1 text-xs text-ink-muted">
-                PDFs: {pdfCount} • Previews: {previewCount}
+                Exports approved mask PNGs and one listing details PDF.
               </p>
             </div>
-            <div className="flex shrink-0 gap-2">
-              <IconButton
-                icon={FileText}
-                label="Create printable PDFs"
-                disabled={outputActionsDisabled}
-                onClick={onGeneratePdfs}
-              />
-              <IconButton
-                icon={Images}
-                label="Create marketplace previews"
-                disabled={outputActionsDisabled}
-                onClick={onGeneratePreviews}
-              />
-            </div>
+            <FileText aria-hidden="true" className="shrink-0 text-ink-muted" size={20} />
           </div>
         </Surface>
         <Surface variant="muted" className="p-3">
@@ -102,7 +78,7 @@ export const ArchiveActions = ({
         <Button
           className="w-full"
           variant={qaResult.status === 'etsy-ready' ? 'primary' : 'secondary'}
-          disabled={disabled}
+          disabled={disabled || !canExportFinalFiles}
           onClick={onExportArchive}
         >
           <Download aria-hidden="true" className="mr-2" size={17} />

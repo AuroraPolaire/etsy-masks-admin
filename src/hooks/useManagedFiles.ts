@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { clearMappedSubject, revokeObjectUrl, withMappedSubject } from '../lib/fileLifecycle';
-import { createManagedFile, dedupeIncomingFiles, replaceGeneratedFiles } from '../lib/files';
+import { createManagedFile, dedupeIncomingFiles } from '../lib/files';
 
 import type { AddActivity, ManagedFile, SubjectItem } from '../types';
 
@@ -207,19 +207,6 @@ export const useManagedFiles = ({
     [addActivity],
   );
 
-  const replaceGeneratedFilesByKind = useCallback(
-    (
-      generatedFiles: ManagedFile[],
-      kind: Extract<ManagedFile['kind'], 'generated-pdf' | 'generated-preview'>,
-    ) => {
-      setFiles((currentFiles) => {
-        currentFiles.filter((file) => file.kind === kind).forEach(revokeObjectUrl);
-        return replaceGeneratedFiles(currentFiles, generatedFiles, kind);
-      });
-    },
-    [],
-  );
-
   return {
     files,
     filesRef,
@@ -236,6 +223,5 @@ export const useManagedFiles = ({
     clearSubjectMapping,
     clearFiles,
     replaceFiles,
-    replaceGeneratedFilesByKind,
   };
 };

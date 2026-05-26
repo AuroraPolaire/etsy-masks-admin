@@ -133,8 +133,7 @@ const createIncludedItems = (project: Project): string[] =>
   [
     `${project.subjects.length} printable mask designs`,
     'PNG mask files',
-    project.pdfSettings.generateA4 ? 'A4 printable PDF' : '',
-    project.pdfSettings.generateUSLetter ? 'US Letter printable PDF' : '',
+    'one listing details PDF',
     'printing and cutting instructions',
   ].filter(Boolean);
 

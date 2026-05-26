@@ -68,10 +68,8 @@ export const App = () => {
   >(null);
   const {
     project,
-    updateProject,
     replaceProject,
     updateSettings,
-    updatePdfSettings,
     updateOpenAIImageSettings,
     applyInitialDraft,
     addSubject,
@@ -93,7 +91,6 @@ export const App = () => {
     clearSubjectMapping,
     clearFiles,
     replaceFiles,
-    replaceGeneratedFilesByKind,
   } = useManagedFiles({
     subjects: project.subjects,
     addActivity,
@@ -194,19 +191,16 @@ export const App = () => {
     setConfirmRequest(null);
   }, [confirmRequest]);
 
-  const { generatePdfs, generatePreviews, exportProjectJson, importProjectJson, exportArchive } =
-    useExportActions({
-      project,
-      files,
-      updateProject,
-      replaceProject,
-      replaceGeneratedFilesByKind,
-      clearFiles,
-      addActivity,
-      runBusyAction,
-      onArchiveExported: backendCache.finalizeCurrentRun,
-      confirmAction: requestConfirmation,
-    });
+  const { exportProjectJson, importProjectJson, exportArchive } = useExportActions({
+    project,
+    files,
+    replaceProject,
+    clearFiles,
+    addActivity,
+    runBusyAction,
+    onArchiveExported: backendCache.finalizeCurrentRun,
+    confirmAction: requestConfirmation,
+  });
 
   const applyDraftToProject = useCallback(
     async (draft: ProjectDraft, activityMessage: string) => {
@@ -397,7 +391,6 @@ export const App = () => {
         onOpenCloudSaves={() => setActiveSectionId('backend')}
         onFillProductBrief={handleFillProductBrief}
         onUpdateSettings={updateSettings}
-        onUpdatePdfSettings={updatePdfSettings}
         onAddSubject={handleAddSubject}
         onRemoveSubject={handleRemoveSubject}
         onGenerateImage={handleGenerateSubjectImage}
@@ -410,8 +403,6 @@ export const App = () => {
         onConfirmReview={confirmReview}
         onCopyPrompt={(message) => addActivity('notes-updated', 'success', message)}
         onFilesSelected={handleFilesSelected}
-        onGeneratePdfs={generatePdfs}
-        onGeneratePreviews={generatePreviews}
         onExportArchive={exportArchive}
         onExportProjectJson={exportProjectJson}
         onImportProjectJson={importProjectJson}

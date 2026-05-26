@@ -19,8 +19,6 @@ const busyActionLabels: Record<Exclude<BusyAction, null>, string> = {
   uploading: 'Uploading files',
   'brief-generation': 'Drafting brief',
   'image-generation': 'Generating images',
-  pdfs: 'Creating PDFs',
-  previews: 'Creating previews',
   archive: 'Creating archive',
   'backend-sync': 'Syncing backend',
   'project-json': 'Exporting project JSON',
@@ -67,11 +65,14 @@ export const WorkflowStatus = ({
         ) : null}
         <dl className="grid grid-cols-3 gap-2 text-center text-sm">
           <StatCard
-            label="Images"
+            label="Masks"
             value={`${workflow.approvedImageCount}/${workflow.subjectCount}`}
           />
-          <StatCard label="PDFs" value={workflow.pdfCount} />
-          <StatCard label="Previews" value={workflow.previewCount} />
+          <StatCard label="Readiness" value={`${qaResult.readinessPercentage}%`} />
+          <StatCard
+            label="Final ZIP"
+            value={qaResult.status === 'etsy-ready' ? 'Ready' : 'Review'}
+          />
         </dl>
       </CardBody>
     </Card>

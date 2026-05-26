@@ -62,8 +62,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
   const sourceTotalSize = sourceFiles.reduce((total, file) => total + file.size, 0);
   const groups = groupFilesForExport(files, project.subjects);
   const expectedFilenames = project.subjects.map((subject) => getExpectedFilename(subject.name));
-  const pdfFiles = files.filter((file) => file.kind === 'generated-pdf');
-  const previewFiles = files.filter((file) => file.kind === 'generated-preview');
   const approvedImages = groups.approvedMapped;
   const approvedSubjectIds = new Set(approvedImages.map((file) => file.mappedSubjectId));
   const duplicateApprovedMappings = approvedImages.length !== approvedSubjectIds.size;
@@ -91,14 +89,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     (file) => file.reviewNotes.trim().length > 0 || file.explicitlyConfirmed,
   );
   const noSingleLargeSource = sourceFiles.every((file) => file.size <= MAX_ETSY_FILE_BYTES);
-  const hasA4 = pdfFiles.some((file) => file.name.includes('_A4_printable.pdf'));
-  const hasLetter = pdfFiles.some((file) => file.name.includes('_US_Letter_printable.pdf'));
-  const nestedZipSize = project.nestedEtsyUploadZipSizeBytes;
-  const generatedAfterApproval =
-    !project.lastImageApprovalAt ||
-    Boolean(
-      project.lastPdfGeneratedAt && project.lastPdfGeneratedAt >= project.lastImageApprovalAt,
-    );
+  const finalZipSize = project.nestedEtsyUploadZipSizeBytes;
   const getEtsyCheck = (id: string) => etsySeo.checks.find((check) => check.id === id);
   const etsyTitleWordCount = getEtsyCheck('title-word-count');
   const etsyTitleFrontLoaded = getEtsyCheck('title-front-loaded');
@@ -191,34 +182,16 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
         (file) => !groups.approvedMapped.some((approved) => approved.id === file.id),
       ),
       'Rejected images stay out of the final set',
-      'Rejected files go to PNG_Rejected_Do_Not_Upload.',
-    ),
-    createCheck(
-      'a4-pdf',
-      'critical',
-      !project.pdfSettings.generateA4 || hasA4,
-      'A4 PDF exists when enabled',
-      project.pdfSettings.generateA4
-        ? 'Generate the A4 PDF before export.'
-        : 'A4 generation is disabled.',
-    ),
-    createCheck(
-      'letter-pdf',
-      'critical',
-      !project.pdfSettings.generateUSLetter || hasLetter,
-      'US Letter PDF exists when enabled',
-      project.pdfSettings.generateUSLetter
-        ? 'Generate the US Letter PDF before export.'
-        : 'US Letter generation is disabled.',
+      'Rejected files are excluded from the final ZIP.',
     ),
     createCheck(
       'nested-etsy-size',
       'critical',
-      nestedZipSize === undefined || nestedZipSize <= MAX_ETSY_FILE_BYTES,
-      'Etsy upload ZIP is 20MB or less when known',
-      nestedZipSize === undefined
+      finalZipSize === undefined || finalZipSize <= MAX_ETSY_FILE_BYTES,
+      'Final ZIP is 20MB or less when known',
+      finalZipSize === undefined
         ? 'Size will be calculated during archive export.'
-        : `${Math.round((nestedZipSize / 1024 / 1024) * 10) / 10}MB nested ZIP.`,
+        : `${Math.round((finalZipSize / 1024 / 1024) * 10) / 10}MB final ZIP.`,
     ),
     createCheck(
       'mapping-assignments',
@@ -228,13 +201,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       duplicateApprovedMappings || hasInvalidApprovedMapping
         ? 'Fix duplicate or missing topic assignments.'
         : 'Each approved image is assigned to one topic.',
-    ),
-    createCheck(
-      'preview-count',
-      'warning',
-      previewFiles.length >= 5,
-      'At least 5 marketplace previews exist',
-      `${previewFiles.length} preview images generated.`,
     ),
     createCheck(
       'license-refund',
@@ -338,7 +304,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'warning',
       true,
       'Etsy upload count stays low',
-      'The nested upload ZIP helps keep upload count low.',
+      'The final ZIP contains individual mask PNGs plus one listing PDF.',
     ),
     createInfoCheck(
       'project-json-exported',
@@ -355,14 +321,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       project.lastArchiveExportAt
         ? `Last exported ${project.lastArchiveExportAt}.`
         : 'Not exported yet.',
-    ),
-    createInfoCheck(
-      'pdf-after-approval',
-      generatedAfterApproval,
-      'PDFs are current after image approval',
-      generatedAfterApproval
-        ? 'PDFs are not older than the last approval.'
-        : 'Regenerate PDFs after approvals.',
     ),
   ];
 

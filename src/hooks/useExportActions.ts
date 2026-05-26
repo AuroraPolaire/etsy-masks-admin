@@ -1,6 +1,6 @@
 import { APP_VERSION } from '../constants';
 import { nowIso } from '../lib/dates';
-import { downloadBlob, fileToText, groupFilesForExport } from '../lib/files';
+import { downloadBlob, fileToText } from '../lib/files';
 import { slugify } from '../lib/slugify';
 import { createProjectBackup, parseProjectBackup } from '../lib/storage';
 
@@ -9,12 +9,7 @@ import type { AddActivity, BusyActionContext, ManagedFile, Project, RunBusyActio
 type UseExportActionsParams = {
   project: Project;
   files: ManagedFile[];
-  updateProject: (updater: (project: Project) => Project) => void;
   replaceProject: (project: Project) => void;
-  replaceGeneratedFilesByKind: (
-    generatedFiles: ManagedFile[],
-    kind: Extract<ManagedFile['kind'], 'generated-pdf' | 'generated-preview'>,
-  ) => void;
   clearFiles: () => void;
   addActivity: AddActivity;
   runBusyAction: RunBusyAction;
@@ -39,101 +34,13 @@ const isAbortError = (error: unknown): boolean =>
 export const useExportActions = ({
   project,
   files,
-  updateProject,
   replaceProject,
-  replaceGeneratedFilesByKind,
   clearFiles,
   addActivity,
   runBusyAction,
   onArchiveExported,
   confirmAction,
 }: UseExportActionsParams) => {
-  const generatePdfs = () =>
-    runBusyAction('pdfs', async ({ setProgress, signal }: BusyActionContext) => {
-      try {
-        setProgress('Preparing approved images for PDFs...');
-        const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
-        if (approvedFiles.length === 0) {
-          addActivity(
-            'error',
-            'warning',
-            'Approve and map at least one image before creating PDFs.',
-          );
-          return;
-        }
-
-        throwIfAborted(signal);
-        setProgress(`Creating PDFs for ${approvedFiles.length} approved image(s)...`);
-        const { generatePrintablePdfs } = await import('../lib/pdf');
-        const generatedFiles = await generatePrintablePdfs(project, approvedFiles);
-        throwIfAborted(signal);
-        replaceGeneratedFilesByKind(generatedFiles, 'generated-pdf');
-        updateProject((currentProject) => ({
-          ...currentProject,
-          lastPdfGeneratedAt: nowIso(),
-        }));
-        addActivity(
-          'pdf-generated',
-          'success',
-          `Created ${generatedFiles.length} printable PDF(s).`,
-        );
-      } catch (error) {
-        if (isAbortError(error)) {
-          addActivity('pdf-generated', 'warning', 'PDF generation was cancelled.');
-          return;
-        }
-
-        addActivity(
-          'error',
-          'error',
-          error instanceof Error ? error.message : 'Could not create PDFs.',
-        );
-      }
-    });
-
-  const generatePreviews = () =>
-    runBusyAction('previews', async ({ setProgress, signal }: BusyActionContext) => {
-      try {
-        setProgress('Preparing approved images for previews...');
-        const approvedFiles = groupFilesForExport(files, project.subjects).approvedMapped;
-        if (approvedFiles.length === 0) {
-          addActivity(
-            'error',
-            'warning',
-            'Approve and map at least one image before creating previews.',
-          );
-          return;
-        }
-
-        throwIfAborted(signal);
-        setProgress('Creating marketplace preview images...');
-        const { generateMarketplacePreviewImages } = await import('../lib/previewImages');
-        const generatedFiles = await generateMarketplacePreviewImages(project, approvedFiles);
-        throwIfAborted(signal);
-        replaceGeneratedFilesByKind(generatedFiles, 'generated-preview');
-        updateProject((currentProject) => ({
-          ...currentProject,
-          lastPreviewGeneratedAt: nowIso(),
-        }));
-        addActivity(
-          'preview-generated',
-          'success',
-          `Created ${generatedFiles.length} preview image(s).`,
-        );
-      } catch (error) {
-        if (isAbortError(error)) {
-          addActivity('preview-generated', 'warning', 'Preview generation was cancelled.');
-          return;
-        }
-
-        addActivity(
-          'error',
-          'error',
-          error instanceof Error ? error.message : 'Could not create previews.',
-        );
-      }
-    });
-
   const exportProjectJson = () =>
     runBusyAction('project-json', ({ setProgress, signal }) => {
       try {
@@ -195,7 +102,7 @@ export const useExportActions = ({
   const exportArchive = () =>
     runBusyAction('archive', async ({ setProgress, signal }: BusyActionContext) => {
       try {
-        setProgress('Creating review archive...');
+        setProgress('Creating final PNG and listing PDF ZIP...');
         const { exportArchive: createArchive } = await import('../lib/zipExport');
         const result = await createArchive(project, files);
         const exportedAt = nowIso();
@@ -254,8 +161,6 @@ export const useExportActions = ({
     });
 
   return {
-    generatePdfs,
-    generatePreviews,
     exportProjectJson,
     importProjectJson,
     exportArchive,
