@@ -8,6 +8,7 @@ import {
   getExpectedFilename,
   getFileForSubject,
 } from '../lib/files';
+import { resizeImageFileToFinalResolution } from '../lib/imageResolution';
 
 import type {
   AddActivity,
@@ -81,6 +82,12 @@ const createGeneratedColoringPageFile = async (
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError';
 
+const prepareGeneratedFile = async (
+  generatedFile: File,
+  settings: OpenAIImageSettings,
+): Promise<File> =>
+  resizeImageFileToFinalResolution(generatedFile, settings.finalResolution, settings.background);
+
 export const useOpenAIImageGeneration = ({
   subjects,
   prompts,
@@ -135,7 +142,8 @@ export const useOpenAIImageGeneration = ({
         if (context?.signal.aborted) {
           return;
         }
-        const uniqueFile = makeUniqueFile(generatedFile, filesRef.current);
+        const preparedFile = await prepareGeneratedFile(generatedFile, settings);
+        const uniqueFile = makeUniqueFile(preparedFile, filesRef.current);
         const mappedFile = await createGeneratedManagedFile(uniqueFile, prompt, settings, subjects);
 
         appendFiles([mappedFile]);
@@ -206,7 +214,8 @@ export const useOpenAIImageGeneration = ({
               return;
             }
 
-            const uniqueFile = makeUniqueFileWithReservedNames(generatedFile, reservedNames);
+            const preparedFile = await prepareGeneratedFile(generatedFile, settings);
+            const uniqueFile = makeUniqueFileWithReservedNames(preparedFile, reservedNames);
             const mappedFile = await createGeneratedManagedFile(
               uniqueFile,
               prompt,
@@ -303,9 +312,10 @@ export const useOpenAIImageGeneration = ({
           return;
         }
 
+        const preparedFile = await prepareGeneratedFile(generatedFile, settings);
         const reservedNames = new Set(filesRef.current.map((file) => file.name.toLowerCase()));
-        const namedFile = new File([generatedFile], getColoringPageFilename(prompt.subjectName), {
-          type: generatedFile.type || 'image/png',
+        const namedFile = new File([preparedFile], getColoringPageFilename(prompt.subjectName), {
+          type: preparedFile.type || 'image/png',
         });
         const uniqueFile = makeUniqueFileWithReservedNames(namedFile, reservedNames);
         const mappedFile = await createGeneratedColoringPageFile(

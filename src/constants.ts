@@ -57,6 +57,7 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
   quality: 'low',
   background: 'opaque',
   outputFormat: 'png',
+  finalResolution: 'native',
 };
 
 export const PROMPT_NEGATIVE_REQUIREMENTS =

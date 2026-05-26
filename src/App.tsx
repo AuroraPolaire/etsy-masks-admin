@@ -564,7 +564,7 @@ export const App = () => {
       <AppSectionHeader
         eyebrow="Settings"
         title="Image generation settings"
-        description="Manage the model, image size, quality, background, output format, and cost estimate used by backend AI generation."
+        description="Manage the model, API image size, final output resolution, quality, background, output format, and cost estimate used by backend AI generation."
       />
       {renderOpenAIImagePanel()}
     </AppMainLayout>

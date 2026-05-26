@@ -1,4 +1,7 @@
+import { finalImageResolutionValues } from './imageResolution';
+
 import type {
+  FinalImageResolution,
   Marketplace,
   MaskScale,
   EtsySeoAnalysis,
@@ -212,6 +215,11 @@ const readOpenAIImageSettings = (
       settings.outputFormat,
       ['png', 'webp', 'jpeg'],
       fallback.outputFormat,
+    ),
+    finalResolution: readEnum<FinalImageResolution>(
+      settings.finalResolution,
+      finalImageResolutionValues,
+      fallback.finalResolution,
     ),
   };
 };

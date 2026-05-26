@@ -10,6 +10,7 @@ const settings: OpenAIImageSettings = {
   quality: 'high',
   background: 'transparent',
   outputFormat: 'png',
+  finalResolution: 'native',
 };
 
 describe('OpenAI image helpers', () => {

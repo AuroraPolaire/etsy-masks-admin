@@ -225,6 +225,8 @@ and Pages Functions from one origin.
   cost-efficient. Switch models or quality only when a specific run needs it.
 - OpenAI image costs shown in the app are approximate estimates based on common size/quality
   combinations. Actual billing can vary with token usage and pricing changes.
+- Final output resolution is applied after OpenAI generation. Use 4K output only when you need
+  larger saved PNG assets because it increases browser processing time and stored file size.
 - `gpt-image-2` currently does not support transparent backgrounds; use GPT Image 1.x models when
   transparent output is required.
 - Image dimensions below 2000x2000 are warned because they may print poorly.

@@ -1,3 +1,4 @@
+import { finalImageResolutionOptions } from '../lib/imageResolution';
 import { getOpenAIImageCostComparison, formatUsdEstimate } from '../lib/openaiImageCosts';
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
@@ -89,6 +90,19 @@ export const OpenAIImagePanel = ({
             onChange={(event) => update('size', event.target.value as OpenAIImageSettings['size'])}
           />
           <Select
+            label="Final output resolution"
+            name="finalImageResolution"
+            value={settings.finalResolution}
+            options={finalImageResolutionOptions}
+            helperText="Applied after generation to saved images and exports. Higher resolutions create larger files."
+            onChange={(event) =>
+              update(
+                'finalResolution',
+                event.target.value as OpenAIImageSettings['finalResolution'],
+              )
+            }
+          />
+          <Select
             label="Quality"
             name="openaiQuality"
             value={settings.quality}
@@ -133,6 +147,13 @@ export const OpenAIImagePanel = ({
           <Alert tone="warning">
             Transparent output needs GPT Image 1.x with PNG or WEBP. With `gpt-image-2`, requests
             use an opaque background.
+          </Alert>
+        ) : null}
+        {settings.finalResolution !== 'native' ? (
+          <Alert tone="info">
+            OpenAI generation still uses the supported API size above. The app preserves aspect
+            ratio and pads the result onto the selected final canvas before review, cloud autosave,
+            and export.
           </Alert>
         ) : null}
         <Surface variant="muted" className="p-4">
