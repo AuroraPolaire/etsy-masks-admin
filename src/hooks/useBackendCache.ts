@@ -35,6 +35,7 @@ import type {
   BusyActionContext,
   EtsySeoAnalysis,
   ManagedFile,
+  MarketingGenerationRecipe,
   MarketingImageSettings,
   OpenAIImageSettings,
   Project,
@@ -159,12 +160,14 @@ export const useBackendCache = ({
       signal,
       setProgress,
       forceUpload = false,
+      deleteMissingRemoteFiles = true,
     }: {
       projectOverride?: Project;
       filesOverride?: ManagedFile[];
       signal?: AbortSignal;
       setProgress?: (message: string | null) => void;
       forceUpload?: boolean;
+      deleteMissingRemoteFiles?: boolean;
     }): Promise<{ runId: string; snapshot: BackendProjectSnapshot }> => {
       setProgress?.('Checking cloud upload limits...');
       const nextHealth = healthRef.current ?? (await client.getHealth(signal));
@@ -216,6 +219,7 @@ export const useBackendCache = ({
               ...(signal ? { signal } : {}),
               ...(setProgress ? { setProgress } : {}),
               forceUpload,
+              deleteMissingRemoteFiles,
             });
 
       const { runs: nextRuns } = await client.listRuns(signal);
@@ -239,6 +243,7 @@ export const useBackendCache = ({
 
   const {
     autosaveState,
+    markDraftSaved,
     markDraftRestored,
     markDraftRestoreFailed,
     clearAutosaveTracking,
@@ -252,6 +257,35 @@ export const useBackendCache = ({
     isRestoringDraft: draftRestoreStatus === 'restoring',
     syncDraftRun,
   });
+
+  const saveDraftNow = useCallback(
+    async ({
+      projectOverride = project,
+      filesOverride = files,
+      signal,
+      setProgress,
+      deleteMissingRemoteFiles = true,
+    }: {
+      projectOverride?: Project;
+      filesOverride?: ManagedFile[];
+      signal?: AbortSignal;
+      setProgress?: (message: string | null) => void;
+      deleteMissingRemoteFiles?: boolean;
+    } = {}): Promise<{ runId: string; snapshot: BackendProjectSnapshot }> => {
+      const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
+      const result = await syncRunToBackend({
+        projectOverride,
+        filesOverride,
+        ...(signal ? { signal } : {}),
+        ...(setProgress ? { setProgress } : {}),
+        deleteMissingRemoteFiles,
+      });
+
+      markDraftSaved(projectOverride, filesOverride, idea, result.runId);
+      return result;
+    },
+    [files, markDraftSaved, project, saveIdea, syncRunToBackend],
+  );
 
   useBackendDraftAutoRestore({
     client,
@@ -593,7 +627,7 @@ export const useBackendCache = ({
       settings: MarketingImageSettings,
       projectOverride: Project,
       sourceFiles: ManagedFile[],
-      recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+      recipe: MarketingGenerationRecipe,
       signal?: AbortSignal,
     ): Promise<File> =>
       client.generateMarketingSceneImage(settings, projectOverride, sourceFiles, recipe, signal),
@@ -611,6 +645,7 @@ export const useBackendCache = ({
     suggestedIdea,
     canUseOpenAIProxy,
     setSaveIdea,
+    saveDraftNow,
     testConnection,
     selectRun,
     restoreSelectedRun,

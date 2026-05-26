@@ -25,9 +25,14 @@ const readDraftMap = (): Record<string, string> => {
 
 export const loadActiveBackendDraftRunId = (projectId: string): string => {
   try {
-    const mappedRunId = readDraftMap()[projectId];
+    const draftMap = readDraftMap();
+    const mappedRunId = draftMap[projectId];
     if (mappedRunId) {
       return mappedRunId;
+    }
+
+    if (Object.keys(draftMap).length > 0) {
+      return '';
     }
 
     return window.localStorage.getItem(LEGACY_ACTIVE_BACKEND_DRAFT_KEY) ?? '';

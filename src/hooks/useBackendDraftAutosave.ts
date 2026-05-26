@@ -172,6 +172,7 @@ export const useBackendDraftAutosave = ({
 
   return {
     autosaveState,
+    markDraftSaved,
     markDraftRestored,
     markDraftRestoreFailed,
     clearAutosaveTracking,

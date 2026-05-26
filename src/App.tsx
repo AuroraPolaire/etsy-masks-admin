@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { AppAside } from './components/AppAside';
 import { AppMainLayout } from './components/AppMainLayout';
@@ -24,7 +24,6 @@ import {
   createPromptItems,
   getCurrentColoringPageForSubject,
   getFileForSubject,
-  isImageFile,
 } from './lib/files';
 import { runQA } from './lib/qa';
 import { createWorkflowState } from './workflow/workflowState';
@@ -34,7 +33,9 @@ import type { ConfirmDialogRequest } from './components/ui/ConfirmDialog';
 import type {
   ActivityLevel,
   ActivityType,
+  BusyActionContext,
   ManagedFile,
+  MarketingGenerationRecipe,
   MarketingImageSettings,
   OpenAIImageSettings,
   ProjectDraft,
@@ -75,6 +76,7 @@ export const App = () => {
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
+  const generatedCloudSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const {
     project,
     replaceProject,
@@ -94,7 +96,6 @@ export const App = () => {
     approveFile,
     approveFiles,
     deleteFile,
-    clearAllMappings,
     clearSubjectMapping,
     clearFiles,
     replaceFiles,
@@ -140,6 +141,59 @@ export const App = () => {
     runBusyAction,
     confirmAction: requestConfirmation,
   });
+  const appendGeneratedFiles = useCallback(
+    async (managedFiles: ManagedFile[], context?: BusyActionContext) => {
+      if (managedFiles.length === 0) {
+        return;
+      }
+
+      const nextFiles = [...filesRef.current, ...managedFiles];
+      filesRef.current = nextFiles;
+      appendFiles(managedFiles);
+
+      if (!backendCache.canUseOpenAIProxy) {
+        return;
+      }
+
+      const saveGeneratedFiles = async () => {
+        if (context?.signal.aborted) {
+          return;
+        }
+
+        try {
+          await backendCache.saveDraftNow({
+            projectOverride: project,
+            filesOverride: nextFiles,
+            ...(context?.signal ? { signal: context.signal } : {}),
+            deleteMissingRemoteFiles: false,
+            setProgress: (message) => {
+              context?.setProgress(message ? `Saving generated files: ${message}` : null);
+            },
+          });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            return;
+          }
+
+          addActivity(
+            'error',
+            'error',
+            `Generated files were added locally, but cloud save failed: ${getErrorMessage(
+              error,
+              'Could not save generated files to Cloudflare.',
+            )}`,
+          );
+        }
+      };
+
+      const queuedSave = generatedCloudSaveQueueRef.current
+        .catch(() => undefined)
+        .then(saveGeneratedFiles);
+      generatedCloudSaveQueueRef.current = queuedSave;
+      await queuedSave;
+    },
+    [addActivity, appendFiles, backendCache, filesRef, project],
+  );
   const generateImageFile = useCallback(
     async (
       settings: OpenAIImageSettings,
@@ -174,11 +228,11 @@ export const App = () => {
       settings: MarketingImageSettings,
       projectOverride: typeof project,
       sourceFiles: ManagedFile[],
-      recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+      recipe: MarketingGenerationRecipe,
       signal?: AbortSignal,
     ): Promise<File> => {
       if (!backendCache.canUseOpenAIProxy) {
-        throw new Error('Cloud OpenAI proxy is required before generating marketing scenes.');
+        throw new Error('Cloud OpenAI proxy is required before generating marketing assets.');
       }
 
       return backendCache.generateMarketingSceneImage(
@@ -198,7 +252,6 @@ export const App = () => {
     generatingColoringPageSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
-    generateColoringPageFromSourceFile,
     generateSubjectColoringPage,
     generateMissingColoringPages,
   } = useOpenAIImageGeneration({
@@ -207,7 +260,7 @@ export const App = () => {
     missingImagePrompts,
     settings: project.openAIImageSettings,
     filesRef,
-    appendFiles,
+    appendGeneratedFiles,
     addActivity,
     onSettingsChange: updateOpenAIImageSettings,
     generateImageFile,
@@ -222,7 +275,7 @@ export const App = () => {
   } = useMarketingAssetGeneration({
     project,
     filesRef,
-    appendFiles,
+    appendGeneratedFiles,
     addActivity,
     generateMarketingSceneFile,
   });
@@ -268,23 +321,55 @@ export const App = () => {
   });
 
   const applyDraftToProject = useCallback(
-    async (draft: ProjectDraft, activityMessage: string) => {
+    async (draft: ProjectDraft, activityMessage: string, context?: BusyActionContext) => {
       if (files.length > 0) {
         const shouldApply = await requestConfirmation({
           title: 'Replace current topics?',
-          description: 'A new brief replaces the topic list and clears assigned generated images.',
+          description:
+            'A new brief replaces the topic list and clears assigned generated images. The current run will be saved to Cloud first.',
           confirmLabel: 'Replace topics',
         });
         if (!shouldApply) {
           return;
         }
+
+        try {
+          context?.setProgress('Saving current run before replacing topics...');
+          await backendCache.saveDraftNow({
+            projectOverride: project,
+            filesOverride: files,
+            ...(context?.signal ? { signal: context.signal } : {}),
+            setProgress: (message) => {
+              context?.setProgress(
+                message ? `Saving current run before replacing topics: ${message}` : null,
+              );
+            },
+          });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            addActivity('project-imported', 'warning', 'Brief replacement was cancelled.');
+            return;
+          }
+
+          addActivity(
+            'error',
+            'error',
+            `Current generated files were not replaced because cloud save failed: ${getErrorMessage(
+              error,
+              'Could not save the current run to Cloudflare.',
+            )}`,
+          );
+          return;
+        }
       }
 
       applyInitialDraft(draft);
-      clearAllMappings();
+      if (files.length > 0) {
+        clearFiles();
+      }
       addActivity('project-imported', 'success', activityMessage);
     },
-    [addActivity, applyInitialDraft, clearAllMappings, files.length, requestConfirmation],
+    [addActivity, applyInitialDraft, backendCache, clearFiles, files, project, requestConfirmation],
   );
 
   const handleFillProductBrief = useCallback(
@@ -305,6 +390,7 @@ export const App = () => {
           await applyDraftToProject(
             draft,
             `Drafted the brief through the Cloud proxy and added ${draft.subjects.length} topics.`,
+            { signal, setProgress },
           );
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
@@ -482,73 +568,18 @@ export const App = () => {
     [finalizeChildrenScene, runBusyAction],
   );
 
-  const shouldAutoGenerateColoringPage = useCallback(
-    (file: ManagedFile) => {
-      if (
-        !backendCache.canUseOpenAIProxy ||
-        file.kind !== 'uploaded' ||
-        file.assetVariant !== 'color' ||
-        !isImageFile(file) ||
-        !file.mappedSubjectId
-      ) {
-        return false;
-      }
-
-      const existingCurrentColoringPage =
-        getCurrentColoringPageForSubject(files, file.mappedSubjectId, file, 'approved') ??
-        getCurrentColoringPageForSubject(files, file.mappedSubjectId, file, 'pending');
-
-      return !existingCurrentColoringPage;
-    },
-    [backendCache.canUseOpenAIProxy, files],
-  );
-
-  const autoGenerateColoringPages = useCallback(
-    (sourceFiles: ManagedFile[]) => {
-      if (sourceFiles.length === 0) {
-        return;
-      }
-
-      void runBusyAction('image-generation', async (context) => {
-        for (const [index, sourceFile] of sourceFiles.entries()) {
-          if (context.signal.aborted) {
-            return;
-          }
-
-          context.setProgress(
-            `Generating coloring page ${index + 1}/${sourceFiles.length}: ${sourceFile.name}...`,
-          );
-          await generateColoringPageFromSourceFile(sourceFile, context);
-        }
-      });
-    },
-    [generateColoringPageFromSourceFile, runBusyAction],
-  );
-
   const handleApproveFile = useCallback(
     (fileId: string) => {
-      const sourceFile = files.find((file) => file.id === fileId);
-
       approveFile(fileId);
-
-      if (sourceFile && shouldAutoGenerateColoringPage(sourceFile)) {
-        autoGenerateColoringPages([sourceFile]);
-      }
     },
-    [approveFile, autoGenerateColoringPages, files, shouldAutoGenerateColoringPage],
+    [approveFile],
   );
 
   const handleApproveFiles = useCallback(
     (fileIds: string[]) => {
-      const targetIds = new Set(fileIds);
-      const sourceFiles = files.filter(
-        (file) => targetIds.has(file.id) && shouldAutoGenerateColoringPage(file),
-      );
-
       approveFiles(fileIds);
-      autoGenerateColoringPages(sourceFiles);
     },
-    [approveFiles, autoGenerateColoringPages, files, shouldAutoGenerateColoringPage],
+    [approveFiles],
   );
 
   const renderOpenAIImagePanel = () => (

@@ -1,4 +1,4 @@
-import { Check, Images, RotateCw, Trash2 } from 'lucide-react';
+import { Check, RotateCw, Trash2 } from 'lucide-react';
 import { PhotoProvider } from 'react-photo-view';
 
 import {
@@ -110,6 +110,7 @@ export const MarketingAssetsPanel = ({
 }: MarketingAssetsPanelProps) => {
   const sourceMasks = getApprovedMarketingSourceMasks(project, files);
   const canGenerate = busyAction === null && sourceMasks.length > 0;
+  const canGenerateWithAI = canGenerate && hasAIProvider;
   const isGenerating = busyAction === 'marketing-generation';
   const sloganPreviews = getLatestFiles(files, 'slogan-poster', 'preview', 3);
   const sloganFinals = getLatestFiles(files, 'slogan-poster', 'final', 3);
@@ -179,6 +180,11 @@ export const MarketingAssetsPanel = ({
                 Marketing generation is running.
               </Alert>
             ) : null}
+            {!hasAIProvider ? (
+              <Alert tone="info">
+                Cloud OpenAI proxy is required for AI marketing asset generation.
+              </Alert>
+            ) : null}
             <section className="space-y-3">
               <h3 className="text-sm font-bold text-ink-strong">Approved mask sources</h3>
               {renderSourceMasks()}
@@ -188,13 +194,13 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates 3 no-cost layout previews, then a larger final poster.
+                    Creates 3 AI poster concepts from the approved masks, then a larger final
+                    poster.
                   </p>
                 </div>
-                <Button disabled={!canGenerate} onClick={onGenerateSloganPreviews}>
-                  <Images aria-hidden="true" className="mr-2" size={17} />
+                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
                   Generate 3 previews
-                </Button>
+                </AIButton>
               </div>
               {sloganPreviews.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
@@ -207,7 +213,7 @@ export const MarketingAssetsPanel = ({
                     >
                       <Button
                         variant="primary"
-                        disabled={!canGenerate}
+                        disabled={!canGenerateWithAI}
                         onClick={() => {
                           onApprovePreview(file.id);
                           onFinalizeSloganPoster(file.id);
@@ -247,13 +253,12 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Mask sheet</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Combines approved masks into one or more deterministic sheet images.
+                    Uses AI to compose approved masks into one or more polished sheet images.
                   </p>
                 </div>
-                <Button disabled={!canGenerate} onClick={onGenerateMaskSheets}>
-                  <Images aria-hidden="true" className="mr-2" size={17} />
+                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateMaskSheets}>
                   Generate mask sheet
-                </Button>
+                </AIButton>
               </div>
               {maskSheets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
@@ -278,21 +283,13 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Children scene</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Generates 3 background concepts and composites the exact approved masks on top.
+                    Generates 3 scene concepts with AI-selected mask placement on children.
                   </p>
                 </div>
-                <AIButton
-                  disabled={!canGenerate || !hasAIProvider}
-                  onClick={onGenerateChildrenScenePreviews}
-                >
+                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateChildrenScenePreviews}>
                   Generate 3 previews
                 </AIButton>
               </div>
-              {!hasAIProvider ? (
-                <Alert tone="info">
-                  Cloud OpenAI proxy is required for children scene previews.
-                </Alert>
-              ) : null}
               {sourceMasks.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {sourceMasks.map((file) => {
@@ -335,7 +332,7 @@ export const MarketingAssetsPanel = ({
                     >
                       <Button
                         variant="primary"
-                        disabled={!canGenerate || !hasAIProvider}
+                        disabled={!canGenerateWithAI}
                         onClick={() => {
                           onApprovePreview(file.id);
                           onFinalizeChildrenScene(file.id);

@@ -15,6 +15,16 @@ export type MarketingAssetType = 'slogan-poster' | 'mask-sheet' | 'children-scen
 
 export type MarketingAssetStage = 'preview' | 'final';
 
+export type MarketingGenerationRecipe = {
+  type: MarketingAssetType;
+  id: string;
+  optionIndex: number;
+  stage: MarketingAssetStage;
+  maskCount: number;
+  pageIndex?: number;
+  pageCount?: number;
+};
+
 export type MarketingAssetMetadata = {
   type: MarketingAssetType;
   stage: MarketingAssetStage;

@@ -27,7 +27,7 @@ type UseOpenAIImageGenerationParams = {
   missingImagePrompts: PromptItem[];
   settings: OpenAIImageSettings;
   filesRef: MutableRefObject<ManagedFile[]>;
-  appendFiles: (files: ManagedFile[]) => void;
+  appendGeneratedFiles: (files: ManagedFile[], context?: BusyActionContext) => Promise<void>;
   addActivity: AddActivity;
   onSettingsChange: (settings: OpenAIImageSettings) => void;
   generateImageFile: (
@@ -87,7 +87,7 @@ export const useOpenAIImageGeneration = ({
   missingImagePrompts,
   settings,
   filesRef,
-  appendFiles,
+  appendGeneratedFiles,
   addActivity,
   onSettingsChange,
   generateImageFile,
@@ -147,7 +147,7 @@ export const useOpenAIImageGeneration = ({
           subjects,
         );
 
-        appendFiles([mappedFile]);
+        await appendGeneratedFiles([mappedFile], context);
         addActivity(
           'image-generated',
           'success',
@@ -170,7 +170,7 @@ export const useOpenAIImageGeneration = ({
     },
     [
       addActivity,
-      appendFiles,
+      appendGeneratedFiles,
       filesRef,
       finishGeneratingSubject,
       generateImageFile,
@@ -223,7 +223,7 @@ export const useOpenAIImageGeneration = ({
               subjects,
             );
 
-            appendFiles([mappedFile]);
+            await appendGeneratedFiles([mappedFile], context);
             completedCount += 1;
             addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
             context?.setProgress(
@@ -279,7 +279,7 @@ export const useOpenAIImageGeneration = ({
     },
     [
       addActivity,
-      appendFiles,
+      appendGeneratedFiles,
       filesRef,
       finishGeneratingSubject,
       generateImageFile,
@@ -325,7 +325,7 @@ export const useOpenAIImageGeneration = ({
           sourceFile.id,
         );
 
-        appendFiles([mappedFile]);
+        await appendGeneratedFiles([mappedFile], context);
         addActivity('image-generated', 'success', `Generated ${mappedFile.name}.`);
       } catch (error) {
         if (isAbortError(error)) {
@@ -344,7 +344,7 @@ export const useOpenAIImageGeneration = ({
     },
     [
       addActivity,
-      appendFiles,
+      appendGeneratedFiles,
       filesRef,
       finishGeneratingColoringPage,
       generateColoringPageFile,

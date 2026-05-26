@@ -63,6 +63,7 @@ describe('worker OpenAI marketing image requests', () => {
         slogan: 'Dinosaur masks for kids',
       },
       recipe: {
+        type: 'children-scene',
         id: 'party-table',
         optionIndex: 0,
         stage: 'final',

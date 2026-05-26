@@ -25,13 +25,19 @@ export const useManagedFiles = ({
   useEffect(() => () => filesRef.current.forEach(revokeObjectUrl), []);
 
   const appendFiles = useCallback((managedFiles: ManagedFile[]) => {
-    setFiles((currentFiles) => [...currentFiles, ...managedFiles]);
+    setFiles((currentFiles) => {
+      const nextFiles = [...currentFiles, ...managedFiles];
+      filesRef.current = nextFiles;
+      return nextFiles;
+    });
   }, []);
 
   const updateFile = useCallback((fileId: string, updater: (file: ManagedFile) => ManagedFile) => {
-    setFiles((currentFiles) =>
-      currentFiles.map((file) => (file.id === fileId ? updater(file) : file)),
-    );
+    setFiles((currentFiles) => {
+      const nextFiles = currentFiles.map((file) => (file.id === fileId ? updater(file) : file));
+      filesRef.current = nextFiles;
+      return nextFiles;
+    });
   }, []);
 
   const approveFile = useCallback(
@@ -55,17 +61,19 @@ export const useManagedFiles = ({
         return;
       }
 
-      setFiles((currentFiles) =>
-        currentFiles.map((file) =>
+      setFiles((currentFiles) => {
+        const nextFiles = currentFiles.map((file) =>
           targetIds.has(file.id)
             ? {
                 ...file,
-                reviewState: 'approved',
+                reviewState: 'approved' as const,
                 explicitlyConfirmed: true,
               }
             : file,
-        ),
-      );
+        );
+        filesRef.current = nextFiles;
+        return nextFiles;
+      });
       onImageApproved();
       addActivity(
         'image-approved',
@@ -83,7 +91,11 @@ export const useManagedFiles = ({
         revokeObjectUrl(file);
       }
 
-      setFiles((currentFiles) => currentFiles.filter((item) => item.id !== fileId));
+      setFiles((currentFiles) => {
+        const nextFiles = currentFiles.filter((item) => item.id !== fileId);
+        filesRef.current = nextFiles;
+        return nextFiles;
+      });
       addActivity('file-removed', 'warning', `Removed ${file?.name ?? 'file'}.`);
     },
     [addActivity],
@@ -100,20 +112,27 @@ export const useManagedFiles = ({
   );
 
   const clearAllMappings = useCallback(() => {
-    setFiles((currentFiles) => currentFiles.map(clearMappedSubject));
+    setFiles((currentFiles) => {
+      const nextFiles = currentFiles.map(clearMappedSubject);
+      filesRef.current = nextFiles;
+      return nextFiles;
+    });
   }, []);
 
   const clearSubjectMapping = useCallback((subjectId: string) => {
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
+    setFiles((currentFiles) => {
+      const nextFiles = currentFiles.map((file) =>
         file.mappedSubjectId === subjectId ? clearMappedSubject(file) : file,
-      ),
-    );
+      );
+      filesRef.current = nextFiles;
+      return nextFiles;
+    });
   }, []);
 
   const clearFiles = useCallback(
     (activityMessage?: string) => {
       filesRef.current.forEach(revokeObjectUrl);
+      filesRef.current = [];
       setFiles([]);
 
       if (activityMessage) {
@@ -126,6 +145,7 @@ export const useManagedFiles = ({
   const replaceFiles = useCallback(
     (managedFiles: ManagedFile[], activityMessage?: string) => {
       filesRef.current.forEach(revokeObjectUrl);
+      filesRef.current = managedFiles;
       setFiles(managedFiles);
 
       if (activityMessage) {

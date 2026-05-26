@@ -46,6 +46,33 @@ const mockUnavailableBackend = async (page: Page) => {
 const mockOpenAIImageBackend = async (page: Page) => {
   let imageRequestCount = 0;
   let coloringPageRequestCount = 0;
+  let uploadFileCount = 0;
+  let activeRun = {
+    id: 'run-auto-coloring',
+    projectId: 'project-1',
+    idea: 'Moon party masks',
+    status: 'draft',
+    createdAt: '2026-05-26T09:00:00.000Z',
+    updatedAt: '2026-05-26T09:00:00.000Z',
+    fileCount: 0,
+    totalSizeBytes: 0,
+  };
+  const uploadedFiles: Array<{
+    id: string;
+    runId: string;
+    projectId: string;
+    name: string;
+    originalName: string;
+    size: number;
+    type: string;
+    kind: string;
+    addedAt: string;
+    reviewState: string;
+    reviewNotes: string;
+    assetVariant: string;
+    explicitlyConfirmed: boolean;
+    updatedAt: string;
+  }> = [];
 
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
@@ -95,6 +122,39 @@ const mockOpenAIImageBackend = async (page: Page) => {
       return;
     }
 
+    if (url.pathname === '/api/openai/brief' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          output_text: JSON.stringify({
+            title: 'Unicorn Printable Masks, 2 Kids Paper Masks',
+            theme: 'Unicorn party masks',
+            audience: 'Parents and teachers',
+            marketplace: 'Etsy',
+            style: 'Realistic printable unicorn masks',
+            description: 'Printable unicorn masks for parties and classroom crafts.',
+            tags: ['unicorn mask', 'kids craft', 'party printable'],
+            safetyNote: 'Adult supervision required. Not intended for children under 3.',
+            printingInstructions: 'Print on cardstock and cut with supervision.',
+            license: 'Personal and classroom use only.',
+            refundPolicy: 'Digital downloads are not refundable.',
+            subjects: ['Rainbow Unicorn', 'Star Unicorn'],
+          }),
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ runs: [activeRun] }),
+      });
+      return;
+    }
+
     if (url.pathname === '/api/runs' && method === 'POST') {
       await route.fulfill({
         status: 200,
@@ -116,6 +176,71 @@ const mockOpenAIImageBackend = async (page: Page) => {
       return;
     }
 
+    const runMatch = /^\/api\/runs\/([^/]+)$/.exec(url.pathname);
+    if (runMatch?.[1] && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          runId: runMatch[1],
+          idea: activeRun.idea,
+          status: activeRun.status,
+          project: null,
+          updatedAt: activeRun.updatedAt,
+          files: uploadedFiles,
+          events: [],
+        }),
+      });
+      return;
+    }
+
+    if (runMatch?.[1] && method === 'PUT') {
+      const requestBody = route.request().postDataJSON() as {
+        project?: { id?: string };
+        idea?: string;
+      };
+      activeRun = {
+        ...activeRun,
+        projectId: requestBody.project?.id ?? activeRun.projectId,
+        idea: requestBody.idea ?? activeRun.idea,
+        updatedAt: '2026-05-26T09:01:00.000Z',
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, run: activeRun }),
+      });
+      return;
+    }
+
+    const fileMatch = /^\/api\/runs\/([^/]+)\/files\/([^/]+)$/.exec(url.pathname);
+    if (fileMatch?.[1] && fileMatch[2] && method === 'PUT') {
+      uploadFileCount += 1;
+      const fileId = decodeURIComponent(fileMatch[2]);
+      uploadedFiles.push({
+        id: fileId,
+        runId: decodeURIComponent(fileMatch[1]),
+        projectId: activeRun.projectId,
+        name: `${fileId}.png`,
+        originalName: `${fileId}.png`,
+        size: onePixelPng.byteLength,
+        type: 'image/png',
+        kind: 'generated-preview',
+        addedAt: '2026-05-26T09:01:00.000Z',
+        reviewState: 'pending',
+        reviewNotes: '',
+        assetVariant: 'color',
+        explicitlyConfirmed: false,
+        updatedAt: '2026-05-26T09:01:00.000Z',
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -126,6 +251,7 @@ const mockOpenAIImageBackend = async (page: Page) => {
   return {
     getImageRequestCount: () => imageRequestCount,
     getColoringPageRequestCount: () => coloringPageRequestCount,
+    getUploadFileCount: () => uploadFileCount,
   };
 };
 
@@ -651,8 +777,8 @@ test.describe('production workflow', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Approve mask' }).click();
-    await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
-    await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
+    await expect.poll(() => backend.getColoringPageRequestCount()).toBe(0);
+    await expect(page.getByRole('button', { name: 'Generate coloring page' })).toBeEnabled();
     await page.getByRole('button', { name: 'Next: marketing assets' }).click();
     await expect(page.getByText('Generate optional listing graphics')).toBeVisible();
     await page.getByRole('button', { name: 'Next: QA and export' }).click();
@@ -670,7 +796,7 @@ test.describe('production workflow', () => {
     await expect(page.getByText('TODO')).toHaveCount(0);
   });
 
-  test('auto-generates a coloring page when a color mask is approved', async ({ page }) => {
+  test('keeps coloring page generation manual after a color mask is approved', async ({ page }) => {
     await page.unroute('**/api/**');
     const backend = await mockOpenAIImageBackend(page);
 
@@ -690,9 +816,48 @@ test.describe('production workflow', () => {
     await expect(page.getByText('Draft').first()).toBeVisible();
     await page.getByRole('button', { name: 'Approve mask' }).click();
 
+    await expect.poll(() => backend.getColoringPageRequestCount()).toBe(0);
+    await expect(page.getByRole('button', { name: 'Generate coloring page' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Generate coloring page' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
     await expect(page.getByText('Approved').first()).toBeVisible();
+  });
+
+  test('separates generated files when replacing a run with a new AI brief', async ({ page }) => {
+    await page.unroute('**/api/**');
+    const backend = await mockOpenAIImageBackend(page);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
+    await fillCompleteBrief(page);
+    await page.getByRole('button', { name: 'Next: topics and images' }).click();
+    await page.getByLabel('Add mask topic').fill('Moon');
+    await page.getByRole('button', { name: 'Add topic' }).click();
+    await page.getByRole('button', { name: 'Generate mask' }).click();
+    await expect.poll(() => backend.getImageRequestCount()).toBe(1);
+    await expect(page.getByText('moon.png').first()).toBeVisible();
+
+    await page.getByRole('button', { name: /Idea and brief/ }).click();
+    await page.getByLabel('Bundle idea').fill('Unicorn masks');
+    await page.getByRole('button', { name: 'Draft brief' }).click();
+    await page
+      .getByRole('dialog', { name: 'Replace current topics?' })
+      .getByRole('button', {
+        name: 'Replace topics',
+      })
+      .click();
+
+    await expect.poll(() => backend.getUploadFileCount()).toBeGreaterThan(0);
+    await expect(page.getByLabel('Listing title')).toHaveValue(
+      'Unicorn Printable Masks, 2 Kids Paper Masks',
+    );
+    await page.getByRole('button', { name: 'Next: topics and images' }).click();
+    await expect(page.getByText('rainbow-unicorn.png').first()).toBeVisible();
+    await expect(page.getByText('moon.png')).toHaveCount(0);
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {

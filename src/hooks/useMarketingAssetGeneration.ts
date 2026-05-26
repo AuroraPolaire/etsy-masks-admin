@@ -4,13 +4,11 @@ import { makeUniqueFileWithReservedNames } from '../lib/fileLifecycle';
 import { createManagedFile } from '../lib/files';
 import {
   CHILDREN_SCENE_RECIPES,
-  composeChildrenSceneFile,
   createMarketingAssetMetadata,
-  createMaskSheetFiles,
-  createSloganPosterFile,
   getApprovedMarketingSourceMasks,
   getChildrenSceneRecipe,
   getSelectedChildrenSceneMasks,
+  MASK_SHEET_PAGE_SIZE,
   normalizeMarketingImageSettings,
   resolveMarketingPreviewSettings,
 } from '../lib/marketingAssets';
@@ -20,6 +18,8 @@ import type {
   BusyActionContext,
   ManagedFile,
   MarketingAssetMetadata,
+  MarketingAssetType,
+  MarketingGenerationRecipe,
   MarketingImageSettings,
   Project,
 } from '../types';
@@ -29,14 +29,14 @@ type GenerateMarketingSceneFile = (
   settings: MarketingImageSettings,
   project: Project,
   sourceFiles: ManagedFile[],
-  recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+  recipe: MarketingGenerationRecipe,
   signal?: AbortSignal,
 ) => Promise<File>;
 
 type UseMarketingAssetGenerationParams = {
   project: Project;
   filesRef: MutableRefObject<ManagedFile[]>;
-  appendFiles: (files: ManagedFile[]) => void;
+  appendGeneratedFiles: (files: ManagedFile[], context?: BusyActionContext) => Promise<void>;
   addActivity: AddActivity;
   generateMarketingSceneFile: GenerateMarketingSceneFile;
 };
@@ -73,10 +73,54 @@ const createGeneratedMarketingFile = async ({
 const getReservedNames = (files: ManagedFile[]) =>
   new Set(files.map((file) => file.name.toLowerCase()));
 
+const getAssetVariant = (type: MarketingAssetType): ManagedFile['assetVariant'] => {
+  if (type === 'mask-sheet') {
+    return 'marketing-mask-sheet';
+  }
+
+  if (type === 'children-scene') {
+    return 'marketing-children-scene';
+  }
+
+  return 'marketing-slogan';
+};
+
+const createAiMarketingFile = async ({
+  project,
+  file,
+  type,
+  recipe,
+  sourceMasks,
+  settings,
+  reviewState,
+}: {
+  project: Project;
+  file: File;
+  type: MarketingAssetType;
+  recipe: MarketingGenerationRecipe;
+  sourceMasks: ManagedFile[];
+  settings: MarketingImageSettings;
+  reviewState: ManagedFile['reviewState'];
+}): Promise<ManagedFile> =>
+  createGeneratedMarketingFile({
+    file,
+    project,
+    assetVariant: getAssetVariant(type),
+    metadata: createMarketingAssetMetadata({
+      type,
+      stage: recipe.stage,
+      optionIndex: recipe.optionIndex,
+      recipeId: recipe.id,
+      sourceMasks,
+      settings,
+    }),
+    reviewState,
+  });
+
 export const useMarketingAssetGeneration = ({
   project,
   filesRef,
-  appendFiles,
+  appendGeneratedFiles,
   addActivity,
   generateMarketingSceneFile,
 }: UseMarketingAssetGenerationParams) => {
@@ -98,34 +142,37 @@ export const useMarketingAssetGeneration = ({
             throw new DOMException('Marketing generation cancelled', 'AbortError');
           }
 
-          context?.setProgress(`Creating slogan preview ${optionIndex + 1}/3...`);
-          const file = await createSloganPosterFile({
-            project,
-            sourceMasks,
+          const recipe: MarketingGenerationRecipe = {
+            type: 'slogan-poster',
+            id: `slogan-${optionIndex + 1}`,
             optionIndex,
             stage: 'preview',
+            maskCount: sourceMasks.length,
+          };
+
+          context?.setProgress(`Generating AI slogan preview ${optionIndex + 1}/3...`);
+          const file = await generateMarketingSceneFile(
             settings,
-          });
+            project,
+            sourceMasks,
+            recipe,
+            context?.signal,
+          );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
           managedFiles.push(
-            await createGeneratedMarketingFile({
+            await createAiMarketingFile({
               file: uniqueFile,
               project,
-              assetVariant: 'marketing-slogan',
-              metadata: createMarketingAssetMetadata({
-                type: 'slogan-poster',
-                stage: 'preview',
-                optionIndex,
-                recipeId: `slogan-${optionIndex + 1}`,
-                sourceMasks,
-                settings,
-              }),
+              type: 'slogan-poster',
+              recipe,
+              sourceMasks,
+              settings,
               reviewState: 'pending',
             }),
           );
         }
 
-        appendFiles(managedFiles);
+        await appendGeneratedFiles(managedFiles, context);
         addActivity('marketing-generated', 'success', 'Generated 3 slogan poster previews.');
       } catch (error) {
         if (isAbortError(error)) {
@@ -140,7 +187,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendFiles, filesRef, project],
+    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
   );
 
   const finalizeSloganPoster = useCallback(
@@ -156,33 +203,35 @@ export const useMarketingAssetGeneration = ({
       try {
         context?.setProgress('Creating final slogan poster...');
         const settings = normalizeMarketingImageSettings(project.marketingSettings.final);
-        const file = await createSloganPosterFile({
-          project,
-          sourceMasks,
+        const recipe: MarketingGenerationRecipe = {
+          type: 'slogan-poster',
+          id: preview.marketingAsset?.recipeId ?? `slogan-${optionIndex + 1}`,
           optionIndex,
           stage: 'final',
+          maskCount: sourceMasks.length,
+        };
+        const file = await generateMarketingSceneFile(
           settings,
-        });
+          project,
+          sourceMasks,
+          recipe,
+          context?.signal,
+        );
         const uniqueFile = makeUniqueFileWithReservedNames(
           file,
           getReservedNames(filesRef.current),
         );
-        const managedFile = await createGeneratedMarketingFile({
+        const managedFile = await createAiMarketingFile({
           file: uniqueFile,
           project,
-          assetVariant: 'marketing-slogan',
-          metadata: createMarketingAssetMetadata({
-            type: 'slogan-poster',
-            stage: 'final',
-            optionIndex,
-            recipeId: preview.marketingAsset?.recipeId ?? `slogan-${optionIndex + 1}`,
-            sourceMasks,
-            settings,
-          }),
+          type: 'slogan-poster',
+          recipe,
+          sourceMasks,
+          settings,
           reviewState: 'approved',
         });
 
-        appendFiles([managedFile]);
+        await appendGeneratedFiles([managedFile], context);
         addActivity('marketing-generated', 'success', 'Generated the final slogan poster.');
       } catch (error) {
         if (isAbortError(error)) {
@@ -197,7 +246,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendFiles, filesRef, project],
+    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
   );
 
   const generateMaskSheets = useCallback(
@@ -209,33 +258,53 @@ export const useMarketingAssetGeneration = ({
       }
 
       try {
-        context?.setProgress('Creating mask sheet image...');
         const settings = normalizeMarketingImageSettings(project.marketingSettings.final);
-        const files = await createMaskSheetFiles({ project, sourceMasks, settings });
+        const pageCount = Math.ceil(sourceMasks.length / MASK_SHEET_PAGE_SIZE);
         const reservedNames = getReservedNames(filesRef.current);
         const managedFiles: ManagedFile[] = [];
 
-        for (const [index, file] of files.entries()) {
+        for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+          if (context?.signal.aborted) {
+            throw new DOMException('Marketing generation cancelled', 'AbortError');
+          }
+
+          const pageMasks = sourceMasks.slice(
+            pageIndex * MASK_SHEET_PAGE_SIZE,
+            (pageIndex + 1) * MASK_SHEET_PAGE_SIZE,
+          );
+          const recipe: MarketingGenerationRecipe = {
+            type: 'mask-sheet',
+            id: 'mask-sheet-editorial',
+            optionIndex: pageIndex,
+            stage: 'final',
+            maskCount: pageMasks.length,
+            pageIndex,
+            pageCount,
+          };
+
+          context?.setProgress(`Generating AI mask sheet ${pageIndex + 1}/${pageCount}...`);
+          const file = await generateMarketingSceneFile(
+            settings,
+            project,
+            pageMasks,
+            recipe,
+            context?.signal,
+          );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
           managedFiles.push(
-            await createGeneratedMarketingFile({
+            await createAiMarketingFile({
               file: uniqueFile,
               project,
-              assetVariant: 'marketing-mask-sheet',
-              metadata: createMarketingAssetMetadata({
-                type: 'mask-sheet',
-                stage: 'final',
-                optionIndex: index,
-                recipeId: 'mask-sheet-grid',
-                sourceMasks,
-                settings,
-              }),
+              type: 'mask-sheet',
+              recipe,
+              sourceMasks: pageMasks,
+              settings,
               reviewState: 'approved',
             }),
           );
         }
 
-        appendFiles(managedFiles);
+        await appendGeneratedFiles(managedFiles, context);
         addActivity(
           'marketing-generated',
           'success',
@@ -254,7 +323,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendFiles, filesRef, project],
+    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
   );
 
   const generateChildrenScenePreviews = useCallback(
@@ -278,47 +347,37 @@ export const useMarketingAssetGeneration = ({
             throw new DOMException('Marketing generation cancelled', 'AbortError');
           }
 
-          context?.setProgress(`Generating children scene preview ${optionIndex + 1}/3...`);
-          const backgroundFile = await generateMarketingSceneFile(
-            settings,
-            project,
-            sourceMasks,
-            {
-              id: recipe.id,
-              optionIndex,
-              stage: 'preview',
-              maskCount: Math.min(sourceMasks.length, recipe.positions.length),
-            },
-            context?.signal,
-          );
-          const file = await composeChildrenSceneFile({
-            project,
-            backgroundFile,
-            sourceMasks,
+          const recipeInput: MarketingGenerationRecipe = {
+            type: 'children-scene',
+            id: recipe.id,
             optionIndex,
             stage: 'preview',
+            maskCount: sourceMasks.length,
+          };
+
+          context?.setProgress(`Generating AI children scene preview ${optionIndex + 1}/3...`);
+          const file = await generateMarketingSceneFile(
             settings,
-          });
+            project,
+            sourceMasks,
+            recipeInput,
+            context?.signal,
+          );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
           managedFiles.push(
-            await createGeneratedMarketingFile({
+            await createAiMarketingFile({
               file: uniqueFile,
               project,
-              assetVariant: 'marketing-children-scene',
-              metadata: createMarketingAssetMetadata({
-                type: 'children-scene',
-                stage: 'preview',
-                optionIndex,
-                recipeId: recipe.id,
-                sourceMasks,
-                settings,
-              }),
+              type: 'children-scene',
+              recipe: recipeInput,
+              sourceMasks,
+              settings,
               reviewState: 'pending',
             }),
           );
         }
 
-        appendFiles(managedFiles);
+        await appendGeneratedFiles(managedFiles, context);
         addActivity('marketing-generated', 'success', 'Generated 3 children scene previews.');
       } catch (error) {
         if (isAbortError(error)) {
@@ -333,7 +392,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendFiles, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
   );
 
   const finalizeChildrenScene = useCallback(
@@ -353,46 +412,35 @@ export const useMarketingAssetGeneration = ({
       try {
         context?.setProgress('Generating final children scene...');
         const settings = normalizeMarketingImageSettings(project.marketingSettings.final);
-        const backgroundFile = await generateMarketingSceneFile(
-          settings,
-          project,
-          sourceMasks,
-          {
-            id: recipe.id,
-            optionIndex,
-            stage: 'final',
-            maskCount: Math.min(sourceMasks.length, recipe.positions.length),
-          },
-          context?.signal,
-        );
-        const file = await composeChildrenSceneFile({
-          project,
-          backgroundFile,
-          sourceMasks,
+        const recipeInput: MarketingGenerationRecipe = {
+          type: 'children-scene',
+          id: recipe.id,
           optionIndex,
           stage: 'final',
+          maskCount: sourceMasks.length,
+        };
+        const file = await generateMarketingSceneFile(
           settings,
-        });
+          project,
+          sourceMasks,
+          recipeInput,
+          context?.signal,
+        );
         const uniqueFile = makeUniqueFileWithReservedNames(
           file,
           getReservedNames(filesRef.current),
         );
-        const managedFile = await createGeneratedMarketingFile({
+        const managedFile = await createAiMarketingFile({
           file: uniqueFile,
           project,
-          assetVariant: 'marketing-children-scene',
-          metadata: createMarketingAssetMetadata({
-            type: 'children-scene',
-            stage: 'final',
-            optionIndex,
-            recipeId: recipe.id,
-            sourceMasks,
-            settings,
-          }),
+          type: 'children-scene',
+          recipe: recipeInput,
+          sourceMasks,
+          settings,
           reviewState: 'approved',
         });
 
-        appendFiles([managedFile]);
+        await appendGeneratedFiles([managedFile], context);
         addActivity('marketing-generated', 'success', 'Generated the final children scene.');
       } catch (error) {
         if (isAbortError(error)) {
@@ -407,7 +455,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendFiles, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
   );
 
   return {

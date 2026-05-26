@@ -132,24 +132,28 @@ export const syncBackendRunFiles = async (
     signal,
     setProgress,
     forceUpload = false,
+    deleteMissingRemoteFiles = true,
   }: {
     signal?: AbortSignal;
     setProgress?: (message: string | null) => void;
     forceUpload?: boolean;
+    deleteMissingRemoteFiles?: boolean;
   } = {},
 ): Promise<BackendProjectSnapshot> => {
   const snapshot = await client.getRun(runId, signal);
   const localFileIds = new Set(files.map((file) => file.id));
   const remoteFilesById = new Map(snapshot.files.map((file) => [file.id, file]));
 
-  for (const remoteFile of snapshot.files) {
-    if (signal?.aborted) {
-      throw new DOMException('Backend file sync cancelled', 'AbortError');
-    }
+  if (deleteMissingRemoteFiles) {
+    for (const remoteFile of snapshot.files) {
+      if (signal?.aborted) {
+        throw new DOMException('Backend file sync cancelled', 'AbortError');
+      }
 
-    if (!localFileIds.has(remoteFile.id)) {
-      setProgress?.(`Removing cloud file ${remoteFile.name}...`);
-      await client.deleteFile(runId, remoteFile.id, signal);
+      if (!localFileIds.has(remoteFile.id)) {
+        setProgress?.(`Removing cloud file ${remoteFile.name}...`);
+        await client.deleteFile(runId, remoteFile.id, signal);
+      }
     }
   }
 

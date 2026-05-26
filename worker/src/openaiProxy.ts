@@ -30,12 +30,16 @@ const MARKETING_EDIT_IMAGE_MODELS = [
   'gpt-image-1',
   'gpt-image-1-mini',
 ] as const;
+const MARKETING_ASSET_TYPES = ['slogan-poster', 'mask-sheet', 'children-scene'] as const;
+const MARKETING_ASSET_STAGES = ['preview', 'final'] as const;
 
 type ImageModel = (typeof IMAGE_MODELS)[number];
 type ImageSize = (typeof IMAGE_SIZES)[number];
 type ImageQuality = (typeof IMAGE_QUALITIES)[number];
 type ImageBackground = (typeof IMAGE_BACKGROUNDS)[number];
 type OutputFormat = (typeof OUTPUT_FORMATS)[number];
+type MarketingAssetType = (typeof MARKETING_ASSET_TYPES)[number];
+type MarketingAssetStage = (typeof MARKETING_ASSET_STAGES)[number];
 
 type ImageSettings = {
   model: ImageModel;
@@ -67,10 +71,13 @@ type MarketingSceneInput = {
     slogan: string;
   };
   recipe: {
+    type: MarketingAssetType;
     id: string;
     optionIndex: number;
-    stage: 'preview' | 'final';
+    stage: MarketingAssetStage;
     maskCount: number;
+    pageIndex?: number;
+    pageCount?: number;
   };
   images: Blob[];
 };
@@ -481,7 +488,15 @@ const readMarketingSceneInput = async (
 
   const projectJson = readFormJsonObject(formData, 'project');
   const recipeJson = readFormJsonObject(formData, 'recipe');
-  const stage = recipeJson.stage === 'final' ? 'final' : 'preview';
+  const stage = readEnum(recipeJson.stage, MARKETING_ASSET_STAGES, 'recipe.stage');
+  const pageIndex =
+    typeof recipeJson.pageIndex === 'number' && Number.isFinite(recipeJson.pageIndex)
+      ? Math.max(0, Math.floor(recipeJson.pageIndex))
+      : undefined;
+  const pageCount =
+    typeof recipeJson.pageCount === 'number' && Number.isFinite(recipeJson.pageCount)
+      ? Math.max(1, Math.floor(recipeJson.pageCount))
+      : undefined;
 
   return {
     settings: readMarketingImageSettings(readFormJsonObject(formData, 'settings')),
@@ -493,6 +508,7 @@ const readMarketingSceneInput = async (
       slogan: readRequiredString(projectJson.slogan, 'project.slogan'),
     },
     recipe: {
+      type: readEnum(recipeJson.type, MARKETING_ASSET_TYPES, 'recipe.type'),
       id: readRequiredString(recipeJson.id, 'recipe.id'),
       optionIndex:
         typeof recipeJson.optionIndex === 'number' && Number.isFinite(recipeJson.optionIndex)
@@ -503,6 +519,8 @@ const readMarketingSceneInput = async (
         typeof recipeJson.maskCount === 'number' && Number.isFinite(recipeJson.maskCount)
           ? Math.max(1, Math.floor(recipeJson.maskCount))
           : images.length,
+      ...(pageIndex !== undefined ? { pageIndex } : {}),
+      ...(pageCount !== undefined ? { pageCount } : {}),
     },
     images,
   };
@@ -536,18 +554,63 @@ const getMarketingEditModel = (
 ): (typeof MARKETING_EDIT_IMAGE_MODELS)[number] =>
   MARKETING_EDIT_IMAGE_MODELS.includes(settings.model) ? settings.model : 'gpt-image-2';
 
-const buildMarketingScenePrompt = ({ project, recipe }: MarketingSceneInput): string =>
-  [
-    `Create a warm, child-safe marketplace preview background for ${project.theme}.`,
-    `Listing title context: ${project.title}.`,
-    `Audience: ${project.audience}.`,
-    `Slogan: ${project.slogan}.`,
-    `Visual style context: ${project.style}.`,
-    `Create ${recipe.maskCount} fully clothed fictional children in a thematic party, classroom, or play setting, facing the camera with clear face placement for printable masks.`,
-    'Use the provided mask images only as visual references for the kind of masks that will be composited later.',
+const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string => {
+  if (recipe.type === 'slogan-poster') {
+    return [
+      'Asset type: slogan poster.',
+      'Create a polished Etsy listing poster that uses the provided mask images as the featured product visuals.',
+      'Make the composition feel designed, rich, and marketplace-ready, not like a simple grid.',
+      'Include the exact slogan text prominently and keep it readable.',
+      'Do not add unrelated text. Optional small supporting text can mention printable masks only if it improves the design.',
+      recipe.optionIndex === 0
+        ? 'Variant style: bold centered slogan with masks arranged dynamically around it.'
+        : recipe.optionIndex === 1
+          ? 'Variant style: editorial split composition with dramatic product grouping and a clean text area.'
+          : 'Variant style: playful premium poster with masks layered in depth and strong visual hierarchy.',
+    ].join('\n');
+  }
+
+  if (recipe.type === 'mask-sheet') {
+    return [
+      'Asset type: mask sheet.',
+      `Create an attractive marketplace mask sheet containing all ${recipe.maskCount} provided mask references for this page.`,
+      'Use AI to choose spacing, sizing, visual rhythm, and product placement.',
+      'Each mask should remain clearly visible, front-facing, and separated enough for buyer review.',
+      'Avoid a boring rigid spreadsheet look; use a polished catalog or product-board layout on a clean light background.',
+      recipe.pageCount && recipe.pageCount > 1
+        ? `This is page ${(recipe.pageIndex ?? 0) + 1} of ${recipe.pageCount}; do not imply masks from other pages are included.`
+        : 'This is the full mask sheet.',
+      'Do not add logos, watermarks, or decorative text beyond a short product title if useful.',
+    ].join('\n');
+  }
+
+  return [
+    'Asset type: children scene.',
+    `Create ${recipe.maskCount} fully clothed fictional children in a thematic party, classroom, or play setting.`,
+    'Use AI to place the provided mask references naturally on the children faces.',
+    'The masks should look worn in the scene, correctly scaled, centered, and aligned to the faces.',
+    'Keep the composition warm, child-safe, and useful as an Etsy listing preview.',
+    recipe.optionIndex === 0
+      ? 'Variant style: party table scene.'
+      : recipe.optionIndex === 1
+        ? 'Variant style: classroom craft scene.'
+        : 'Variant style: cozy play-corner scene.',
     'Do not add text, logos, watermarks, brand characters, celebrities, unsafe behavior, scary expressions, or distorted faces.',
-    'Keep the center of each child face unobstructed so the app can overlay the exact approved mask files afterward.',
-    `Variant recipe: ${recipe.id}, option ${recipe.optionIndex + 1}, ${recipe.stage}.`,
+  ].join('\n');
+};
+
+const buildMarketingScenePrompt = (input: MarketingSceneInput): string =>
+  [
+    `Create a marketing asset for ${input.project.theme}.`,
+    `Listing title context: ${input.project.title}.`,
+    `Audience: ${input.project.audience}.`,
+    `Exact slogan text: ${input.project.slogan}.`,
+    `Visual style context: ${input.project.style}.`,
+    `Use the ${input.images.length} provided approved mask image reference${input.images.length === 1 ? '' : 's'} as the product source context.`,
+    'Preserve the important mask identity: colors, silhouettes, horn/ear/frill shapes, eye holes, expressions, and texture style.',
+    'Do not invent unrelated masks, brands, copyrighted characters, celebrities, logos, or watermarks.',
+    getMarketingVariantDirection(input),
+    `Generation variant id: ${input.recipe.id}, option ${input.recipe.optionIndex + 1}, ${input.recipe.stage}.`,
   ].join('\n');
 
 export const buildMarketingSceneEditFormData = (input: MarketingSceneInput): FormData => {
@@ -583,6 +646,15 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
 
 const inferMimeType = (outputFormat: OutputFormat): string =>
   outputFormat === 'jpeg' ? 'image/jpeg' : `image/${outputFormat}`;
+
+const createMarketingFileName = (input: MarketingSceneInput): string => {
+  const pageSuffix =
+    input.recipe.type === 'mask-sheet' && input.recipe.pageCount && input.recipe.pageCount > 1
+      ? `-page-${String((input.recipe.pageIndex ?? 0) + 1).padStart(2, '0')}`
+      : '';
+
+  return `marketing-${input.recipe.type}-${input.recipe.stage}-${input.recipe.optionIndex + 1}${pageSuffix}.${input.settings.outputFormat}`;
+};
 
 const readImageGenerationResponse = async (
   response: Response,
@@ -781,7 +853,7 @@ export const proxyOpenAIMarketingSceneImage = async (
     return Response.json({ error: 'OpenAI returned no marketing image data.' }, { status: 502 });
   }
 
-  const fileName = `marketing-scene-${input.recipe.stage}-${input.recipe.optionIndex + 1}.${input.settings.outputFormat}`;
+  const fileName = createMarketingFileName(input);
   if (firstImage.b64_json) {
     return Response.json({
       fileName,

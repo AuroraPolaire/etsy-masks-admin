@@ -9,6 +9,7 @@ import type {
   BackendRunSummary,
   EtsySeoAnalysis,
   ManagedFile,
+  MarketingGenerationRecipe,
   MarketingImageSettings,
   OpenAIImageSettings,
   Project,
@@ -305,7 +306,7 @@ export const createBackendClient = () => ({
     settings: MarketingImageSettings,
     project: Project,
     sourceFiles: ManagedFile[],
-    recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+    recipe: MarketingGenerationRecipe,
     signal?: AbortSignal,
   ): Promise<File> => {
     const formData = new FormData();

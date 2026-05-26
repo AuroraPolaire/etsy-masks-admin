@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
+import { createDefaultProject } from '../../constants';
 import { getFileDownloadPath } from '../backendClient';
-import { downloadBackendRunFiles, findReusableBackendDraftRun } from '../backendSync';
+import {
+  downloadBackendRunFiles,
+  findReusableBackendDraftRun,
+  syncBackendRunFiles,
+} from '../backendSync';
 
-import type { BackendFileRecord, BackendProjectSnapshot, BackendRunSummary } from '../../types';
+import type {
+  BackendFileRecord,
+  BackendProjectSnapshot,
+  BackendRunSummary,
+  ManagedFile,
+} from '../../types';
 import type { createBackendClient } from '../backendClient';
 
 const createRun = (overrides: Partial<BackendRunSummary>): BackendRunSummary => ({
@@ -46,6 +56,25 @@ const createSnapshot = (files: BackendFileRecord[]): BackendProjectSnapshot => (
   files,
   events: [],
 });
+
+const createManagedFile = (id: string, name = `${id}.png`): ManagedFile => {
+  const file = new File(['image'], name, { type: 'image/png' });
+
+  return {
+    id,
+    file,
+    name,
+    originalName: name,
+    size: file.size,
+    type: file.type,
+    addedAt: '2026-05-26T09:15:00.000Z',
+    kind: 'generated-preview',
+    reviewState: 'approved',
+    reviewNotes: '',
+    assetVariant: 'color',
+    explicitlyConfirmed: true,
+  };
+};
 
 const createClient = (
   downloadFile: ReturnType<typeof createBackendClient>['downloadFile'],
@@ -181,5 +210,49 @@ describe('backend draft sync helpers', () => {
         updatedAt: '2026-05-26T09:10:00.000Z',
       }),
     ).toBe('/api/runs/run%201/files/file%2F1?v=2026-05-26T09%3A10%3A00.000Z');
+  });
+
+  it('can upload generated files without pruning remote files from the same run', async () => {
+    const project = createDefaultProject();
+    const remoteFile = createBackendFile(1, { id: 'remote-marketing' });
+    const localFile = createManagedFile('local-unicorn-mask');
+    const uploadedFileIds: string[] = [];
+    const deletedFileIds: string[] = [];
+    const client = {
+      getRun: () => Promise.resolve(createSnapshot([remoteFile])),
+      uploadFile: (_runId: string, metadata: { id: string }) => {
+        uploadedFileIds.push(metadata.id);
+        return Promise.resolve({ ok: true });
+      },
+      deleteFile: (_runId: string, fileId: string) => {
+        deletedFileIds.push(fileId);
+        return Promise.resolve({ ok: true });
+      },
+    } as unknown as ReturnType<typeof createBackendClient>;
+
+    await syncBackendRunFiles(client, project, 'run-1', [localFile], {
+      deleteMissingRemoteFiles: false,
+    });
+
+    expect(uploadedFileIds).toEqual(['local-unicorn-mask']);
+    expect(deletedFileIds).toEqual([]);
+  });
+
+  it('prunes remote files when doing a full run sync', async () => {
+    const project = createDefaultProject();
+    const remoteFile = createBackendFile(1, { id: 'remote-old-mask' });
+    const deletedFileIds: string[] = [];
+    const client = {
+      getRun: () => Promise.resolve(createSnapshot([remoteFile])),
+      uploadFile: () => Promise.resolve({ ok: true }),
+      deleteFile: (_runId: string, fileId: string) => {
+        deletedFileIds.push(fileId);
+        return Promise.resolve({ ok: true });
+      },
+    } as unknown as ReturnType<typeof createBackendClient>;
+
+    await syncBackendRunFiles(client, project, 'run-1', []);
+
+    expect(deletedFileIds).toEqual(['remote-old-mask']);
   });
 });

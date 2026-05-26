@@ -43,6 +43,30 @@ export const getInitialBackendDraftRestoreStatus = (): BackendDraftRestoreStatus
 export const shouldPauseBackendDraftAutosave = (status: BackendDraftRestoreStatus): boolean =>
   status === 'restoring' || status === 'failed';
 
+export const shouldRunBackendDraftDiscovery = ({
+  initialDraftRunId,
+  activeDraftRunId,
+  completedInitialRunId,
+  currentProjectId,
+  completedDiscoveryProjectId,
+}: {
+  initialDraftRunId: string;
+  activeDraftRunId: string;
+  completedInitialRunId: string;
+  currentProjectId: string;
+  completedDiscoveryProjectId: string;
+}): boolean => {
+  if (completedDiscoveryProjectId === currentProjectId) {
+    return false;
+  }
+
+  return !(
+    initialDraftRunId &&
+    activeDraftRunId === initialDraftRunId &&
+    completedInitialRunId !== initialDraftRunId
+  );
+};
+
 export const useBackendDraftAutoRestore = ({
   client,
   initialDraftRunId,
@@ -179,11 +203,15 @@ export const useBackendDraftAutoRestore = ({
   ]);
 
   useEffect(() => {
-    if (initialDraftRunId) {
-      return;
-    }
-
-    if (completedDiscoveryProjectIdRef.current === currentProjectId) {
+    if (
+      !shouldRunBackendDraftDiscovery({
+        initialDraftRunId,
+        activeDraftRunId: activeDraftRunIdRef.current,
+        completedInitialRunId: completedRunIdRef.current,
+        currentProjectId,
+        completedDiscoveryProjectId: completedDiscoveryProjectIdRef.current,
+      })
+    ) {
       return;
     }
 
