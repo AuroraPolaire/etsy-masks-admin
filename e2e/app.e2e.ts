@@ -282,6 +282,176 @@ const mockSavedRunsBackend = async (page: Page) => {
   });
 };
 
+const createRefreshDraftProject = () => ({
+  id: 'project-refresh-1',
+  settings: {
+    title: 'Refresh Masks, 1 Kids Paper Mask',
+    theme: 'Refresh masks',
+    audience: 'Parents and teachers',
+    marketplace: 'Etsy',
+    style: 'Clean printable masks',
+    description: 'Digital download. No physical item will be shipped.',
+    tags: 'refresh mask, kids craft',
+    safetyNote: 'Adult supervision required. Not intended for children under 3.',
+    printingInstructions: 'Print on cardstock.',
+    license: 'Personal and classroom use.',
+    refundPolicy: 'Digital downloads are not refundable.',
+  },
+  subjects: [{ id: 'moon', name: 'Moon' }],
+  pdfSettings: {
+    generateA4: true,
+    generateUSLetter: true,
+    maskScale: 'medium',
+    showSubjectLabel: true,
+    showInstructionFooter: true,
+    pageMarginMm: 10,
+    includeCalibrationPage: false,
+  },
+  openAIImageSettings: {
+    model: 'gpt-image-2',
+    size: '1024x1024',
+    quality: 'low',
+    background: 'opaque',
+    outputFormat: 'png',
+  },
+  createdAt: '2026-05-26T09:00:00.000Z',
+  updatedAt: '2026-05-26T09:40:00.000Z',
+  lastBriefUpdatedAt: '2026-05-26T09:40:00.000Z',
+});
+
+const mockRefreshDraftBackend = async (page: Page) => {
+  const project = createRefreshDraftProject();
+  const run = {
+    id: 'run-refresh-001',
+    projectId: project.id,
+    idea: 'Refresh masks',
+    status: 'draft',
+    createdAt: '2026-05-26T09:00:00.000Z',
+    updatedAt: '2026-05-26T09:40:00.000Z',
+    fileCount: 1,
+    totalSizeBytes: onePixelPng.byteLength,
+  };
+  const file = {
+    id: 'file-moon-color',
+    runId: run.id,
+    projectId: project.id,
+    name: 'moon.png',
+    originalName: 'moon.png',
+    size: onePixelPng.byteLength,
+    type: 'image/png',
+    kind: 'generated-preview',
+    addedAt: '2026-05-26T09:35:00.000Z',
+    reviewState: 'approved',
+    reviewNotes: 'Approved before refresh.',
+    assetVariant: 'color',
+    explicitlyConfirmed: true,
+    imageMetadata: { width: 1, height: 1 },
+    updatedAt: '2026-05-26T09:40:00.000Z',
+  };
+  let createRunCount = 0;
+  let deleteFileCount = 0;
+  let downloadFileCount = 0;
+
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === '/api/health') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          version: 'test',
+          storage: { d1: true, r2: true },
+          auth: { mode: 'access', configured: true },
+          openaiProxyReady: true,
+          maxFileBytes: 52_428_800,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ runs: [run] }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'POST') {
+      createRunCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, run: { ...run, id: 'duplicate-run' } }),
+      });
+      return;
+    }
+
+    if (url.pathname === `/api/runs/${run.id}` && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          runId: run.id,
+          idea: run.idea,
+          status: run.status,
+          project,
+          updatedAt: run.updatedAt,
+          files: [file],
+          events: [],
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === `/api/runs/${run.id}` && method === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, run }),
+      });
+      return;
+    }
+
+    if (url.pathname === `/api/runs/${run.id}/files/${file.id}` && method === 'GET') {
+      downloadFileCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        body: onePixelPng,
+      });
+      return;
+    }
+
+    if (url.pathname === `/api/runs/${run.id}/files/${file.id}` && method === 'DELETE') {
+      deleteFileCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  return {
+    project,
+    getCreateRunCount: () => createRunCount,
+    getDeleteFileCount: () => deleteFileCount,
+    getDownloadFileCount: () => downloadFileCount,
+  };
+};
+
 const prepareCleanPage = async (page: Page) => {
   await mockUnavailableBackend(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -376,6 +546,26 @@ test.describe('production workflow', () => {
 });
 
 test.describe('backend saves workflow', () => {
+  test('restores an existing project draft on refresh instead of creating a duplicate run', async ({
+    page,
+  }) => {
+    const backend = await mockRefreshDraftBackend(page);
+
+    await page.addInitScript((project) => {
+      window.localStorage.clear();
+      window.localStorage.setItem('etsy-masks-admin/project-v1', JSON.stringify(project));
+    }, backend.project);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.getByText('Restored backend draft "Refresh masks".').first()).toBeVisible();
+    await page.waitForTimeout(2500);
+
+    expect(backend.getDownloadFileCount()).toBe(1);
+    expect(backend.getCreateRunCount()).toBe(0);
+    expect(backend.getDeleteFileCount()).toBe(0);
+  });
+
   test('expands rows directly and deletes individual saved runs', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium', 'Desktop-only table interaction smoke.');
 

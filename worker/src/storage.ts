@@ -109,6 +109,16 @@ const eventRowToRecord = (row: BackendEventRow): Record<string, string> => ({
   createdAt: row.created_at,
 });
 
+const createStableDraftRunId = async (projectId: string): Promise<string> => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(projectId));
+  const hash = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 32);
+
+  return `draft-${hash}`;
+};
+
 export const insertEvent = async (env: Env, type: string, message: string): Promise<void> => {
   await env.DB.prepare(
     'INSERT INTO backend_events (id, type, message, created_at) VALUES (?, ?, ?, ?)',
@@ -181,33 +191,76 @@ const getRunSummary = async (env: Env, runId: string): Promise<RunSummary> => {
   return runSummaryFromRow(row);
 };
 
+const getReusableRunIdForProject = async (env: Env, projectId: string): Promise<string> => {
+  const row = await env.DB.prepare(
+    `SELECT id
+     FROM project_runs
+     WHERE project_id = ?
+     ORDER BY
+       CASE WHEN status = 'draft' THEN 0 ELSE 1 END,
+       updated_at DESC
+     LIMIT 1`,
+  )
+    .bind(projectId)
+    .first<Pick<ProjectRunRow, 'id'>>();
+
+  return row?.id ?? '';
+};
+
 export const createRun = async (env: Env, input: CreateRunInput): Promise<RunSummary> => {
   const projectId = readRequiredString(input.project.id, 'project.id');
   const idea = input.idea.trim() || 'Untitled idea';
   const status: ProjectRunStatus = 'draft';
   const timestamp = nowIso();
-  const runId = crypto.randomUUID();
+  const reusableRunId = await getReusableRunIdForProject(env, projectId);
+  const runId = reusableRunId || (await createStableDraftRunId(projectId));
 
   await env.DB.prepare(
-    `INSERT INTO project_runs (
+    reusableRunId
+      ? `UPDATE project_runs
+         SET project_id = ?,
+             idea = ?,
+             project_json = ?,
+             status = ?,
+             updated_at = ?,
+             finalized_at = ?
+         WHERE id = ?`
+      : `INSERT INTO project_runs (
        id, project_id, idea, project_json, status, created_at, updated_at, finalized_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       project_id = excluded.project_id,
+       idea = excluded.idea,
+       project_json = excluded.project_json,
+       status = excluded.status,
+       updated_at = excluded.updated_at,
+       finalized_at = NULL`,
   )
-    .bind(runId, projectId, idea, JSON.stringify(input.project), status, timestamp, timestamp, null)
+    .bind(
+      ...(reusableRunId
+        ? [projectId, idea, JSON.stringify(input.project), status, timestamp, null, runId]
+        : [
+            runId,
+            projectId,
+            idea,
+            JSON.stringify(input.project),
+            status,
+            timestamp,
+            timestamp,
+            null,
+          ]),
+    )
     .run();
-  await insertEvent(env, 'run-created', `Saved draft run "${idea}" to D1.`);
+  await insertEvent(
+    env,
+    reusableRunId ? 'run-updated' : 'run-created',
+    reusableRunId
+      ? `Reused draft run "${idea}" for project ${projectId}.`
+      : `Saved draft run "${idea}" to D1.`,
+  );
 
-  return {
-    id: runId,
-    projectId,
-    idea,
-    status,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    fileCount: 0,
-    totalSizeBytes: 0,
-  };
+  return getRunSummary(env, runId);
 };
 
 export const updateRun = async (

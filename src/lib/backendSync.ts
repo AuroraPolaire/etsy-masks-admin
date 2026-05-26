@@ -54,6 +54,19 @@ export const loadBackendRunCache = async (
 export const getOversizedFiles = (files: ManagedFile[], maxFileBytes: number): ManagedFile[] =>
   files.filter((file) => file.size > maxFileBytes);
 
+const getRunUpdatedAtTime = (run: BackendRunSummary): number => {
+  const timestamp = Date.parse(run.updatedAt);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+export const findReusableBackendDraftRun = (
+  runs: BackendRunSummary[],
+  projectId: string,
+): BackendRunSummary | undefined =>
+  runs
+    .filter((run) => run.projectId === projectId)
+    .sort((left, right) => getRunUpdatedAtTime(right) - getRunUpdatedAtTime(left))[0];
+
 const metadataSignature = (value: unknown): string => JSON.stringify(value);
 
 const managedFileSignature = (project: Project, file: ManagedFile): string =>

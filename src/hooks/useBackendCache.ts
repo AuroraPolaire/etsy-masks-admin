@@ -14,6 +14,7 @@ import {
 import { getProjectIdeaLabel } from '../lib/backendIdea';
 import {
   downloadBackendRunFiles,
+  findReusableBackendDraftRun,
   getErrorMessage,
   getOversizedFiles,
   isAbortError,
@@ -74,13 +75,14 @@ export const useBackendCache = ({
   const [initialActiveDraftRunId] = useState(() => loadActiveBackendDraftRunId(project.id));
   const [activeDraftRunId, setActiveDraftRunId] = useState(initialActiveDraftRunId);
   const [draftRestoreStatus, setDraftRestoreStatus] = useState(() =>
-    getInitialBackendDraftRestoreStatus(initialActiveDraftRunId),
+    getInitialBackendDraftRestoreStatus(),
   );
   const healthRef = useRef<BackendHealth | null>(null);
   const client = useMemo(() => createBackendClient(), []);
   const canUseOpenAIProxy = Boolean(health?.openaiProxyReady);
   const resolvedSaveIdea = saveIdea.trim() || suggestedIdea;
   const shouldPauseDraftAutosave = shouldPauseBackendDraftAutosave(draftRestoreStatus);
+  const previousProjectIdRef = useRef(project.id);
 
   const setActiveDraftRun = useCallback(
     (runId: string, projectId = project.id) => {
@@ -98,11 +100,14 @@ export const useBackendCache = ({
   }, [health]);
 
   useEffect(() => {
+    if (previousProjectIdRef.current === project.id) {
+      return;
+    }
+
+    previousProjectIdRef.current = project.id;
     const nextRunId = loadActiveBackendDraftRunId(project.id);
     setActiveDraftRunId(nextRunId);
-    if (!nextRunId) {
-      setDraftRestoreStatus('complete');
-    }
+    setDraftRestoreStatus('restoring');
   }, [project.id]);
 
   useEffect(() => {
@@ -165,6 +170,7 @@ export const useBackendCache = ({
 
       const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
       let runId = activeDraftRunId;
+      let reusedExistingRun = false;
 
       if (runId) {
         try {
@@ -180,22 +186,30 @@ export const useBackendCache = ({
       }
 
       if (!runId) {
-        setProgress?.(`Creating draft run "${idea}" in D1...`);
-        const { run } = await client.createRun(projectOverride, idea, signal);
-        runId = run.id;
+        setProgress?.('Checking for an existing draft for this project...');
+        const { runs: existingRuns } = await client.listRuns(signal);
+        const reusableRun = findReusableBackendDraftRun(existingRuns, projectOverride.id);
+
+        if (reusableRun) {
+          reusedExistingRun = true;
+          runId = reusableRun.id;
+          setProgress?.(`Updating existing draft "${idea}" in D1...`);
+          await client.updateRun(runId, projectOverride, idea, signal);
+        } else {
+          setProgress?.(`Creating draft run "${idea}" in D1...`);
+          const { run } = await client.createRun(projectOverride, idea, signal);
+          runId = run.id;
+        }
       }
 
-      const nextSnapshot = await syncBackendRunFiles(
-        client,
-        projectOverride,
-        runId,
-        filesOverride,
-        {
-          ...(signal ? { signal } : {}),
-          ...(setProgress ? { setProgress } : {}),
-          forceUpload,
-        },
-      );
+      const nextSnapshot =
+        reusedExistingRun && filesOverride.length === 0
+          ? await client.getRun(runId, signal)
+          : await syncBackendRunFiles(client, projectOverride, runId, filesOverride, {
+              ...(signal ? { signal } : {}),
+              ...(setProgress ? { setProgress } : {}),
+              forceUpload,
+            });
 
       const { runs: nextRuns } = await client.listRuns(signal);
       setRuns(nextRuns);
@@ -340,6 +354,7 @@ export const useBackendCache = ({
             });
 
             replaceProject(nextSnapshot.project);
+            setActiveDraftRun(targetRunId, nextSnapshot.project.id);
             replaceFiles(
               restoredFiles,
               `Restored ${restoredFiles.length} file(s) from Cloudflare.`,
@@ -347,7 +362,6 @@ export const useBackendCache = ({
             const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
             setSaveIdea(restoredIdea);
             await client.updateRun(targetRunId, nextSnapshot.project, restoredIdea, signal);
-            setActiveDraftRun(targetRunId, nextSnapshot.project.id);
             markDraftRestored(nextSnapshot.project, restoredFiles, restoredIdea, targetRunId);
             addActivity(
               'cloud-synced',

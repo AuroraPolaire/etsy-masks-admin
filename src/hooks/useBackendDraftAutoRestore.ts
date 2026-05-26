@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react';
 
 import { getProjectIdeaLabel } from '../lib/backendIdea';
-import { downloadBackendRunFiles, getErrorMessage, isAbortError } from '../lib/backendSync';
+import {
+  downloadBackendRunFiles,
+  findReusableBackendDraftRun,
+  getErrorMessage,
+  isAbortError,
+} from '../lib/backendSync';
 
 import type { createBackendClient } from '../lib/backendClient';
 import type { AddActivity, BackendProjectSnapshot, ManagedFile, Project } from '../types';
@@ -28,9 +33,7 @@ type UseBackendDraftAutoRestoreParams = {
   setRestoreStatus: (status: BackendDraftRestoreStatus) => void;
 };
 
-export const getInitialBackendDraftRestoreStatus = (
-  initialDraftRunId: string,
-): BackendDraftRestoreStatus => (initialDraftRunId ? 'restoring' : 'complete');
+export const getInitialBackendDraftRestoreStatus = (): BackendDraftRestoreStatus => 'restoring';
 
 export const shouldPauseBackendDraftAutosave = (status: BackendDraftRestoreStatus): boolean =>
   status === 'restoring' || status === 'failed';
@@ -53,13 +56,14 @@ export const useBackendDraftAutoRestore = ({
   setRestoreStatus,
 }: UseBackendDraftAutoRestoreParams) => {
   const completedRunIdRef = useRef('');
+  const completedDiscoveryProjectIdRef = useRef('');
 
   useEffect(() => {
-    if (
-      !initialDraftRunId ||
-      activeDraftRunId !== initialDraftRunId ||
-      completedRunIdRef.current === initialDraftRunId
-    ) {
+    if (!initialDraftRunId) {
+      return;
+    }
+
+    if (activeDraftRunId !== initialDraftRunId || completedRunIdRef.current === initialDraftRunId) {
       return;
     }
 
@@ -124,6 +128,86 @@ export const useBackendDraftAutoRestore = ({
     initialDraftRunId,
     markDraftRestored,
     markDraftRestoreFailed,
+    replaceFiles,
+    replaceProject,
+    setActiveDraftRun,
+    setRestoreStatus,
+    setSaveIdea,
+    setSelectedRunId,
+    setSnapshot,
+  ]);
+
+  useEffect(() => {
+    if (initialDraftRunId) {
+      return;
+    }
+
+    if (completedDiscoveryProjectIdRef.current === currentProjectId) {
+      return;
+    }
+
+    if (activeDraftRunId) {
+      completedDiscoveryProjectIdRef.current = currentProjectId;
+      setRestoreStatus('complete');
+      return;
+    }
+
+    setRestoreStatus('restoring');
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const { runs } = await client.listRuns(controller.signal);
+        const reusableRun = findReusableBackendDraftRun(runs, currentProjectId);
+
+        if (!reusableRun) {
+          completedDiscoveryProjectIdRef.current = currentProjectId;
+          setRestoreStatus('complete');
+          return;
+        }
+
+        const nextSnapshot = await client.getRun(reusableRun.id, controller.signal);
+
+        if (!nextSnapshot.project) {
+          completedDiscoveryProjectIdRef.current = currentProjectId;
+          setRestoreStatus('complete');
+          return;
+        }
+
+        const restoredFiles = await downloadBackendRunFiles(client, reusableRun.id, nextSnapshot, {
+          signal: controller.signal,
+          setProgress: () => undefined,
+        });
+        const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
+
+        completedDiscoveryProjectIdRef.current = currentProjectId;
+        setActiveDraftRun(reusableRun.id, nextSnapshot.project.id);
+        setSaveIdea(restoredIdea);
+        setSelectedRunId(reusableRun.id);
+        setSnapshot(nextSnapshot);
+        replaceProject(nextSnapshot.project);
+        replaceFiles(restoredFiles);
+        markDraftRestored(nextSnapshot.project, restoredFiles, restoredIdea, reusableRun.id);
+        setRestoreStatus('complete');
+        addActivity('cloud-synced', 'success', `Restored backend draft "${restoredIdea}".`);
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+
+        completedDiscoveryProjectIdRef.current = currentProjectId;
+        setRestoreStatus('complete');
+      }
+    })();
+
+    return () => controller.abort();
+  }, [
+    activeDraftRunId,
+    addActivity,
+    client,
+    currentProjectId,
+    initialDraftRunId,
+    markDraftRestored,
     replaceFiles,
     replaceProject,
     setActiveDraftRun,
