@@ -26,7 +26,6 @@ type RunSummaryRow = {
   status: ProjectRunStatus;
   created_at: string;
   updated_at: string;
-  finalized_at: string | null;
   file_count: number;
   total_size_bytes: number;
 };
@@ -38,7 +37,6 @@ export type RunSummary = {
   status: ProjectRunStatus;
   createdAt: string;
   updatedAt: string;
-  finalizedAt?: string;
   fileCount: number;
   totalSizeBytes: number;
 };
@@ -49,7 +47,6 @@ export type RunSnapshot = {
   status: ProjectRunStatus;
   project: unknown;
   updatedAt: string;
-  finalizedAt?: string;
   files: Array<Record<string, unknown>>;
   events: Array<Record<string, string>>;
 };
@@ -57,7 +54,6 @@ export type RunSnapshot = {
 export type CreateRunInput = {
   idea: string;
   project: Record<string, unknown>;
-  status?: ProjectRunStatus;
 };
 
 export type UpdateRunInput = CreateRunInput;
@@ -72,7 +68,6 @@ const runSummaryFromRow = (row: RunSummaryRow): RunSummary => ({
   status: row.status,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
-  ...(row.finalized_at ? { finalizedAt: row.finalized_at } : {}),
   fileCount: row.file_count,
   totalSizeBytes: row.total_size_bytes,
 });
@@ -137,7 +132,6 @@ export const listRuns = async (env: Env): Promise<RunSummary[]> => {
        runs.status,
        runs.created_at,
        runs.updated_at,
-       runs.finalized_at,
        COUNT(files.id) AS file_count,
        COALESCE(SUM(files.size), 0) AS total_size_bytes
      FROM project_runs runs
@@ -148,8 +142,7 @@ export const listRuns = async (env: Env): Promise<RunSummary[]> => {
        runs.idea,
        runs.status,
        runs.created_at,
-       runs.updated_at,
-       runs.finalized_at
+       runs.updated_at
      ORDER BY runs.updated_at DESC`,
   ).all<RunSummaryRow>();
 
@@ -165,7 +158,6 @@ const getRunSummary = async (env: Env, runId: string): Promise<RunSummary> => {
        runs.status,
        runs.created_at,
        runs.updated_at,
-       runs.finalized_at,
        COUNT(files.id) AS file_count,
        COALESCE(SUM(files.size), 0) AS total_size_bytes
      FROM project_runs runs
@@ -177,8 +169,7 @@ const getRunSummary = async (env: Env, runId: string): Promise<RunSummary> => {
        runs.idea,
        runs.status,
        runs.created_at,
-       runs.updated_at,
-       runs.finalized_at`,
+       runs.updated_at`,
   )
     .bind(runId)
     .first<RunSummaryRow>();
@@ -193,10 +184,9 @@ const getRunSummary = async (env: Env, runId: string): Promise<RunSummary> => {
 export const createRun = async (env: Env, input: CreateRunInput): Promise<RunSummary> => {
   const projectId = readRequiredString(input.project.id, 'project.id');
   const idea = input.idea.trim() || 'Untitled idea';
-  const status = input.status ?? 'draft';
+  const status: ProjectRunStatus = 'draft';
   const timestamp = nowIso();
   const runId = crypto.randomUUID();
-  const finalizedAt = status === 'final' ? timestamp : null;
 
   await env.DB.prepare(
     `INSERT INTO project_runs (
@@ -204,18 +194,9 @@ export const createRun = async (env: Env, input: CreateRunInput): Promise<RunSum
      )
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(
-      runId,
-      projectId,
-      idea,
-      JSON.stringify(input.project),
-      status,
-      timestamp,
-      timestamp,
-      finalizedAt,
-    )
+    .bind(runId, projectId, idea, JSON.stringify(input.project), status, timestamp, timestamp, null)
     .run();
-  await insertEvent(env, 'run-created', `Saved ${status} run "${idea}" to D1.`);
+  await insertEvent(env, 'run-created', `Saved draft run "${idea}" to D1.`);
 
   return {
     id: runId,
@@ -224,7 +205,6 @@ export const createRun = async (env: Env, input: CreateRunInput): Promise<RunSum
     status,
     createdAt: timestamp,
     updatedAt: timestamp,
-    ...(finalizedAt ? { finalizedAt } : {}),
     fileCount: 0,
     totalSizeBytes: 0,
   };
@@ -235,9 +215,9 @@ export const updateRun = async (
   runId: string,
   input: UpdateRunInput,
 ): Promise<RunSummary> => {
-  const existing = await env.DB.prepare('SELECT id, status FROM project_runs WHERE id = ?')
+  const existing = await env.DB.prepare('SELECT id FROM project_runs WHERE id = ?')
     .bind(runId)
-    .first<Pick<ProjectRunRow, 'id' | 'status'>>();
+    .first<Pick<ProjectRunRow, 'id'>>();
 
   if (!existing) {
     throw new ApiError(404, 'Run was not found.');
@@ -245,9 +225,8 @@ export const updateRun = async (
 
   const projectId = readRequiredString(input.project.id, 'project.id');
   const idea = input.idea.trim() || 'Untitled idea';
-  const status = input.status ?? existing.status;
+  const status: ProjectRunStatus = 'draft';
   const timestamp = nowIso();
-  const finalizedAt = status === 'final' ? timestamp : null;
 
   await env.DB.prepare(
     `UPDATE project_runs
@@ -259,30 +238,24 @@ export const updateRun = async (
          finalized_at = ?
      WHERE id = ?`,
   )
-    .bind(projectId, idea, JSON.stringify(input.project), status, timestamp, finalizedAt, runId)
+    .bind(projectId, idea, JSON.stringify(input.project), status, timestamp, null, runId)
     .run();
 
-  await insertEvent(env, 'run-updated', `Updated ${status} run "${idea}".`);
+  await insertEvent(env, 'run-updated', `Updated draft run "${idea}".`);
   return getRunSummary(env, runId);
 };
-
-export const finalizeRun = async (
-  env: Env,
-  runId: string,
-  input: Omit<UpdateRunInput, 'status'>,
-): Promise<RunSummary> => updateRun(env, runId, { ...input, status: 'final' });
 
 export const getRunSnapshot = async (env: Env, runId?: string): Promise<RunSnapshot | null> => {
   const run = runId
     ? await env.DB.prepare(
-        `SELECT id, project_id, idea, project_json, status, created_at, updated_at, finalized_at
+        `SELECT id, project_id, idea, project_json, status, created_at, updated_at
          FROM project_runs
          WHERE id = ?`,
       )
         .bind(runId)
         .first<ProjectRunRow>()
     : await env.DB.prepare(
-        `SELECT id, project_id, idea, project_json, status, created_at, updated_at, finalized_at
+        `SELECT id, project_id, idea, project_json, status, created_at, updated_at
          FROM project_runs
          ORDER BY updated_at DESC
          LIMIT 1`,
@@ -307,7 +280,6 @@ export const getRunSnapshot = async (env: Env, runId?: string): Promise<RunSnaps
     status: run.status,
     project: JSON.parse(run.project_json) as unknown,
     updatedAt: run.updated_at,
-    ...(run.finalized_at ? { finalizedAt: run.finalized_at } : {}),
     files: (fileRows.results ?? []).map(fileRowToRecord),
     events: (eventRows.results ?? []).map(eventRowToRecord),
   };

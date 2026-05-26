@@ -6,7 +6,6 @@ import type {
   BackendImageResponse,
   BackendProjectSnapshot,
   BackendRunSummary,
-  BackendRunStatus,
   OpenAIImageSettings,
   Project,
   ProjectDraft,
@@ -113,51 +112,25 @@ export const createBackendClient = () => ({
   listRuns: (signal?: AbortSignal) =>
     requestJson<{ runs: BackendRunSummary[] }>('/api/runs', { signal }),
 
-  createRun: (
-    project: Project,
-    idea: string,
-    status: BackendRunStatus = 'draft',
-    signal?: AbortSignal,
-  ) =>
+  createRun: (project: Project, idea: string, signal?: AbortSignal) =>
     requestJson<{ ok: true; run: BackendRunSummary }>('/api/runs', {
       method: 'POST',
       body: {
         project,
         idea,
-        status,
       },
       signal,
     }),
 
-  updateRun: (
-    runId: string,
-    project: Project,
-    idea: string,
-    status: BackendRunStatus = 'draft',
-    signal?: AbortSignal,
-  ) =>
+  updateRun: (runId: string, project: Project, idea: string, signal?: AbortSignal) =>
     requestJson<{ ok: true; run: BackendRunSummary }>(`/api/runs/${encodeURIComponent(runId)}`, {
       method: 'PUT',
       body: {
         project,
         idea,
-        status,
       },
       signal,
     }),
-
-  finalizeRun: (runId: string, project: Project, idea: string, signal?: AbortSignal) =>
-    requestJson<{ ok: true; run: BackendRunSummary }>(
-      `/api/runs/${encodeURIComponent(runId)}/finalize`,
-      {
-        method: 'POST',
-        body: {
-          project,
-          idea,
-        },
-        signal,
-      },
-    ),
 
   getRun: async (runId: string, signal?: AbortSignal) =>
     normalizeBackendSnapshot(

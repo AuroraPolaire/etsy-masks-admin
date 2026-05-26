@@ -26,7 +26,7 @@ export const filterRuns = (runs: BackendRunSummary[], query: string): BackendRun
   }
 
   return runs.filter((run) =>
-    [run.idea, run.projectId, run.id, run.status].some((value) =>
+    [run.idea, run.projectId, run.id].some((value) =>
       value.toLowerCase().includes(normalizedQuery),
     ),
   );

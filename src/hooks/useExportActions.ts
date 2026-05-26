@@ -13,7 +13,6 @@ type UseExportActionsParams = {
   clearFiles: () => void;
   addActivity: AddActivity;
   runBusyAction: RunBusyAction;
-  onArchiveExported?: (project: Project, context: BusyActionContext) => Promise<void> | void;
   confirmAction: (options: {
     title: string;
     description: string;
@@ -38,7 +37,6 @@ export const useExportActions = ({
   clearFiles,
   addActivity,
   runBusyAction,
-  onArchiveExported,
   confirmAction,
 }: UseExportActionsParams) => {
   const exportProjectJson = () =>
@@ -102,7 +100,7 @@ export const useExportActions = ({
   const exportArchive = () =>
     runBusyAction('archive', async ({ setProgress, signal }: BusyActionContext) => {
       try {
-        setProgress('Creating final PNG and listing PDF ZIP...');
+        setProgress('Creating PNG and listing PDF ZIP...');
         const { exportArchive: createArchive } = await import('../lib/zipExport');
         const result = await createArchive(project, files);
         const exportedAt = nowIso();
@@ -137,10 +135,6 @@ export const useExportActions = ({
         throwIfAborted(signal);
         setProgress('Starting ZIP download...');
         downloadBlob(result.blob, result.fileName);
-        if (!result.needsReview && onArchiveExported) {
-          setProgress('Saving final backend run...');
-          await onArchiveExported(exportedProject, { setProgress, signal });
-        }
         addActivity(
           'archive-exported',
           result.needsReview ? 'warning' : 'success',

@@ -1,4 +1,4 @@
-import { CheckCircle2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 import { formatBytes } from '../../lib/files';
 import { Alert } from '../ui/Alert';
@@ -16,13 +16,11 @@ type CloudSaveRunPanelProps = {
   suggestedIdea: string;
   backendBusy: boolean;
   backendReachable: boolean;
-  activeDraftRunId: string;
   autosaveState: BackendAutosaveState;
   maxFileBytes: number;
   oversizedFiles: ManagedFile[];
   onSaveIdeaChange: (idea: string) => void;
   onTestConnection: () => void;
-  onFinalizeRun: () => void;
 };
 
 export const CloudSaveRunPanel = ({
@@ -31,13 +29,11 @@ export const CloudSaveRunPanel = ({
   suggestedIdea,
   backendBusy,
   backendReachable,
-  activeDraftRunId,
   autosaveState,
   maxFileBytes,
   oversizedFiles,
   onSaveIdeaChange,
   onTestConnection,
-  onFinalizeRun,
 }: CloudSaveRunPanelProps) => {
   const statusTone: BadgeTone = backendReachable ? 'success' : health ? 'warning' : 'neutral';
   const statusLabel = backendReachable
@@ -73,8 +69,8 @@ export const CloudSaveRunPanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Automatic draft save</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Each meaningful edit is saved to one backend draft for this project. Exporting a clean
-              ZIP marks that draft as final.
+              Each meaningful edit is saved to one backend draft for this project. There is no
+              manual save step.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -101,16 +97,6 @@ export const CloudSaveRunPanel = ({
             <Button disabled={backendBusy} onClick={onTestConnection}>
               <RefreshCw aria-hidden="true" className="mr-2" size={17} />
               Refresh
-            </Button>
-            <Button
-              variant="primary"
-              disabled={
-                !backendReachable || backendBusy || oversizedFiles.length > 0 || !activeDraftRunId
-              }
-              onClick={onFinalizeRun}
-            >
-              <CheckCircle2 aria-hidden="true" className="mr-2" size={17} />
-              Mark final
             </Button>
           </div>
         </div>

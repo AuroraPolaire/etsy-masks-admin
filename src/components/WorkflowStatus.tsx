@@ -73,10 +73,7 @@ export const WorkflowStatus = ({
             value={`${workflow.approvedColoringPageCount}/${workflow.subjectCount}`}
           />
           <StatCard label="Readiness" value={`${qaResult.readinessPercentage}%`} />
-          <StatCard
-            label="Final ZIP"
-            value={qaResult.status === 'etsy-ready' ? 'Ready' : 'Review'}
-          />
+          <StatCard label="ZIP" value={qaResult.status === 'etsy-ready' ? 'Ready' : 'Review'} />
         </dl>
       </CardBody>
     </Card>

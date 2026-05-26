@@ -236,7 +236,6 @@ export const App = () => {
     clearFiles,
     addActivity,
     runBusyAction,
-    onArchiveExported: backendCache.finalizeCurrentRun,
     confirmAction: requestConfirmation,
   });
 
@@ -480,13 +479,12 @@ export const App = () => {
       <AppSectionHeader
         eyebrow="Backend saves"
         title="Backend saves"
-        description="Review automatic drafts and final bundles, search previous work by idea, and restore any run when you need it."
+        description="Review automatic backend drafts, search previous work by idea, restore a run, or delete runs you no longer need."
       />
       <BackendDataPanel
         health={backendCache.health}
         runs={backendCache.runs}
         selectedRunId={backendCache.selectedRunId}
-        activeDraftRunId={backendCache.activeDraftRunId}
         autosaveState={backendCache.autosaveState}
         snapshot={backendCache.snapshot}
         saveIdea={backendCache.saveIdea}
@@ -497,10 +495,7 @@ export const App = () => {
         onRunSelected={backendCache.selectRun}
         onRestoreRun={backendCache.restoreRun}
         onTestConnection={backendCache.testConnection}
-        onFinalizeRun={() => {
-          void backendCache.finalizeCurrentRun();
-        }}
-        onDeleteSelectedRun={backendCache.deleteSelectedRun}
+        onDeleteRun={backendCache.deleteRun}
         onDeleteAllCloudData={backendCache.deleteAllCloudData}
       />
     </AppMainLayout>

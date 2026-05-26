@@ -259,7 +259,7 @@ export type BackendHealth = {
   maxFileBytes: number;
 };
 
-export type BackendRunStatus = 'draft' | 'final';
+export type BackendRunStatus = 'draft';
 
 export type BackendAutosaveStatus = 'idle' | 'restoring' | 'saving' | 'saved' | 'error';
 
@@ -303,7 +303,6 @@ export type BackendProjectSnapshot = {
   status?: BackendRunStatus;
   project: Project | null;
   updatedAt?: string;
-  finalizedAt?: string;
   files: BackendFileRecord[];
   events: BackendEvent[];
 };
@@ -315,7 +314,6 @@ export type BackendRunSummary = {
   status: BackendRunStatus;
   createdAt: string;
   updatedAt: string;
-  finalizedAt?: string;
   fileCount: number;
   totalSizeBytes: number;
 };

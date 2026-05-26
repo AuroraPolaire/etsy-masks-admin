@@ -11,7 +11,7 @@ export type Env = {
   APP_VERSION?: string;
 };
 
-export type ProjectRunStatus = 'draft' | 'final';
+export type ProjectRunStatus = 'draft';
 
 export type ProjectRunRow = {
   id: string;
@@ -21,7 +21,6 @@ export type ProjectRunRow = {
   status: ProjectRunStatus;
   created_at: string;
   updated_at: string;
-  finalized_at: string | null;
 };
 
 export type FileRow = {

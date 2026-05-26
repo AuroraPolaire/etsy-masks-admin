@@ -35,29 +35,13 @@ export const useBackendDraftAutosave = ({
     status: 'idle',
   });
   const lastAutosavedKeyRef = useRef('');
-  const lastFinalizedKeyRef = useRef('');
 
   const markDraftSaved = useCallback(
     (nextProject: Project, nextFiles: ManagedFile[], idea: string, runId: string) => {
       const autosaveKey = createBackendAutosaveKey(nextProject, nextFiles, idea);
       lastAutosavedKeyRef.current = autosaveKey;
-      lastFinalizedKeyRef.current = '';
       setAutosaveState({
         activeRunId: runId,
-        status: 'saved',
-        lastSavedAt: new Date().toISOString(),
-      });
-    },
-    [],
-  );
-
-  const markFinalSaved = useCallback(
-    (nextProject: Project, nextFiles: ManagedFile[], idea: string) => {
-      const finalizedKey = createBackendAutosaveKey(nextProject, nextFiles, idea);
-      lastFinalizedKeyRef.current = finalizedKey;
-      lastAutosavedKeyRef.current = finalizedKey;
-      setAutosaveState({
-        activeRunId: '',
         status: 'saved',
         lastSavedAt: new Date().toISOString(),
       });
@@ -72,19 +56,6 @@ export const useBackendDraftAutosave = ({
     [markDraftSaved],
   );
 
-  const markFinalRestored = useCallback(
-    (nextProject: Project, nextFiles: ManagedFile[], idea: string) => {
-      lastFinalizedKeyRef.current = createBackendAutosaveKey(nextProject, nextFiles, idea);
-      lastAutosavedKeyRef.current = '';
-      setAutosaveState((currentState) => ({
-        ...currentState,
-        activeRunId: '',
-        status: 'saved',
-      }));
-    },
-    [],
-  );
-
   const markDraftRestoreFailed = useCallback((message: string, runId: string) => {
     lastAutosavedKeyRef.current = '';
     setAutosaveState((currentState) => ({
@@ -97,12 +68,22 @@ export const useBackendDraftAutosave = ({
 
   const clearAutosaveTracking = useCallback(() => {
     lastAutosavedKeyRef.current = '';
-    lastFinalizedKeyRef.current = '';
     setAutosaveState({
       activeRunId: '',
       status: 'idle',
     });
   }, []);
+
+  const markCurrentStateDeleted = useCallback(
+    (nextProject: Project, nextFiles: ManagedFile[], idea: string) => {
+      lastAutosavedKeyRef.current = createBackendAutosaveKey(nextProject, nextFiles, idea);
+      setAutosaveState({
+        activeRunId: '',
+        status: 'idle',
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     setAutosaveState((currentState) => ({
@@ -145,10 +126,7 @@ export const useBackendDraftAutosave = ({
     }
 
     const autosaveKey = createBackendAutosaveKey(project, files, resolvedSaveIdea);
-    if (
-      autosaveKey === lastAutosavedKeyRef.current ||
-      autosaveKey === lastFinalizedKeyRef.current
-    ) {
+    if (autosaveKey === lastAutosavedKeyRef.current) {
       return;
     }
 
@@ -167,7 +145,6 @@ export const useBackendDraftAutosave = ({
       void syncDraftRun(controller.signal)
         .then(({ runId }) => {
           lastAutosavedKeyRef.current = autosaveKey;
-          lastFinalizedKeyRef.current = '';
           setAutosaveState({
             activeRunId: runId,
             status: 'saved',
@@ -195,10 +172,9 @@ export const useBackendDraftAutosave = ({
 
   return {
     autosaveState,
-    markFinalSaved,
     markDraftRestored,
-    markFinalRestored,
     markDraftRestoreFailed,
     clearAutosaveTracking,
+    markCurrentStateDeleted,
   };
 };

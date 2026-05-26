@@ -16,7 +16,6 @@ import {
   deleteAllRuns,
   deleteRun,
   deleteRunFile,
-  finalizeRun,
   getRunFile,
   getRunSnapshot,
   listRuns,
@@ -24,7 +23,7 @@ import {
   updateRun,
 } from './storage';
 
-import type { Env, ProjectRunStatus } from './types';
+import type { Env } from './types';
 
 const getPathParts = (request: Request): string[] => {
   const pathname = new URL(request.url).pathname.replace(/\/+$/, '') || '/';
@@ -49,18 +48,6 @@ const listRunSummaries = async (request: Request, env: Env): Promise<Response> =
     runs: await listRuns(env),
   });
 
-const readRunStatus = (value: unknown): ProjectRunStatus | undefined => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (value === 'draft' || value === 'final') {
-    return value;
-  }
-
-  throw new ApiError(400, 'status must be "draft" or "final".');
-};
-
 const createProjectRun = async (request: Request, env: Env): Promise<Response> => {
   const body = await readJsonObject(request);
   const project = body.project;
@@ -71,7 +58,6 @@ const createProjectRun = async (request: Request, env: Env): Promise<Response> =
   const run = await createRun(env, {
     project,
     idea: readRequiredString(body.idea, 'idea'),
-    status: readRunStatus(body.status) ?? 'draft',
   });
 
   return jsonResponse(request, env, {
@@ -86,28 +72,8 @@ const updateProjectRun = async (request: Request, env: Env, runId: string): Prom
   if (!isRecord(project)) {
     throw new ApiError(400, 'project is required.');
   }
-  const status = readRunStatus(body.status);
 
   const run = await updateRun(env, runId, {
-    project,
-    idea: readRequiredString(body.idea, 'idea'),
-    ...(status ? { status } : {}),
-  });
-
-  return jsonResponse(request, env, {
-    ok: true,
-    run,
-  });
-};
-
-const finalizeProjectRun = async (request: Request, env: Env, runId: string): Promise<Response> => {
-  const body = await readJsonObject(request);
-  const project = body.project;
-  if (!isRecord(project)) {
-    throw new ApiError(400, 'project is required.');
-  }
-
-  const run = await finalizeRun(env, runId, {
     project,
     idea: readRequiredString(body.idea, 'idea'),
   });
@@ -127,7 +93,6 @@ const getRun = async (request: Request, env: Env, runId?: string): Promise<Respo
     idea: snapshot?.idea,
     status: snapshot?.status,
     updatedAt: snapshot?.updatedAt,
-    finalizedAt: snapshot?.finalizedAt,
     files: snapshot?.files ?? [],
     events: snapshot?.events ?? [],
   });
@@ -182,10 +147,6 @@ const routeAuthenticatedRequest = async (
   if (runId && parts.length === 3 && request.method === 'DELETE') {
     await deleteRun(env, runId);
     return jsonResponse(request, env, { ok: true });
-  }
-
-  if (runId && parts[3] === 'finalize' && parts.length === 4 && request.method === 'POST') {
-    return finalizeProjectRun(request, env, runId);
   }
 
   const fileId = runId && parts[3] === 'files' ? parts[4] : undefined;

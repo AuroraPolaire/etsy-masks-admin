@@ -360,11 +360,11 @@ Then test this exact flow:
 11. Approve the image.
 12. Generate PDFs.
 13. Generate previews.
-14. Save the run in **Cloud saves**.
+14. Confirm the run appears in **Cloud saves**.
 15. Refresh the browser.
 16. Restore the saved run.
 17. Confirm the brief, topics, and files come back.
-18. Export the final ZIP.
+18. Export the ZIP.
 
 If all of that works, the app is production-ready for personal/admin use.
 
@@ -384,8 +384,8 @@ Do these before heavy use:
 Cloud saves are useful, but still export important work:
 
 1. Export project JSON after important edits.
-2. Export final ZIP before deleting local files.
-3. Keep final Etsy upload ZIPs somewhere outside the app.
+2. Export ZIP before deleting local files.
+3. Keep Etsy upload ZIPs somewhere outside the app.
 
 ## Step 16: What Not To Change
 

@@ -197,17 +197,17 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       groups.rejected.every(
         (file) => !groups.approvedMapped.some((approved) => approved.id === file.id),
       ),
-      'Rejected images stay out of the final set',
-      'Rejected files are excluded from the final ZIP.',
+      'Rejected images stay out of the export set',
+      'Rejected files are excluded from the ZIP.',
     ),
     createCheck(
       'nested-etsy-size',
       'critical',
       finalZipSize === undefined || finalZipSize <= MAX_ETSY_FILE_BYTES,
-      'Final ZIP is 20MB or less when known',
+      'ZIP is 20MB or less when known',
       finalZipSize === undefined
         ? 'Size will be calculated during archive export.'
-        : `${Math.round((finalZipSize / 1024 / 1024) * 10) / 10}MB final ZIP.`,
+        : `${Math.round((finalZipSize / 1024 / 1024) * 10) / 10}MB ZIP.`,
     ),
     createCheck(
       'mapping-assignments',
@@ -320,7 +320,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'warning',
       true,
       'Etsy upload count stays low',
-      'The final ZIP contains individual mask PNGs plus one listing PDF.',
+      'The ZIP contains individual mask PNGs plus one listing PDF.',
     ),
     createInfoCheck(
       'project-json-exported',
@@ -333,7 +333,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
     createInfoCheck(
       'archive-exported',
       Boolean(project.lastArchiveExportAt),
-      'Final archive has been exported',
+      'Archive has been exported',
       project.lastArchiveExportAt
         ? `Last exported ${project.lastArchiveExportAt}.`
         : 'Not exported yet.',

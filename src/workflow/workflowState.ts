@@ -162,7 +162,7 @@ export const createWorkflowState = ({
           : !imagesComplete
             ? 'Generate coloring pages for approved masks.'
             : qaResult.status === 'etsy-ready'
-              ? 'Export the final ZIP.'
+              ? 'Export the ZIP.'
               : 'Fix the remaining QA items.';
 
   return {

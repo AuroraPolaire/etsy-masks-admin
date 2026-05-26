@@ -76,7 +76,7 @@ export const CloudDiagnostics = ({
                   <dd className="font-semibold">{formatBytes(localTotalBytes)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt>Previewed run size</dt>
+                  <dt>Expanded run size</dt>
                   <dd className="font-semibold">{formatBytes(cloudTotalBytes)}</dd>
                 </div>
               </dl>

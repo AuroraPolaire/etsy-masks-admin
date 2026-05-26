@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { CloudDangerZone } from './cloud-saves/CloudDangerZone';
 import { CloudDiagnostics } from './cloud-saves/CloudDiagnostics';
-import { CloudRunPreview } from './cloud-saves/CloudRunPreview';
 import { CloudSaveRunPanel } from './cloud-saves/CloudSaveRunPanel';
 import { filterRuns } from './cloud-saves/cloudSaveUtils';
 import { SavedRunsTable } from './cloud-saves/SavedRunsTable';
@@ -20,7 +19,6 @@ type BackendDataPanelProps = {
   health: BackendHealth | null;
   runs: BackendRunSummary[];
   selectedRunId: string;
-  activeDraftRunId: string;
   autosaveState: BackendAutosaveState;
   snapshot: BackendProjectSnapshot | null;
   saveIdea: string;
@@ -31,8 +29,7 @@ type BackendDataPanelProps = {
   onRunSelected: (runId: string) => void;
   onRestoreRun: (runId: string) => void;
   onTestConnection: () => void;
-  onFinalizeRun: () => void;
-  onDeleteSelectedRun: () => void;
+  onDeleteRun: (runId: string) => void;
   onDeleteAllCloudData: () => void;
 };
 
@@ -40,7 +37,6 @@ export const BackendDataPanel = ({
   health,
   runs,
   selectedRunId,
-  activeDraftRunId,
   autosaveState,
   snapshot,
   saveIdea,
@@ -51,8 +47,7 @@ export const BackendDataPanel = ({
   onRunSelected,
   onRestoreRun,
   onTestConnection,
-  onFinalizeRun,
-  onDeleteSelectedRun,
+  onDeleteRun,
   onDeleteAllCloudData,
 }: BackendDataPanelProps) => {
   const [runSearchQuery, setRunSearchQuery] = useState('');
@@ -63,7 +58,6 @@ export const BackendDataPanel = ({
   const oversizedFiles = files.filter((file) => file.size > maxFileBytes);
   const cloudTotalBytes = snapshot?.files.reduce((total, file) => total + file.size, 0) ?? 0;
   const filteredRuns = useMemo(() => filterRuns(runs, runSearchQuery), [runSearchQuery, runs]);
-  const selectedRun = runs.find((run) => run.id === selectedRunId);
 
   return (
     <div className="space-y-6">
@@ -73,31 +67,24 @@ export const BackendDataPanel = ({
         suggestedIdea={suggestedIdea}
         backendBusy={backendBusy}
         backendReachable={backendReachable}
-        activeDraftRunId={activeDraftRunId}
         autosaveState={autosaveState}
         maxFileBytes={maxFileBytes}
         oversizedFiles={oversizedFiles}
         onSaveIdeaChange={onSaveIdeaChange}
         onTestConnection={onTestConnection}
-        onFinalizeRun={onFinalizeRun}
       />
       <SavedRunsTable
         runs={runs}
         filteredRuns={filteredRuns}
         selectedRunId={selectedRunId}
+        snapshot={snapshot}
         runSearchQuery={runSearchQuery}
         backendBusy={backendBusy}
+        backendReachable={backendReachable}
         onRunSearchChange={setRunSearchQuery}
         onRunSelected={onRunSelected}
         onRestoreRun={onRestoreRun}
-      />
-      <CloudRunPreview
-        snapshot={snapshot}
-        selectedRunId={selectedRunId}
-        backendBusy={backendBusy}
-        backendReachable={backendReachable}
-        cloudTotalBytes={cloudTotalBytes}
-        onRestoreRun={onRestoreRun}
+        onDeleteRun={onDeleteRun}
       />
       <CloudDiagnostics
         health={health}
@@ -110,10 +97,8 @@ export const BackendDataPanel = ({
       />
       <CloudDangerZone
         runs={runs}
-        selectedRun={selectedRun}
         backendBusy={backendBusy}
         backendReachable={backendReachable}
-        onDeleteSelectedRun={onDeleteSelectedRun}
         onDeleteAllCloudData={onDeleteAllCloudData}
       />
     </div>

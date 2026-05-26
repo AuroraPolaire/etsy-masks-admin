@@ -39,12 +39,12 @@ export const ArchiveActions = ({
       </CardHeader>
       <CardBody className="space-y-3">
         {!canExportFinalFiles ? (
-          <Alert tone="info">Approve at least one topic image before exporting final files.</Alert>
+          <Alert tone="info">Approve at least one topic image before exporting the ZIP.</Alert>
         ) : null}
         <Surface variant="muted" className="p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-strong">Final package</p>
+              <p className="text-sm font-semibold text-ink-strong">ZIP package</p>
               <p className="mt-1 text-xs text-ink-muted">
                 Exports color mask PNGs, coloring-page PNGs, and one listing details PDF.
               </p>
@@ -82,7 +82,7 @@ export const ArchiveActions = ({
           onClick={onExportArchive}
         >
           <Download aria-hidden="true" className="mr-2" size={17} />
-          Export final ZIP
+          Export ZIP
         </Button>
         {qaResult.status !== 'etsy-ready' ? (
           <Alert tone="warning">

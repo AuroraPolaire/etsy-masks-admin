@@ -213,7 +213,7 @@ export const exportArchive = async (
 
   return {
     blob: archiveBlob,
-    fileName: `${themeSlug}_etsy_final_files.zip`,
+    fileName: `${themeSlug}_etsy_files.zip`,
     manifest,
     nestedEtsyUploadZipSizeBytes: archiveSize,
     needsReview: qaWithArchiveSize.status !== 'etsy-ready' || archiveSize > MAX_ETSY_FILE_BYTES,

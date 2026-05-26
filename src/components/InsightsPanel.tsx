@@ -72,10 +72,7 @@ export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPa
               label="Coloring pages"
               value={`${workflow.approvedColoringPageCount}/${workflow.subjectCount}`}
             />
-            <StatCard
-              label="Final ZIP"
-              value={qaResult.status === 'etsy-ready' ? 'Ready' : 'Review'}
-            />
+            <StatCard label="ZIP" value={qaResult.status === 'etsy-ready' ? 'Ready' : 'Review'} />
             <StatCard label="Files" value={files.length} />
           </dl>
           <Surface variant="muted" className="p-4">

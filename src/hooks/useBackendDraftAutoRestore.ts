@@ -70,8 +70,8 @@ export const useBackendDraftAutoRestore = ({
       try {
         const nextSnapshot = await client.getRun(initialDraftRunId, controller.signal);
 
-        if (!nextSnapshot.project || nextSnapshot.status !== 'draft') {
-          setActiveDraftRun('', nextSnapshot.project?.id ?? currentProjectId);
+        if (!nextSnapshot.project) {
+          setActiveDraftRun('', currentProjectId);
           clearAutosaveTracking();
           completedRunIdRef.current = initialDraftRunId;
           setRestoreStatus('complete');

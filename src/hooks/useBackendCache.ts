@@ -141,14 +141,12 @@ export const useBackendCache = ({
 
   const syncRunToBackend = useCallback(
     async ({
-      targetStatus,
       projectOverride = project,
       filesOverride = files,
       signal,
       setProgress,
       forceUpload = false,
     }: {
-      targetStatus: 'draft' | 'final';
       projectOverride?: Project;
       filesOverride?: ManagedFile[];
       signal?: AbortSignal;
@@ -170,7 +168,7 @@ export const useBackendCache = ({
       if (runId) {
         try {
           setProgress?.(`Updating draft "${idea}" in D1...`);
-          await client.updateRun(runId, projectOverride, idea, 'draft', signal);
+          await client.updateRun(runId, projectOverride, idea, signal);
         } catch (error) {
           if (!(error instanceof BackendApiError) || error.status !== 404) {
             throw error;
@@ -182,31 +180,27 @@ export const useBackendCache = ({
 
       if (!runId) {
         setProgress?.(`Creating draft run "${idea}" in D1...`);
-        const { run } = await client.createRun(projectOverride, idea, 'draft', signal);
+        const { run } = await client.createRun(projectOverride, idea, signal);
         runId = run.id;
       }
 
-      let nextSnapshot = await syncBackendRunFiles(client, projectOverride, runId, filesOverride, {
-        ...(signal ? { signal } : {}),
-        ...(setProgress ? { setProgress } : {}),
-        forceUpload,
-      });
-      if (targetStatus === 'final') {
-        setProgress?.(`Marking "${idea}" as final...`);
-        await client.finalizeRun(runId, projectOverride, idea, signal);
-        nextSnapshot = await client.getRun(runId, signal);
-      }
+      const nextSnapshot = await syncBackendRunFiles(
+        client,
+        projectOverride,
+        runId,
+        filesOverride,
+        {
+          ...(signal ? { signal } : {}),
+          ...(setProgress ? { setProgress } : {}),
+          forceUpload,
+        },
+      );
 
       const { runs: nextRuns } = await client.listRuns(signal);
       setRuns(nextRuns);
       setSelectedRunId(runId);
       setSnapshot(nextSnapshot);
-
-      if (targetStatus === 'draft') {
-        setActiveDraftRun(runId, projectOverride.id);
-      } else {
-        setActiveDraftRun('', projectOverride.id);
-      }
+      setActiveDraftRun(runId, projectOverride.id);
 
       return { runId, snapshot: nextSnapshot };
     },
@@ -216,7 +210,6 @@ export const useBackendCache = ({
   const syncDraftRun = useCallback(
     (signal: AbortSignal) =>
       syncRunToBackend({
-        targetStatus: 'draft',
         signal,
       }),
     [syncRunToBackend],
@@ -224,11 +217,10 @@ export const useBackendCache = ({
 
   const {
     autosaveState,
-    markFinalSaved,
     markDraftRestored,
-    markFinalRestored,
     markDraftRestoreFailed,
     clearAutosaveTracking,
+    markCurrentStateDeleted,
   } = useBackendDraftAutosave({
     project,
     files,
@@ -352,13 +344,10 @@ export const useBackendCache = ({
               `Restored ${restoredFiles.length} file(s) from Cloudflare.`,
             );
             const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
-            if (nextSnapshot.status === 'draft') {
-              setActiveDraftRun(targetRunId, nextSnapshot.project.id);
-              markDraftRestored(nextSnapshot.project, restoredFiles, restoredIdea, targetRunId);
-            } else {
-              setActiveDraftRun('', nextSnapshot.project.id);
-              markFinalRestored(nextSnapshot.project, restoredFiles, restoredIdea);
-            }
+            setSaveIdea(restoredIdea);
+            await client.updateRun(targetRunId, nextSnapshot.project, restoredIdea, signal);
+            setActiveDraftRun(targetRunId, nextSnapshot.project.id);
+            markDraftRestored(nextSnapshot.project, restoredFiles, restoredIdea, targetRunId);
             addActivity(
               'cloud-synced',
               'success',
@@ -384,7 +373,6 @@ export const useBackendCache = ({
       client,
       confirmAction,
       markDraftRestored,
-      markFinalRestored,
       replaceFiles,
       replaceProject,
       runBusyAction,
@@ -398,62 +386,71 @@ export const useBackendCache = ({
     restoreRun();
   }, [restoreRun]);
 
-  const deleteSelectedRun = useCallback(() => {
-    void (async () => {
-      if (!selectedRunId) {
-        addActivity('cloud-synced', 'warning', 'Select a saved backend run first.');
-        return;
-      }
-
-      const selectedRun = runs.find((run) => run.id === selectedRunId);
-      const shouldDelete = await confirmAction({
-        title: 'Delete selected run?',
-        description: `This deletes "${selectedRun?.idea ?? 'the selected run'}" from D1 and R2.`,
-        confirmLabel: 'Delete run',
-        tone: 'danger',
-      });
-
-      if (!shouldDelete) {
-        return;
-      }
-
-      void runBusyAction('backend-sync', async (context) => {
-        try {
-          context.setProgress('Deleting selected Cloudflare run...');
-          await client.deleteRun(selectedRunId, context.signal);
-          if (selectedRunId === activeDraftRunId) {
-            setActiveDraftRun('', project.id);
-            clearAutosaveTracking();
-          }
-          await loadRunCache(undefined, context);
-          addActivity('cloud-synced', 'warning', 'Deleted the selected Cloudflare run.');
-        } catch (error) {
-          if (isAbortError(error)) {
-            addActivity('cloud-synced', 'warning', 'Run deletion was cancelled.');
-            return;
-          }
-
-          addActivity(
-            'error',
-            'error',
-            getErrorMessage(error, 'Could not delete the selected Cloudflare run.'),
-          );
+  const deleteRun = useCallback(
+    (runId: string) => {
+      void (async () => {
+        if (!runId) {
+          addActivity('cloud-synced', 'warning', 'Choose a saved backend run first.');
+          return;
         }
-      });
-    })();
-  }, [
-    activeDraftRunId,
-    addActivity,
-    client,
-    confirmAction,
-    clearAutosaveTracking,
-    loadRunCache,
-    project.id,
-    runBusyAction,
-    runs,
-    selectedRunId,
-    setActiveDraftRun,
-  ]);
+
+        const selectedRun = runs.find((run) => run.id === runId);
+        const shouldDelete = await confirmAction({
+          title: 'Delete saved run?',
+          description: `This deletes "${selectedRun?.idea ?? 'the selected run'}" from D1 and R2.`,
+          confirmLabel: 'Delete run',
+          tone: 'danger',
+        });
+
+        if (!shouldDelete) {
+          return;
+        }
+
+        void runBusyAction('backend-sync', async (context) => {
+          try {
+            context.setProgress('Deleting Cloudflare run...');
+            await client.deleteRun(runId, context.signal);
+            if (runId === activeDraftRunId) {
+              setActiveDraftRun('', project.id);
+              markCurrentStateDeleted(project, files, resolvedSaveIdea);
+            }
+            const { runs: nextRuns } = await client.listRuns(context.signal);
+            setRuns(nextRuns);
+            if (runId === selectedRunId) {
+              setSelectedRunId('');
+              setSnapshot(null);
+            }
+            addActivity('cloud-synced', 'warning', 'Deleted the saved Cloudflare run.');
+          } catch (error) {
+            if (isAbortError(error)) {
+              addActivity('cloud-synced', 'warning', 'Run deletion was cancelled.');
+              return;
+            }
+
+            addActivity(
+              'error',
+              'error',
+              getErrorMessage(error, 'Could not delete the Cloudflare run.'),
+            );
+          }
+        });
+      })();
+    },
+    [
+      activeDraftRunId,
+      addActivity,
+      client,
+      confirmAction,
+      files,
+      markCurrentStateDeleted,
+      project,
+      resolvedSaveIdea,
+      runBusyAction,
+      runs,
+      selectedRunId,
+      setActiveDraftRun,
+    ],
+  );
 
   const deleteAllCloudData = useCallback(() => {
     void (async () => {
@@ -477,7 +474,7 @@ export const useBackendCache = ({
           setSelectedRunId('');
           setSnapshot(null);
           setActiveDraftRun('', project.id);
-          clearAutosaveTracking();
+          markCurrentStateDeleted(project, files, resolvedSaveIdea);
           addActivity('cloud-synced', 'warning', 'Deleted all Cloudflare backend data.');
         } catch (error) {
           if (isAbortError(error)) {
@@ -495,36 +492,15 @@ export const useBackendCache = ({
     })();
   }, [
     addActivity,
-    clearAutosaveTracking,
     client,
     confirmAction,
-    project.id,
+    files,
+    markCurrentStateDeleted,
+    project,
+    resolvedSaveIdea,
     runBusyAction,
     setActiveDraftRun,
   ]);
-
-  const finalizeCurrentRun = useCallback(
-    async (projectOverride?: Project, context?: BusyActionContext): Promise<void> => {
-      const finalProject = projectOverride ?? project;
-      const finalIdea = saveIdea.trim() || getProjectIdeaLabel(finalProject);
-      const { signal, setProgress } = context ?? {};
-
-      const { runId } = await syncRunToBackend({
-        targetStatus: 'final',
-        projectOverride: finalProject,
-        ...(signal ? { signal } : {}),
-        ...(setProgress ? { setProgress } : {}),
-        forceUpload: true,
-      });
-      markFinalSaved(finalProject, files, finalIdea);
-      addActivity('cloud-synced', 'success', `Marked "${finalIdea}" as a final cloud run.`);
-      await loadRunCache(runId, {
-        signal: signal ?? new AbortController().signal,
-        setProgress: setProgress ?? (() => undefined),
-      });
-    },
-    [addActivity, files, loadRunCache, markFinalSaved, project, saveIdea, syncRunToBackend],
-  );
 
   const generateProjectDraft = useCallback(
     (initialPrompt: string, signal?: AbortSignal): Promise<ProjectDraft> =>
@@ -562,10 +538,9 @@ export const useBackendCache = ({
     testConnection,
     selectRun,
     restoreSelectedRun,
-    deleteSelectedRun,
+    deleteRun,
     deleteAllCloudData,
     restoreRun,
-    finalizeCurrentRun,
     generateProjectDraft,
     generateImage,
     generateColoringPageImage,

@@ -24,6 +24,159 @@ const mockUnavailableBackend = async (page: Page) => {
   });
 };
 
+const mockSavedRunsBackend = async (page: Page) => {
+  const project = {
+    id: 'project-1',
+    settings: {
+      title: 'Ocean Masks, 2 Kids Paper Masks',
+      theme: 'Ocean party masks',
+      audience: 'Parents and teachers',
+      marketplace: 'Etsy',
+      style: 'Clean printable masks',
+      description: 'Digital download. No physical item will be shipped.',
+      tags: 'ocean mask, kids craft',
+      safetyNote: 'Adult supervision required. Not intended for children under 3.',
+      printingInstructions: 'Print on cardstock.',
+      license: 'Personal and classroom use.',
+      refundPolicy: 'Digital downloads are not refundable.',
+    },
+    subjects: [
+      { id: 'sea-turtle', name: 'Sea Turtle' },
+      { id: 'starfish', name: 'Starfish' },
+    ],
+    pdfSettings: {
+      generateA4: true,
+      generateUSLetter: true,
+      maskScale: 'medium',
+      showSubjectLabel: true,
+      showInstructionFooter: true,
+      pageMarginMm: 10,
+      includeCalibrationPage: false,
+    },
+    openAIImageSettings: {
+      model: 'gpt-image-1.5',
+      size: '1024x1024',
+      quality: 'medium',
+      background: 'opaque',
+      outputFormat: 'png',
+    },
+    createdAt: '2026-05-26T09:00:00.000Z',
+    updatedAt: '2026-05-26T09:35:00.000Z',
+    lastBriefUpdatedAt: '2026-05-26T09:35:00.000Z',
+  };
+  let runs = [
+    {
+      id: 'run-ocean-001',
+      projectId: 'project-1',
+      idea: 'Ocean birthday masks',
+      status: 'draft',
+      createdAt: '2026-05-26T09:00:00.000Z',
+      updatedAt: '2026-05-26T09:35:00.000Z',
+      fileCount: 4,
+      totalSizeBytes: 1_843_200,
+    },
+    {
+      id: 'run-halloween-002',
+      projectId: 'project-1',
+      idea: 'Halloween classroom masks',
+      status: 'draft',
+      createdAt: '2026-05-26T08:00:00.000Z',
+      updatedAt: '2026-05-26T08:25:00.000Z',
+      fileCount: 8,
+      totalSizeBytes: 3_145_728,
+    },
+  ];
+
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === '/api/health') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          version: 'test',
+          storage: { d1: true, r2: true },
+          auth: { mode: 'access', configured: true },
+          openaiProxyReady: true,
+          maxFileBytes: 52_428_800,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ runs }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, run: runs[0] }),
+      });
+      return;
+    }
+
+    const runId = /^\/api\/runs\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (runId && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          runId,
+          idea: runs.find((run) => run.id === runId)?.idea ?? 'Saved run',
+          status: 'draft',
+          project:
+            runId === 'run-halloween-002'
+              ? {
+                  ...project,
+                  settings: {
+                    ...project.settings,
+                    title: 'Halloween Masks, 4 Kids Paper Masks',
+                    theme: 'Halloween classroom masks',
+                  },
+                  subjects: [
+                    { id: 'pumpkin', name: 'Pumpkin' },
+                    { id: 'ghost', name: 'Ghost' },
+                    { id: 'bat', name: 'Bat' },
+                    { id: 'cat', name: 'Cat' },
+                  ],
+                }
+              : project,
+          updatedAt: runs.find((run) => run.id === runId)?.updatedAt,
+          files: [],
+          events: [],
+        }),
+      });
+      return;
+    }
+
+    if (runId && method === 'DELETE') {
+      runs = runs.filter((run) => run.id !== runId);
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, run: runs[0] }),
+    });
+  });
+};
+
 const prepareCleanPage = async (page: Page) => {
   await mockUnavailableBackend(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -106,6 +259,36 @@ test.describe('production workflow', () => {
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
+  });
+});
+
+test.describe('backend saves workflow', () => {
+  test('expands rows directly and deletes individual saved runs', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'Desktop-only table interaction smoke.');
+
+    await mockSavedRunsBackend(page);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await expect(page.getByText('Ocean birthday masks')).toBeVisible();
+    await expect(page.getByText('Preview', { exact: true })).toHaveCount(0);
+
+    await page
+      .getByRole('button', { name: /Ocean birthday masks/ })
+      .first()
+      .click();
+    await expect(page.getByText('Ocean Masks, 2 Kids Paper Masks')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Delete saved run Ocean birthday masks' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Delete saved run?' });
+
+    await expect(dialog).toBeVisible();
+    await page.getByRole('button', { name: 'Delete run' }).click();
+    await expect(page.getByText('Ocean birthday masks')).toHaveCount(0);
+    await expect(page.getByText('Halloween classroom masks')).toBeVisible();
   });
 });
 

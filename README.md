@@ -206,14 +206,14 @@ You can still upload externally generated files manually and map them to topics.
 1. Generate A4 and US Letter PDFs.
 2. Generate marketplace preview images.
 3. Review the QA panel.
-4. Export the final ZIP archive.
+4. Export the ZIP archive.
 5. Open the PDFs and print one sample page.
 6. Confirm mask size, eye-hole placement, file count, digital download copy, and IP safety.
 7. Manually upload files and listing copy to Etsy.
 
 ## Limitations
 
-- Uploaded files do not persist after refresh unless you explicitly back them up to Cloudflare.
+- Uploaded files persist after refresh when Cloud saves are configured and reachable.
 - OpenAI brief and image generation require a configured Cloudflare Pages OpenAI secret.
 - Backend features require a same-origin `/api/*` route. Cloudflare Pages provides this through
   Pages Functions on the free `*.pages.dev` URL.
