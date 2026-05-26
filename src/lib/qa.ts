@@ -63,13 +63,20 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
   const groups = groupFilesForExport(files, project.subjects);
   const expectedFilenames = project.subjects.map((subject) => getExpectedFilename(subject.name));
   const approvedImages = groups.approvedMapped;
+  const approvedColoringPages = groups.approvedColoringPages;
   const approvedSubjectIds = new Set(approvedImages.map((file) => file.mappedSubjectId));
+  const approvedColoringPageSubjectIds = new Set(
+    approvedColoringPages.map((file) => file.mappedSubjectId),
+  );
   const duplicateApprovedMappings = approvedImages.length !== approvedSubjectIds.size;
   const hasInvalidApprovedMapping = approvedImages.some(
     (file) => !project.subjects.some((subject) => subject.id === file.mappedSubjectId),
   );
   const everySubjectHasApprovedImage = project.subjects.every((subject) =>
     Boolean(getFileForSubject(files, subject.id)),
+  );
+  const everySubjectHasColoringPage = project.subjects.every((subject) =>
+    approvedColoringPageSubjectIds.has(subject.id),
   );
   const everyImageAtLeastMinimum = approvedImages.every((file) => {
     if (!file.imageMetadata) {
@@ -174,6 +181,15 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       maskCount === 0
         ? 'Add mask topics before approving images.'
         : `${approvedImages.length} of ${maskCount} topics have an approved image.`,
+    ),
+    createCheck(
+      'approved-coloring-pages',
+      'critical',
+      maskCount > 0 && everySubjectHasColoringPage,
+      'Every approved mask has a coloring page',
+      maskCount === 0
+        ? 'Add topics before preparing coloring pages.'
+        : `${approvedColoringPageSubjectIds.size} of ${maskCount} topics have an approved coloring page.`,
     ),
     createCheck(
       'rejected-not-approved',

@@ -25,9 +25,11 @@ describe('PromptManager', () => {
         files={[]}
         canGenerateImages={false}
         generatingSubjectIds={[]}
+        generatingColoringPageSubjectIds={[]}
         onAddSubject={vi.fn()}
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
+        onGenerateColoringPage={vi.fn()}
         onApproveAll={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
@@ -51,10 +53,12 @@ describe('PromptManager', () => {
         files={[]}
         canGenerateImages={false}
         generatingSubjectIds={[]}
+        generatingColoringPageSubjectIds={[]}
         allowTopicEditing={false}
         onAddSubject={vi.fn()}
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
+        onGenerateColoringPage={vi.fn()}
         onApproveAll={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
@@ -79,6 +83,7 @@ describe('PromptManager', () => {
       type: 'image/png',
       addedAt: '2026-05-26T08:00:00.000Z',
       kind: 'uploaded',
+      assetVariant: 'color',
       reviewState: 'pending',
       reviewNotes: '',
       mappedSubjectId: 'lion',
@@ -92,10 +97,12 @@ describe('PromptManager', () => {
         files={[pendingImage]}
         canGenerateImages={false}
         generatingSubjectIds={[]}
+        generatingColoringPageSubjectIds={[]}
         allowTopicEditing={false}
         onAddSubject={vi.fn()}
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
+        onGenerateColoringPage={vi.fn()}
         onApproveAll={onApproveAll}
         onApprove={vi.fn()}
         onReject={vi.fn()}

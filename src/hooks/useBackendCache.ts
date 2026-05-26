@@ -538,6 +538,16 @@ export const useBackendCache = ({
     [client],
   );
 
+  const generateColoringPageImage = useCallback(
+    (
+      settings: OpenAIImageSettings,
+      prompt: PromptItem,
+      sourceFile: File,
+      signal?: AbortSignal,
+    ): Promise<File> => client.generateColoringPageImage(settings, prompt, sourceFile, signal),
+    [client],
+  );
+
   return {
     health,
     runs,
@@ -558,5 +568,6 @@ export const useBackendCache = ({
     finalizeCurrentRun,
     generateProjectDraft,
     generateImage,
+    generateColoringPageImage,
   };
 };

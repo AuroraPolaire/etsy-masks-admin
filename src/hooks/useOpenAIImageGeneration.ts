@@ -1,7 +1,13 @@
 import { useCallback, useState } from 'react';
 
 import { makeUniqueFile, makeUniqueFileWithReservedNames } from '../lib/fileLifecycle';
-import { createManagedFile, getExpectedFilename } from '../lib/files';
+import {
+  createManagedFile,
+  getColoringPageFilename,
+  getCurrentColoringPageForSubject,
+  getExpectedFilename,
+  getFileForSubject,
+} from '../lib/files';
 
 import type {
   AddActivity,
@@ -29,6 +35,12 @@ type UseOpenAIImageGenerationParams = {
     prompt: PromptItem,
     signal?: AbortSignal,
   ) => Promise<File>;
+  generateColoringPageFile: (
+    settings: OpenAIImageSettings,
+    prompt: PromptItem,
+    sourceFile: File,
+    signal?: AbortSignal,
+  ) => Promise<File>;
 };
 
 const createGeneratedManagedFile = async (
@@ -46,6 +58,26 @@ const createGeneratedManagedFile = async (
   };
 };
 
+const createGeneratedColoringPageFile = async (
+  generatedFile: File,
+  prompt: PromptItem,
+  settings: OpenAIImageSettings,
+  subjects: SubjectItem[],
+  sourceFileId: string,
+): Promise<ManagedFile> => {
+  const managedFile = await createManagedFile(generatedFile, subjects);
+
+  return {
+    ...managedFile,
+    mappedSubjectId: prompt.subjectId,
+    assetVariant: 'coloring-page',
+    sourceFileId,
+    reviewState: 'approved',
+    explicitlyConfirmed: true,
+    reviewNotes: `Generated coloring page with OpenAI ${settings.model}.`,
+  };
+};
+
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError';
 
@@ -59,8 +91,12 @@ export const useOpenAIImageGeneration = ({
   addActivity,
   onSettingsChange,
   generateImageFile,
+  generateColoringPageFile,
 }: UseOpenAIImageGenerationParams) => {
   const [generatingSubjectIds, setGeneratingSubjectIds] = useState<string[]>([]);
+  const [generatingColoringPageSubjectIds, setGeneratingColoringPageSubjectIds] = useState<
+    string[]
+  >([]);
 
   const startGeneratingSubject = useCallback((subjectId: string) => {
     setGeneratingSubjectIds((currentIds) =>
@@ -70,6 +106,18 @@ export const useOpenAIImageGeneration = ({
 
   const finishGeneratingSubject = useCallback((subjectId: string) => {
     setGeneratingSubjectIds((currentIds) => currentIds.filter((id) => id !== subjectId));
+  }, []);
+
+  const startGeneratingColoringPage = useCallback((subjectId: string) => {
+    setGeneratingColoringPageSubjectIds((currentIds) =>
+      currentIds.includes(subjectId) ? currentIds : [...currentIds, subjectId],
+    );
+  }, []);
+
+  const finishGeneratingColoringPage = useCallback((subjectId: string) => {
+    setGeneratingColoringPageSubjectIds((currentIds) =>
+      currentIds.filter((id) => id !== subjectId),
+    );
   }, []);
 
   const generateSubjectImage = useCallback(
@@ -233,11 +281,123 @@ export const useOpenAIImageGeneration = ({
     ],
   );
 
+  const generateSubjectColoringPage = useCallback(
+    async (subjectId: string, context?: BusyActionContext) => {
+      const prompt = prompts.find((item) => item.subjectId === subjectId);
+      const sourceFile = getFileForSubject(filesRef.current, subjectId);
+      if (!prompt || !sourceFile) {
+        return;
+      }
+
+      startGeneratingColoringPage(subjectId);
+      context?.setProgress(`Generating coloring page for ${prompt.subjectName}...`);
+
+      try {
+        const generatedFile = await generateColoringPageFile(
+          settings,
+          prompt,
+          sourceFile.file,
+          context?.signal,
+        );
+        if (context?.signal.aborted) {
+          return;
+        }
+
+        const reservedNames = new Set(filesRef.current.map((file) => file.name.toLowerCase()));
+        const namedFile = new File([generatedFile], getColoringPageFilename(prompt.subjectName), {
+          type: generatedFile.type || 'image/png',
+        });
+        const uniqueFile = makeUniqueFileWithReservedNames(namedFile, reservedNames);
+        const mappedFile = await createGeneratedColoringPageFile(
+          uniqueFile,
+          prompt,
+          settings,
+          subjects,
+          sourceFile.id,
+        );
+
+        appendFiles([mappedFile]);
+        addActivity('image-generated', 'success', `Generated ${mappedFile.name}.`);
+      } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('image-generated', 'warning', 'Coloring page generation was cancelled.');
+          return;
+        }
+
+        addActivity(
+          'error',
+          'error',
+          error instanceof Error ? error.message : `Could not generate ${prompt.subjectName}.`,
+        );
+      } finally {
+        finishGeneratingColoringPage(subjectId);
+      }
+    },
+    [
+      addActivity,
+      appendFiles,
+      filesRef,
+      finishGeneratingColoringPage,
+      generateColoringPageFile,
+      prompts,
+      settings,
+      startGeneratingColoringPage,
+      subjects,
+    ],
+  );
+
+  const generateMissingColoringPages = useCallback(
+    async (context?: BusyActionContext) => {
+      const promptsNeedingColoringPages = prompts.filter((prompt) => {
+        const approvedColor = getFileForSubject(filesRef.current, prompt.subjectId);
+        const approvedColoringPage = approvedColor
+          ? getCurrentColoringPageForSubject(filesRef.current, prompt.subjectId, approvedColor)
+          : undefined;
+
+        return approvedColor && !approvedColoringPage;
+      });
+
+      if (promptsNeedingColoringPages.length === 0) {
+        return;
+      }
+
+      try {
+        for (const [index, prompt] of promptsNeedingColoringPages.entries()) {
+          if (context?.signal.aborted) {
+            throw new DOMException('Coloring page generation cancelled', 'AbortError');
+          }
+
+          context?.setProgress(
+            `Generating coloring page ${index + 1}/${promptsNeedingColoringPages.length}: ${
+              prompt.subjectName
+            }...`,
+          );
+          await generateSubjectColoringPage(prompt.subjectId, context);
+        }
+      } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('image-generated', 'warning', 'Coloring page generation was cancelled.');
+          return;
+        }
+
+        addActivity(
+          'error',
+          'error',
+          error instanceof Error ? error.message : 'Could not generate coloring pages.',
+        );
+      }
+    },
+    [addActivity, filesRef, generateSubjectColoringPage, prompts],
+  );
+
   return {
     openAISettings: settings,
     setOpenAISettings: onSettingsChange,
     generatingSubjectIds,
+    generatingColoringPageSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
+    generateSubjectColoringPage,
+    generateMissingColoringPages,
   };
 };

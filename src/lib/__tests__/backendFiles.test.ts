@@ -48,6 +48,7 @@ describe('backendFiles', () => {
       type: file.type,
       addedAt: '2026-01-02T00:00:00.000Z',
       kind: 'generated-pdf',
+      assetVariant: 'color',
       reviewState: 'approved',
       reviewNotes: 'Ready',
       mappedSubjectId: 'subject-1',
@@ -62,6 +63,7 @@ describe('backendFiles', () => {
       size: 3,
       type: 'application/pdf',
       kind: 'generated-pdf',
+      assetVariant: 'color',
       addedAt: '2026-01-02T00:00:00.000Z',
       reviewState: 'approved',
       reviewNotes: 'Ready',
@@ -103,6 +105,7 @@ describe('backendFiles', () => {
       reviewState: 'approved',
       reviewNotes: 'Ready',
       mappedSubjectId: 'subject-1',
+      assetVariant: 'color',
       explicitlyConfirmed: true,
     });
   });

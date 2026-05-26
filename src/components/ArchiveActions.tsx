@@ -46,7 +46,7 @@ export const ArchiveActions = ({
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink-strong">Final package</p>
               <p className="mt-1 text-xs text-ink-muted">
-                Exports approved mask PNGs and one listing details PDF.
+                Exports color mask PNGs, coloring-page PNGs, and one listing details PDF.
               </p>
             </div>
             <FileText aria-hidden="true" className="shrink-0 text-ink-muted" size={20} />

@@ -19,7 +19,11 @@ import { useManagedFiles } from './hooks/useManagedFiles';
 import { useOpenAIImageGeneration } from './hooks/useOpenAIImageGeneration';
 import { useProjectState } from './hooks/useProjectState';
 import { checkBrowserSupport } from './lib/browserSupport';
-import { createPromptItems, getFileForSubject } from './lib/files';
+import {
+  createPromptItems,
+  getCurrentColoringPageForSubject,
+  getFileForSubject,
+} from './lib/files';
 import { runQA } from './lib/qa';
 import { createWorkflowState } from './workflow/workflowState';
 
@@ -110,6 +114,18 @@ export const App = () => {
     () => prompts.filter((prompt) => !getFileForSubject(files, prompt.subjectId)),
     [files, prompts],
   );
+  const missingColoringPagePrompts = useMemo(
+    () =>
+      prompts.filter((prompt) => {
+        const approvedColorFile = getFileForSubject(files, prompt.subjectId);
+
+        return (
+          approvedColorFile &&
+          !getCurrentColoringPageForSubject(files, prompt.subjectId, approvedColorFile)
+        );
+      }),
+    [files, prompts],
+  );
   const backendCache = useBackendCache({
     project,
     files,
@@ -146,12 +162,30 @@ export const App = () => {
     },
     [backendCache],
   );
+  const generateColoringPageFile = useCallback(
+    async (
+      settings: OpenAIImageSettings,
+      prompt: PromptItem,
+      sourceFile: File,
+      signal?: AbortSignal,
+    ): Promise<File> => {
+      if (!backendCache.canUseOpenAIProxy) {
+        throw new Error('Backend OpenAI proxy is required before generating coloring pages.');
+      }
+
+      return backendCache.generateColoringPageImage(settings, prompt, sourceFile, signal);
+    },
+    [backendCache],
+  );
   const {
     openAISettings,
     setOpenAISettings,
     generatingSubjectIds,
+    generatingColoringPageSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
+    generateSubjectColoringPage,
+    generateMissingColoringPages,
   } = useOpenAIImageGeneration({
     subjects: project.subjects,
     prompts,
@@ -162,6 +196,7 @@ export const App = () => {
     addActivity,
     onSettingsChange: updateOpenAIImageSettings,
     generateImageFile,
+    generateColoringPageFile,
   });
   const hasAIProvider = backendCache.canUseOpenAIProxy;
   const workflow = useMemo(
@@ -178,7 +213,11 @@ export const App = () => {
   const imageGenerationHint = !hasAIProvider
     ? 'Configure the backend OpenAI proxy to generate images.'
     : missingImagePrompts.length === 0
-      ? 'All topics have approved images.'
+      ? missingColoringPagePrompts.length === 0
+        ? 'All topics have approved color masks and coloring pages.'
+        : `${missingColoringPagePrompts.length} approved mask${
+            missingColoringPagePrompts.length === 1 ? '' : 's'
+          } still need a coloring page.`
       : `${missingImagePrompts.length} topic${missingImagePrompts.length === 1 ? '' : 's'} still need an approved image.`;
   const handleConfirmCancel = useCallback(() => {
     confirmRequest?.resolve(false);
@@ -349,6 +388,19 @@ export const App = () => {
     void runBusyAction('image-generation', generateMissingSubjectImages);
   }, [generateMissingSubjectImages, runBusyAction]);
 
+  const handleGenerateSubjectColoringPage = useCallback(
+    (subjectId: string) => {
+      void runBusyAction('image-generation', (context) =>
+        generateSubjectColoringPage(subjectId, context),
+      );
+    },
+    [generateSubjectColoringPage, runBusyAction],
+  );
+
+  const handleGenerateMissingColoringPages = useCallback(() => {
+    void runBusyAction('image-generation', generateMissingColoringPages);
+  }, [generateMissingColoringPages, runBusyAction]);
+
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
@@ -384,7 +436,9 @@ export const App = () => {
         hasAIProvider={hasAIProvider}
         busyAction={busyAction}
         generatingSubjectIds={generatingSubjectIds}
+        generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
         missingImageCount={missingImagePrompts.length}
+        missingColoringPageCount={missingColoringPagePrompts.length}
         imageGenerationHint={imageGenerationHint}
         onStepSelected={setActiveStepId}
         onOpenCloudSaves={() => setActiveSectionId('backend')}
@@ -394,6 +448,8 @@ export const App = () => {
         onRemoveSubject={handleRemoveSubject}
         onGenerateImage={handleGenerateSubjectImage}
         onGenerateMissingImages={handleGenerateMissingSubjectImages}
+        onGenerateColoringPage={handleGenerateSubjectColoringPage}
+        onGenerateMissingColoringPages={handleGenerateMissingColoringPages}
         onApproveAllFiles={approveFiles}
         onApproveFile={approveFile}
         onRejectFile={rejectFile}

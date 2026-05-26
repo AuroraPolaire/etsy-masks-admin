@@ -19,6 +19,7 @@ type ImageCostComparison = ImageCostEstimate & {
   oneImageUsd: number;
   missingImagesUsd: number;
   fullBundleUsd: number;
+  fullBundleWithColoringPagesUsd: number;
 };
 
 const DEFAULT_ESTIMATE_QUALITY: EstimatedQuality = 'medium';
@@ -103,6 +104,7 @@ export const getOpenAIImageCostComparison = (
       oneImageUsd: estimate.costUsd,
       missingImagesUsd: estimate.costUsd * missingImageCount,
       fullBundleUsd: estimate.costUsd * subjectCount,
+      fullBundleWithColoringPagesUsd: estimate.costUsd * subjectCount * 2,
     };
   });
 

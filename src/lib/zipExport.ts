@@ -5,6 +5,7 @@ import { APP_VERSION, MAX_ETSY_FILE_BYTES } from '../constants';
 import {
   createPngBlobFromImage,
   fileToText,
+  getColoringPageFilename,
   getExpectedFilename,
   getSourceFiles,
   groupFilesForExport,
@@ -36,7 +37,8 @@ export const createListingCopy = (project: Project): string => {
     '',
     'What is included:',
     `- ${project.subjects.length} printable mask designs`,
-    '- Individual PNG mask files',
+    '- Individual color PNG mask files',
+    '- Matching black and white coloring-page PNG files',
     '- One listing details PDF',
     '- Digital download only',
     '',
@@ -71,7 +73,11 @@ const addApprovedPngs = async (
     }
 
     const pngBlob = await createPngBlobFromImage(file.file);
-    zip.file(`${basePath}/${getExpectedFilename(subject.name)}`, pngBlob);
+    const fileName =
+      file.assetVariant === 'coloring-page'
+        ? getColoringPageFilename(subject.name)
+        : getExpectedFilename(subject.name);
+    zip.file(`${basePath}/${fileName}`, pngBlob);
   }
 };
 
@@ -140,6 +146,17 @@ const createManifest = (
 
     return mapped;
   }, {});
+  const mappedColoringPages = groups.approvedColoringPages.reduce<Record<string, string>>(
+    (mapped, file) => {
+      const subject = project.subjects.find((item) => item.id === file.mappedSubjectId);
+      if (subject) {
+        mapped[subject.name] = file.name;
+      }
+
+      return mapped;
+    },
+    {},
+  );
 
   return {
     generatedAt: new Date().toISOString(),
@@ -150,10 +167,15 @@ const createManifest = (
     maskCount: project.subjects.length,
     subjects: project.subjects.map((subject) => subject.name),
     expectedFilenames: project.subjects.map((subject) => getExpectedFilename(subject.name)),
+    expectedColoringPageFilenames: project.subjects.map((subject) =>
+      getColoringPageFilename(subject.name),
+    ),
     approvedImages: groups.approvedMapped.map((file) => file.name),
+    approvedColoringPages: groups.approvedColoringPages.map((file) => file.name),
     rejectedImages: groups.rejected.map((file) => file.name),
     unusedImages: groups.unused.map((file) => file.name),
     mappedImages,
+    mappedColoringPages,
     imageDimensions: createManifestImageDimensions(files),
     pdfFiles: ['listing_details.pdf'],
     marketplacePreviewFiles: [],
@@ -176,7 +198,8 @@ export const exportArchive = async (
   const groups = groupFilesForExport(files, project.subjects);
   const zip = new JSZip();
 
-  await addApprovedPngs(zip, 'mask_pngs', project, groups.approvedMapped);
+  await addApprovedPngs(zip, 'mask_pngs/color', project, groups.approvedMapped);
+  await addApprovedPngs(zip, 'mask_pngs/coloring_pages', project, groups.approvedColoringPages);
   zip.file('listing_details.pdf', listingPdf);
 
   const archiveBlob = await zip.generateAsync({

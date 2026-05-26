@@ -166,6 +166,12 @@ export const OpenAIImagePanel = ({
                     <dt>Full bundle ({subjectCount})</dt>
                     <dd className="font-semibold">{formatUsdEstimate(estimate.fullBundleUsd)}</dd>
                   </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Color + coloring pages</dt>
+                    <dd className="font-semibold">
+                      {formatUsdEstimate(estimate.fullBundleWithColoringPagesUsd)}
+                    </dd>
+                  </div>
                 </dl>
               </Surface>
             ))}

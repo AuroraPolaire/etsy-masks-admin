@@ -1,7 +1,7 @@
 import { Check, Copy, FileText, RotateCw, Trash2, X } from 'lucide-react';
 
 import { copyText } from '../../lib/clipboard';
-import { getFileForSubject, isImageFile } from '../../lib/files';
+import { getCurrentColoringPageForSubject, getFileForSubject, isImageFile } from '../../lib/files';
 import { AIButton } from '../ui/AIButton';
 import { Alert } from '../ui/Alert';
 import { Badge } from '../ui/Badge';
@@ -17,9 +17,11 @@ type PromptCardProps = {
   files: ManagedFile[];
   canGenerateImages: boolean;
   generatingSubjectIds: string[];
+  generatingColoringPageSubjectIds: string[];
   allowTopicEditing: boolean;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
+  onGenerateColoringPage: (subjectId: string) => void;
   onApprove: (fileId: string) => void;
   onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
@@ -33,9 +35,11 @@ export const PromptCard = ({
   files,
   canGenerateImages,
   generatingSubjectIds,
+  generatingColoringPageSubjectIds,
   allowTopicEditing,
   onRemoveSubject,
   onGenerateImage,
+  onGenerateColoringPage,
   onApprove,
   onReject,
   onDelete,
@@ -45,21 +49,57 @@ export const PromptCard = ({
   const mappedFile = getFileForSubject(files, prompt.subjectId, 'approved');
   const pendingFile = getFileForSubject(files, prompt.subjectId, 'pending');
   const rejectedFile = getFileForSubject(files, prompt.subjectId, 'rejected');
+  const latestColoringPageFile =
+    getFileForSubject(files, prompt.subjectId, 'approved', 'coloring-page') ??
+    getFileForSubject(files, prompt.subjectId, 'pending', 'coloring-page') ??
+    getFileForSubject(files, prompt.subjectId, 'rejected', 'coloring-page');
+  const currentColoringPageFile = mappedFile
+    ? (getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'approved') ??
+      getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'pending') ??
+      getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'rejected'))
+    : undefined;
+  const staleColoringPageFile =
+    latestColoringPageFile?.sourceFileId &&
+    mappedFile &&
+    latestColoringPageFile.sourceFileId !== mappedFile.id
+      ? latestColoringPageFile
+      : undefined;
+  const coloringPageFile =
+    currentColoringPageFile ??
+    staleColoringPageFile ??
+    (!mappedFile ? latestColoringPageFile : undefined);
+  const isColoringPageStale = Boolean(
+    staleColoringPageFile && coloringPageFile?.id === staleColoringPageFile.id,
+  );
   const subjectFiles = files.filter(
     (file) =>
-      file.kind === 'uploaded' && isImageFile(file) && file.mappedSubjectId === prompt.subjectId,
+      file.kind === 'uploaded' &&
+      file.assetVariant === 'color' &&
+      isImageFile(file) &&
+      file.mappedSubjectId === prompt.subjectId,
   );
-  const previewFile = mappedFile ?? pendingFile ?? rejectedFile ?? subjectFiles[0];
+  const previewFile = pendingFile ?? rejectedFile ?? mappedFile ?? subjectFiles.at(-1);
   const subject = subjects.find((item) => item.id === prompt.subjectId);
   const isGenerating = generatingSubjectIds.includes(prompt.subjectId);
-  const isAnyImageGenerating = generatingSubjectIds.length > 0;
-  const reviewStatus = mappedFile
-    ? { label: 'Approved', tone: 'success' as const }
-    : pendingFile
-      ? { label: 'Review needed', tone: 'warning' as const }
-      : rejectedFile
-        ? { label: 'Rejected', tone: 'danger' as const }
+  const isGeneratingColoringPage = generatingColoringPageSubjectIds.includes(prompt.subjectId);
+  const isAnyImageGenerating =
+    generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
+  const reviewStatus = pendingFile
+    ? { label: 'Review needed', tone: 'warning' as const }
+    : rejectedFile
+      ? { label: 'Rejected', tone: 'danger' as const }
+      : mappedFile
+        ? { label: 'Approved', tone: 'success' as const }
         : { label: 'Needs image', tone: 'neutral' as const };
+  const coloringPageStatus = isColoringPageStale
+    ? { label: 'Coloring page stale', tone: 'warning' as const }
+    : coloringPageFile
+      ? coloringPageFile.reviewState === 'approved'
+        ? { label: 'Coloring page ready', tone: 'success' as const }
+        : coloringPageFile.reviewState === 'rejected'
+          ? { label: 'Coloring page rejected', tone: 'danger' as const }
+          : { label: 'Coloring page review', tone: 'warning' as const }
+      : { label: 'Needs coloring page', tone: 'neutral' as const };
 
   return (
     <Surface as="article" key={prompt.subjectId} variant="muted" className="p-4">
@@ -73,7 +113,10 @@ export const PromptCard = ({
               {prompt.expectedFilename}
             </p>
           </div>
-          <Badge tone={reviewStatus.tone}>{reviewStatus.label}</Badge>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Badge tone={reviewStatus.tone}>{reviewStatus.label}</Badge>
+            <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <AIButton
@@ -183,6 +226,99 @@ export const PromptCard = ({
             <Alert tone="info">Generate or upload an image to review it here.</Alert>
           )}
         </div>
+        <Surface variant="default" className="p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink-strong">Coloring page</p>
+              <p className="mt-1 text-xs text-ink-muted">
+                Black and white line-art PNG for kids coloring.
+              </p>
+            </div>
+            {coloringPageFile && !isGeneratingColoringPage && !isColoringPageStale ? (
+              <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
+            ) : (
+              <AIButton
+                disabled={!canGenerateImages || !mappedFile || isAnyImageGenerating}
+                onClick={() => onGenerateColoringPage(prompt.subjectId)}
+              >
+                {isGeneratingColoringPage ? 'Generating' : 'Generate coloring page'}
+              </AIButton>
+            )}
+          </div>
+          {isGeneratingColoringPage ? (
+            <div className="mt-3 flex min-h-32 items-center justify-center gap-3 rounded-control border border-surface-outline bg-surface-muted p-4 text-sm text-ink-muted">
+              <RotateCw aria-hidden="true" className="animate-spin" size={20} />
+              Creating line art...
+            </div>
+          ) : coloringPageFile?.objectUrl ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+              <div className="flex aspect-square items-center justify-center rounded-control bg-white">
+                <img
+                  className="size-full object-contain p-2"
+                  src={coloringPageFile.objectUrl}
+                  alt={`Coloring page preview of ${prompt.subjectName}`}
+                />
+              </div>
+              <div className="min-w-0 space-y-3">
+                {isColoringPageStale ? (
+                  <Alert tone="warning">
+                    This coloring page was generated from an older color mask. Regenerate it from
+                    the current approved mask.
+                  </Alert>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    tone={
+                      isColoringPageStale
+                        ? 'warning'
+                        : coloringPageFile.reviewState === 'approved'
+                          ? 'success'
+                          : coloringPageFile.reviewState === 'rejected'
+                            ? 'danger'
+                            : 'warning'
+                    }
+                  >
+                    {isColoringPageStale ? 'stale' : coloringPageFile.reviewState}
+                  </Badge>
+                  {coloringPageFile.imageMetadata ? (
+                    <Badge tone="neutral">
+                      {coloringPageFile.imageMetadata.width} x{' '}
+                      {coloringPageFile.imageMetadata.height}
+                    </Badge>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {!isColoringPageStale && coloringPageFile.reviewState !== 'approved' ? (
+                    <IconButton
+                      icon={Check}
+                      label={`Approve coloring page for ${prompt.subjectName}`}
+                      variant="success"
+                      onClick={() => onApprove(coloringPageFile.id)}
+                    />
+                  ) : null}
+                  {!isColoringPageStale && coloringPageFile.reviewState !== 'rejected' ? (
+                    <IconButton
+                      icon={X}
+                      label={`Reject coloring page for ${prompt.subjectName}`}
+                      variant="danger"
+                      onClick={() => onReject(coloringPageFile.id)}
+                    />
+                  ) : null}
+                  <IconButton
+                    icon={Trash2}
+                    label={`Delete coloring page for ${prompt.subjectName}`}
+                    variant="ghost"
+                    onClick={() => onDelete(coloringPageFile.id)}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Alert tone="info" className="mt-3">
+              Approve the color mask, then generate the coloring page.
+            </Alert>
+          )}
+        </Surface>
         <details className="rounded-control border border-surface-outline bg-surface-raised p-3 text-sm text-ink-base">
           <summary className="cursor-pointer font-semibold text-ink-strong">Prompt details</summary>
           <div className="mt-3 space-y-3">

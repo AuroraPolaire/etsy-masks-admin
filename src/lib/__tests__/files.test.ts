@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { createPromptItems, getExpectedFilename, groupFilesForExport } from '../files';
+import {
+  createPromptItems,
+  getColoringPageFilename,
+  getCurrentColoringPageForSubject,
+  getExpectedFilename,
+  getFileForSubject,
+  groupFilesForExport,
+} from '../files';
 
 import type { SubjectItem, ManagedFile } from '../../types';
 
@@ -14,6 +21,7 @@ const makeFile = (
   name: string,
   reviewState: ManagedFile['reviewState'],
   mappedSubjectId?: string,
+  overrides: Partial<ManagedFile> = {},
 ): ManagedFile => {
   const file = new File(['image'], name, { type: 'image/png' });
 
@@ -26,17 +34,20 @@ const makeFile = (
     type: file.type,
     addedAt: new Date().toISOString(),
     kind: 'uploaded',
+    assetVariant: name.endsWith('-coloring-page.png') ? 'coloring-page' : 'color',
     imageMetadata: { width: 2500, height: 2500 },
     reviewState,
     reviewNotes: '',
     ...(mappedSubjectId ? { mappedSubjectId } : {}),
     explicitlyConfirmed: false,
+    ...overrides,
   };
 };
 
 describe('file helpers', () => {
   it('builds expected filenames from subject names', () => {
     expect(getExpectedFilename('Snow Owl')).toBe('snow-owl.png');
+    expect(getColoringPageFilename('Snow Owl')).toBe('snow-owl-coloring-page.png');
   });
 
   it('builds print-ready prompts that match the target mask output constraints', () => {
@@ -68,7 +79,48 @@ describe('file helpers', () => {
     expect(groups.unused.map((file) => file.id)).toEqual(['unused']);
   });
 
-  it('treats duplicate approved subject mappings as unused after the first file', () => {
+  it('groups approved coloring pages separately from color masks', () => {
+    const colorFile = makeFile('color', 'lion.png', 'approved', 'lion');
+    const files = [
+      colorFile,
+      makeFile('coloring', 'lion-coloring-page.png', 'approved', 'lion', {
+        sourceFileId: 'color',
+      }),
+    ];
+
+    const groups = groupFilesForExport(files, subjects);
+
+    expect(groups.approvedMapped.map((file) => file.id)).toEqual(['color']);
+    expect(groups.approvedColoringPages.map((file) => file.id)).toEqual(['coloring']);
+    expect(getFileForSubject(files, 'lion')?.id).toBe('color');
+    expect(getFileForSubject(files, 'lion', 'approved', 'coloring-page')?.id).toBe('coloring');
+    expect(getCurrentColoringPageForSubject(files, 'lion', colorFile)?.id).toBe('coloring');
+  });
+
+  it('does not export stale generated coloring pages for replaced color masks', () => {
+    const newColorFile = makeFile('new-color', 'lion.png', 'approved', 'lion');
+    const files = [
+      makeFile('old-color', 'old-lion.png', 'approved', 'lion'),
+      newColorFile,
+      makeFile('stale-coloring', 'lion-coloring-page.png', 'approved', 'lion', {
+        sourceFileId: 'old-color',
+      }),
+      makeFile('current-coloring', 'lion-coloring-page-v2.png', 'approved', 'lion', {
+        assetVariant: 'coloring-page',
+        sourceFileId: 'new-color',
+      }),
+    ];
+
+    const groups = groupFilesForExport(files.slice(1), subjects);
+
+    expect(groups.approvedMapped.map((file) => file.id)).toEqual(['new-color']);
+    expect(groups.approvedColoringPages.map((file) => file.id)).toEqual(['current-coloring']);
+    expect(getCurrentColoringPageForSubject(files, 'lion', newColorFile)?.id).toBe(
+      'current-coloring',
+    );
+  });
+
+  it('treats duplicate approved subject mappings as unused after the newest file', () => {
     const files = [
       makeFile('first', 'lion-a.png', 'approved', 'lion'),
       makeFile('second', 'lion-b.png', 'approved', 'lion'),
@@ -76,7 +128,8 @@ describe('file helpers', () => {
 
     const groups = groupFilesForExport(files, subjects);
 
-    expect(groups.approvedMapped.map((file) => file.id)).toEqual(['first']);
-    expect(groups.unused.map((file) => file.id)).toEqual(['second']);
+    expect(groups.approvedMapped.map((file) => file.id)).toEqual(['second']);
+    expect(groups.unused.map((file) => file.id)).toEqual(['first']);
+    expect(getFileForSubject(files, 'lion')?.id).toBe('second');
   });
 });

@@ -10,8 +10,8 @@ export const HowToUse = () => (
         <li>1. Draft the listing brief.</li>
         <li>2. Add mask topics.</li>
         <li>3. Use backend AI generation or upload images manually.</li>
-        <li>4. Generate or upload images and approve one per topic.</li>
-        <li>5. Export mask PNGs and one listing PDF.</li>
+        <li>4. Approve one color mask and create one coloring page per topic.</li>
+        <li>5. Export color PNGs, coloring-page PNGs, and one listing PDF.</li>
       </ol>
     </CardBody>
   </Card>

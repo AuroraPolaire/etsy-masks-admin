@@ -252,4 +252,29 @@ export const createBackendClient = () => ({
 
     return base64ToFile(response);
   },
+
+  generateColoringPageImage: async (
+    settings: OpenAIImageSettings,
+    promptItem: PromptItem,
+    sourceFile: File,
+    signal?: AbortSignal,
+  ): Promise<File> => {
+    const formData = new FormData();
+    formData.append('settings', JSON.stringify(settings));
+    formData.append('promptItem', JSON.stringify(promptItem));
+    formData.append('image', sourceFile, sourceFile.name);
+
+    const response = await fetch('/api/openai/images/coloring-page', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      ...(signal ? { signal } : {}),
+    });
+
+    if (!response.ok) {
+      throw new BackendApiError(response.status, await readErrorMessage(response));
+    }
+
+    return base64ToFile(await response.json());
+  },
 });

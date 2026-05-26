@@ -34,7 +34,9 @@ type HomeWorkflowViewProps = {
   hasAIProvider: boolean;
   busyAction: BusyAction;
   generatingSubjectIds: string[];
+  generatingColoringPageSubjectIds: string[];
   missingImageCount: number;
+  missingColoringPageCount: number;
   imageGenerationHint: string;
   onStepSelected: (stepId: WorkflowStepId) => void;
   onOpenCloudSaves: () => void;
@@ -44,6 +46,8 @@ type HomeWorkflowViewProps = {
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
   onGenerateMissingImages: () => void;
+  onGenerateColoringPage: (subjectId: string) => void;
+  onGenerateMissingColoringPages: () => void;
   onApproveAllFiles: (fileIds: string[]) => void;
   onApproveFile: (fileId: string) => void;
   onRejectFile: (fileId: string) => void;
@@ -66,7 +70,9 @@ export const HomeWorkflowView = ({
   hasAIProvider,
   busyAction,
   generatingSubjectIds,
+  generatingColoringPageSubjectIds,
   missingImageCount,
+  missingColoringPageCount,
   imageGenerationHint,
   onStepSelected,
   onOpenCloudSaves,
@@ -76,6 +82,8 @@ export const HomeWorkflowView = ({
   onRemoveSubject,
   onGenerateImage,
   onGenerateMissingImages,
+  onGenerateColoringPage,
+  onGenerateMissingColoringPages,
   onApproveAllFiles,
   onApproveFile,
   onRejectFile,
@@ -163,13 +171,17 @@ export const HomeWorkflowView = ({
               files={files}
               canGenerateImages={hasAIProvider && busyAction === null}
               generatingSubjectIds={generatingSubjectIds}
+              generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
               missingImageCount={missingImageCount}
+              missingColoringPageCount={missingColoringPageCount}
               imageGenerationHint={imageGenerationHint}
               allowTopicEditing={false}
               onAddSubject={onAddSubject}
               onRemoveSubject={onRemoveSubject}
               onGenerateImage={onGenerateImage}
               onGenerateMissingImages={onGenerateMissingImages}
+              onGenerateColoringPage={onGenerateColoringPage}
+              onGenerateMissingColoringPages={onGenerateMissingColoringPages}
               onApproveAll={onApproveAllFiles}
               onApprove={onApproveFile}
               onReject={onRejectFile}

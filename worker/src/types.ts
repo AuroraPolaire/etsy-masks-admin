@@ -38,6 +38,8 @@ export type FileRow = {
   review_state: string;
   review_notes: string;
   mapped_subject_id: string | null;
+  asset_variant: string;
+  source_file_id: string | null;
   explicitly_confirmed: number;
   image_width: number | null;
   image_height: number | null;
@@ -63,6 +65,8 @@ export type FileMetadataInput = {
   reviewState: string;
   reviewNotes: string;
   mappedSubjectId?: string;
+  assetVariant?: string;
+  sourceFileId?: string;
   explicitlyConfirmed: boolean;
   imageMetadata?: {
     width: number;

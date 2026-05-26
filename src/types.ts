@@ -4,6 +4,8 @@ export type FileReviewState = 'pending' | 'approved' | 'rejected';
 
 export type ManagedFileKind = 'uploaded' | 'generated-pdf' | 'generated-preview';
 
+export type FileAssetVariant = 'color' | 'coloring-page';
+
 export type MaskScale = 'small' | 'medium' | 'large';
 
 export type QAGroup = 'critical' | 'warning' | 'informational';
@@ -125,6 +127,8 @@ export type ManagedFile = {
   reviewState: FileReviewState;
   reviewNotes: string;
   mappedSubjectId?: string;
+  assetVariant: FileAssetVariant;
+  sourceFileId?: string;
   explicitlyConfirmed: boolean;
 };
 
@@ -179,6 +183,7 @@ export type ActivityItem = {
 
 export type FileExportGroups = {
   approvedMapped: ManagedFile[];
+  approvedColoringPages: ManagedFile[];
   rejected: ManagedFile[];
   unused: ManagedFile[];
 };
@@ -192,10 +197,13 @@ export type ExportManifest = {
   maskCount: number;
   subjects: string[];
   expectedFilenames: string[];
+  expectedColoringPageFilenames: string[];
   approvedImages: string[];
+  approvedColoringPages: string[];
   rejectedImages: string[];
   unusedImages: string[];
   mappedImages: Record<string, string>;
+  mappedColoringPages: Record<string, string>;
   imageDimensions: Record<string, ImageMetadata>;
   pdfFiles: string[];
   marketplacePreviewFiles: string[];
@@ -275,6 +283,8 @@ export type BackendFileRecord = {
   reviewState: FileReviewState;
   reviewNotes: string;
   mappedSubjectId?: string;
+  assetVariant?: FileAssetVariant;
+  sourceFileId?: string;
   explicitlyConfirmed: boolean;
   imageMetadata?: ImageMetadata;
   updatedAt: string;

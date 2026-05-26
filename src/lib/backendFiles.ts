@@ -14,6 +14,8 @@ export type BackendManagedFileMetadata = {
   reviewState: ManagedFile['reviewState'];
   reviewNotes: string;
   mappedSubjectId?: string;
+  assetVariant: ManagedFile['assetVariant'];
+  sourceFileId?: string;
   explicitlyConfirmed: boolean;
   imageMetadata?: ManagedFile['imageMetadata'];
 };
@@ -33,6 +35,8 @@ export const managedFileToBackendMetadata = (
   reviewState: managedFile.reviewState,
   reviewNotes: managedFile.reviewNotes,
   ...(managedFile.mappedSubjectId ? { mappedSubjectId: managedFile.mappedSubjectId } : {}),
+  assetVariant: managedFile.assetVariant,
+  ...(managedFile.sourceFileId ? { sourceFileId: managedFile.sourceFileId } : {}),
   explicitlyConfirmed: managedFile.explicitlyConfirmed,
   ...(managedFile.imageMetadata ? { imageMetadata: managedFile.imageMetadata } : {}),
 });
@@ -61,6 +65,8 @@ export const createManagedFileFromBackendRecord = (
     reviewState: record.reviewState,
     reviewNotes: record.reviewNotes,
     ...(record.mappedSubjectId ? { mappedSubjectId: record.mappedSubjectId } : {}),
+    assetVariant: record.assetVariant ?? 'color',
+    ...(record.sourceFileId ? { sourceFileId: record.sourceFileId } : {}),
     explicitlyConfirmed: record.explicitlyConfirmed,
   };
 };

@@ -31,7 +31,8 @@ const formatStatusLabel = (complete: boolean): string => (complete ? 'Ready' : '
 
 export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPanelProps) => {
   const uploadedFileCount = files.filter((file) => file.kind === 'uploaded').length;
-  const approvedImageCount = files.filter((file) => file.reviewState === 'approved').length;
+  const approvedImageCount = workflow.approvedImageCount;
+  const approvedColoringPageCount = workflow.approvedColoringPageCount;
   const pendingImageCount = files.filter((file) => file.reviewState === 'pending').length;
   const rejectedImageCount = files.filter((file) => file.reviewState === 'rejected').length;
   const totalBytes = files.reduce((total, file) => total + file.size, 0);
@@ -61,11 +62,15 @@ export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPa
           </div>
         </CardHeader>
         <CardBody className="space-y-4">
-          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <StatCard label="Topics" value={workflow.subjectCount} />
             <StatCard
               label="Approved masks"
               value={`${workflow.approvedImageCount}/${workflow.subjectCount}`}
+            />
+            <StatCard
+              label="Coloring pages"
+              value={`${workflow.approvedColoringPageCount}/${workflow.subjectCount}`}
             />
             <StatCard
               label="Final ZIP"
@@ -87,8 +92,8 @@ export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPa
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Image review</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    {approvedImageCount} approved, {pendingImageCount} pending, {rejectedImageCount}{' '}
-                    rejected.
+                    {approvedImageCount} color approved, {approvedColoringPageCount} coloring
+                    approved, {pendingImageCount} pending, {rejectedImageCount} rejected.
                   </p>
                 </div>
               </div>

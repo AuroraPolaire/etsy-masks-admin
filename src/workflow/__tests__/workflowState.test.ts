@@ -22,11 +22,15 @@ const createProjectWithBrief = (): Project => ({
   subjects: [{ id: 'moon', name: 'Moon' }],
 });
 
-const createApprovedImage = (subjectId: string): ManagedFile => {
-  const file = new File(['image'], 'moon.png', { type: 'image/png' });
+const createApprovedImage = (
+  subjectId: string,
+  name = 'moon.png',
+  sourceFileId?: string,
+): ManagedFile => {
+  const file = new File(['image'], name, { type: 'image/png' });
 
   return {
-    id: 'file',
+    id: name,
     file,
     name: file.name,
     originalName: file.name,
@@ -34,6 +38,8 @@ const createApprovedImage = (subjectId: string): ManagedFile => {
     type: file.type,
     addedAt: '2026-05-25T10:00:00.000Z',
     kind: 'uploaded',
+    assetVariant: file.name.endsWith('-coloring-page.png') ? 'coloring-page' : 'color',
+    ...(sourceFileId ? { sourceFileId } : {}),
     reviewState: 'approved',
     reviewNotes: '',
     mappedSubjectId: subjectId,
@@ -63,11 +69,14 @@ describe('workflow state', () => {
     ]);
   });
 
-  it('unlocks export after every topic has an approved image', () => {
+  it('unlocks export after every topic has an approved image and coloring page', () => {
     const project = createProjectWithBrief();
     const workflow = createWorkflowState({
       project,
-      files: [createApprovedImage('moon')],
+      files: [
+        createApprovedImage('moon', 'moon.png'),
+        createApprovedImage('moon', 'moon-coloring-page.png', 'moon.png'),
+      ],
       qaResult: createQaResult(),
       hasAIProvider: true,
       activeStepId: 'export',
@@ -76,5 +85,23 @@ describe('workflow state', () => {
     expect(workflow.imagesComplete).toBe(true);
     expect(workflow.canExportFinalFiles).toBe(true);
     expect(workflow.getStepState('export')).toBe('active');
+  });
+
+  it('keeps export locked when the coloring page belongs to an older color mask', () => {
+    const project = createProjectWithBrief();
+    const workflow = createWorkflowState({
+      project,
+      files: [
+        createApprovedImage('moon', 'moon-v2.png'),
+        createApprovedImage('moon', 'moon-coloring-page.png', 'moon-v1.png'),
+      ],
+      qaResult: createQaResult(),
+      hasAIProvider: true,
+      activeStepId: 'export',
+    });
+
+    expect(workflow.approvedColoringPageCount).toBe(0);
+    expect(workflow.imagesComplete).toBe(false);
+    expect(workflow.visibleActiveStepId).toBe('images');
   });
 });

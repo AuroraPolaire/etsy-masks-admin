@@ -73,6 +73,12 @@ test.describe('production workflow', () => {
     });
     await expect(page.getByText('Review needed')).toBeVisible();
     await page.getByRole('button', { name: 'Approve Moon' }).click();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'moon-coloring-page.png',
+      mimeType: 'image/png',
+      buffer: onePixelPng,
+    });
+    await page.getByRole('button', { name: 'Approve coloring page for Moon' }).click();
     await page.getByRole('button', { name: 'Next: QA and export' }).click();
     await expect(page.getByRole('heading', { name: 'Export package' })).toBeVisible();
 

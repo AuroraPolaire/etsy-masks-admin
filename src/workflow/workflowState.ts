@@ -1,4 +1,4 @@
-import { getFileForSubject } from '../lib/files';
+import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/files';
 
 import type { StepperItem } from '../components/ui/Stepper';
 import type { ManagedFile, Project, QAResult } from '../types';
@@ -20,6 +20,7 @@ export type WorkflowStep = {
 export type WorkflowState = {
   subjectCount: number;
   approvedImageCount: number;
+  approvedColoringPageCount: number;
   briefFieldsComplete: boolean;
   briefComplete: boolean;
   topicsComplete: boolean;
@@ -51,6 +52,13 @@ export const createWorkflowState = ({
   const approvedImageCount = project.subjects.filter((subject) =>
     getFileForSubject(files, subject.id),
   ).length;
+  const approvedColoringPageCount = project.subjects.filter((subject) => {
+    const approvedColorFile = getFileForSubject(files, subject.id);
+
+    return (
+      approvedColorFile && getCurrentColoringPageForSubject(files, subject.id, approvedColorFile)
+    );
+  }).length;
   const subjectCount = project.subjects.length;
   const briefFieldsComplete = [
     project.settings.title,
@@ -64,7 +72,10 @@ export const createWorkflowState = ({
   ].every((value) => value.trim().length > 0);
   const briefComplete = Boolean(project.lastBriefUpdatedAt) && briefFieldsComplete;
   const topicsComplete = subjectCount > 0;
-  const imagesComplete = topicsComplete && approvedImageCount === subjectCount;
+  const imagesComplete =
+    topicsComplete &&
+    approvedImageCount === subjectCount &&
+    approvedColoringPageCount === subjectCount;
   const canExportFinalFiles = approvedImageCount > 0;
   const recommendedStepId: WorkflowStepId = !briefComplete
     ? 'brief'
@@ -98,8 +109,8 @@ export const createWorkflowState = ({
     {
       id: 'images',
       title: 'AI images',
-      description: 'Generate or upload images, then approve one per topic.',
-      summary: `${approvedImageCount}/${subjectCount} topics have approved images.`,
+      description: 'Generate or upload color masks, then create coloring-page versions.',
+      summary: `${approvedImageCount}/${subjectCount} color masks, ${approvedColoringPageCount}/${subjectCount} coloring pages.`,
       complete: imagesComplete,
       unlocked: topicsComplete,
       lockedReason: 'Add at least one topic first.',
@@ -107,14 +118,14 @@ export const createWorkflowState = ({
     {
       id: 'export',
       title: 'QA and export',
-      description: 'Export approved mask PNG files and one listing PDF.',
+      description: 'Export color mask PNGs, coloring-page PNGs, and one listing PDF.',
       summary:
         qaResult.status === 'etsy-ready'
           ? 'Package is Etsy-ready.'
           : `QA is ${qaResult.readinessPercentage}% ready.`,
       complete: qaResult.status === 'etsy-ready',
       unlocked: imagesComplete,
-      lockedReason: 'Approve one image per topic first.',
+      lockedReason: 'Approve color masks and generate coloring pages first.',
     },
   ];
   const stepById = new Map(steps.map((step) => [step.id, step]));
@@ -146,15 +157,18 @@ export const createWorkflowState = ({
       ? 'Add the mask topics for this bundle.'
       : !hasAIProvider && !imagesComplete
         ? 'Configure the backend OpenAI proxy or upload images.'
-        : !imagesComplete
+        : approvedImageCount !== subjectCount
           ? 'Generate and approve missing images.'
-          : qaResult.status === 'etsy-ready'
-            ? 'Export the final ZIP.'
-            : 'Fix the remaining QA items.';
+          : !imagesComplete
+            ? 'Generate coloring pages for approved masks.'
+            : qaResult.status === 'etsy-ready'
+              ? 'Export the final ZIP.'
+              : 'Fix the remaining QA items.';
 
   return {
     subjectCount,
     approvedImageCount,
+    approvedColoringPageCount,
     briefFieldsComplete,
     briefComplete,
     topicsComplete,

@@ -1,8 +1,8 @@
-import { CheckCheck } from 'lucide-react';
+import { CheckCheck, FilePenLine } from 'lucide-react';
 import { useState } from 'react';
 
 import { PromptCard } from './prompts/PromptCard';
-import { getFileForSubject } from '../lib/files';
+import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/files';
 import { AIButton } from './ui/AIButton';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -17,13 +17,17 @@ type PromptManagerProps = {
   files: ManagedFile[];
   canGenerateImages: boolean;
   generatingSubjectIds: string[];
+  generatingColoringPageSubjectIds: string[];
   missingImageCount?: number;
+  missingColoringPageCount?: number;
   imageGenerationHint?: string;
   allowTopicEditing?: boolean;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
   onGenerateMissingImages?: () => void;
+  onGenerateColoringPage: (subjectId: string) => void;
+  onGenerateMissingColoringPages?: () => void;
   onApproveAll: (fileIds: string[]) => void;
   onApprove: (fileId: string) => void;
   onReject: (fileId: string) => void;
@@ -38,13 +42,17 @@ export const PromptManager = ({
   files,
   canGenerateImages,
   generatingSubjectIds,
+  generatingColoringPageSubjectIds,
   missingImageCount = 0,
+  missingColoringPageCount = 0,
   imageGenerationHint,
   allowTopicEditing = true,
   onAddSubject,
   onRemoveSubject,
   onGenerateImage,
   onGenerateMissingImages,
+  onGenerateColoringPage,
+  onGenerateMissingColoringPages,
   onApproveAll,
   onApprove,
   onReject,
@@ -54,14 +62,27 @@ export const PromptManager = ({
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
   const filesReadyForApproval = prompts
-    .map(
-      (prompt) =>
+    .flatMap((prompt) => {
+      const colorFile =
         getFileForSubject(files, prompt.subjectId, 'pending') ??
-        getFileForSubject(files, prompt.subjectId, 'rejected'),
-    )
+        getFileForSubject(files, prompt.subjectId, 'rejected');
+      const approvedColorFile = getFileForSubject(files, prompt.subjectId);
+      const coloringPageFile = approvedColorFile
+        ? (getCurrentColoringPageForSubject(
+            files,
+            prompt.subjectId,
+            approvedColorFile,
+            'pending',
+          ) ??
+          getCurrentColoringPageForSubject(files, prompt.subjectId, approvedColorFile, 'rejected'))
+        : undefined;
+
+      return [colorFile, coloringPageFile];
+    })
     .filter((file): file is ManagedFile => Boolean(file));
   const fileIdsReadyForApproval = [...new Set(filesReadyForApproval.map((file) => file.id))];
-  const isGeneratingImages = generatingSubjectIds.length > 0;
+  const isGeneratingImages =
+    generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
 
   const addSubject = () => {
     const trimmedName = subjectName.trim();
@@ -95,9 +116,7 @@ export const PromptManager = ({
                   }
                   onClick={onGenerateMissingImages}
                 >
-                  {isGeneratingImages
-                    ? `Generating ${generatingSubjectIds.length}`
-                    : 'Generate missing images'}
+                  {isGeneratingImages ? 'Generating' : 'Generate missing images'}
                 </AIButton>
                 <Button
                   disabled={fileIdsReadyForApproval.length === 0}
@@ -105,6 +124,18 @@ export const PromptManager = ({
                 >
                   <CheckCheck aria-hidden="true" className="mr-2" size={17} />
                   Approve all
+                </Button>
+                <Button
+                  disabled={
+                    !onGenerateMissingColoringPages ||
+                    !canGenerateImages ||
+                    missingColoringPageCount === 0 ||
+                    isGeneratingImages
+                  }
+                  onClick={onGenerateMissingColoringPages}
+                >
+                  <FilePenLine aria-hidden="true" className="mr-2" size={17} />
+                  Coloring pages
                 </Button>
               </div>
               <p className="max-w-sm text-sm text-ink-muted md:text-right">
@@ -147,9 +178,11 @@ export const PromptManager = ({
                 files={files}
                 canGenerateImages={canGenerateImages}
                 generatingSubjectIds={generatingSubjectIds}
+                generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
                 allowTopicEditing={allowTopicEditing}
                 onRemoveSubject={onRemoveSubject}
                 onGenerateImage={onGenerateImage}
+                onGenerateColoringPage={onGenerateColoringPage}
                 onApprove={onApprove}
                 onReject={onReject}
                 onDelete={onDelete}

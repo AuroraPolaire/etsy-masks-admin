@@ -63,10 +63,14 @@ export const WorkflowStatus = ({
             </div>
           </Alert>
         ) : null}
-        <dl className="grid grid-cols-3 gap-2 text-center text-sm">
+        <dl className="grid grid-cols-2 gap-2 text-center text-sm">
           <StatCard
-            label="Masks"
+            label="Color"
             value={`${workflow.approvedImageCount}/${workflow.subjectCount}`}
+          />
+          <StatCard
+            label="Coloring"
+            value={`${workflow.approvedColoringPageCount}/${workflow.subjectCount}`}
           />
           <StatCard label="Readiness" value={`${qaResult.readinessPercentage}%`} />
           <StatCard

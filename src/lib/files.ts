@@ -7,6 +7,7 @@ import { readImageMetadata } from './imageMetadata';
 import { slugify } from './slugify';
 
 import type {
+  FileAssetVariant,
   FileExportGroups,
   ManagedFile,
   ProjectSettings,
@@ -15,6 +16,28 @@ import type {
 } from '../types';
 
 export const getExpectedFilename = (subjectName: string): string => `${slugify(subjectName)}.png`;
+
+export const getColoringPageFilename = (subjectName: string): string =>
+  `${slugify(subjectName)}-coloring-page.png`;
+
+const getSubjectMatchForFileName = (
+  subjects: SubjectItem[],
+  fileName: string,
+): { subject: SubjectItem; assetVariant: FileAssetVariant } | undefined => {
+  const normalizedFileName = fileName.toLowerCase();
+
+  for (const subject of subjects) {
+    if (getColoringPageFilename(subject.name).toLowerCase() === normalizedFileName) {
+      return { subject, assetVariant: 'coloring-page' };
+    }
+
+    if (getExpectedFilename(subject.name).toLowerCase() === normalizedFileName) {
+      return { subject, assetVariant: 'color' };
+    }
+  }
+
+  return undefined;
+};
 
 export const isImageFile = (file: File | ManagedFile): boolean => {
   const name = 'name' in file ? file.name : '';
@@ -86,9 +109,7 @@ export const createManagedFile = async (
 ): Promise<ManagedFile> => {
   const now = new Date().toISOString();
   const imageMetadata = isImageFile(file) ? await readImageMetadata(file) : undefined;
-  const matchingSubject = subjects.find(
-    (subject) => getExpectedFilename(subject.name).toLowerCase() === file.name.toLowerCase(),
-  );
+  const fileNameMatch = getSubjectMatchForFileName(subjects, file.name);
   const objectUrl = isImageFile(file) ? URL.createObjectURL(file) : undefined;
 
   return {
@@ -104,7 +125,8 @@ export const createManagedFile = async (
     ...(imageMetadata ? { imageMetadata } : {}),
     reviewState: 'pending',
     reviewNotes: '',
-    ...(matchingSubject ? { mappedSubjectId: matchingSubject.id } : {}),
+    ...(fileNameMatch ? { mappedSubjectId: fileNameMatch.subject.id } : {}),
+    assetVariant: fileNameMatch?.assetVariant ?? 'color',
     explicitlyConfirmed: false,
   };
 };
@@ -175,39 +197,108 @@ export const getFileForSubject = (
   files: ManagedFile[],
   subjectId: string,
   state: ManagedFile['reviewState'] = 'approved',
-): ManagedFile | undefined =>
-  files.find(
-    (file) =>
-      file.kind === 'uploaded' &&
+  assetVariant: FileAssetVariant = 'color',
+): ManagedFile | undefined => {
+  for (let index = files.length - 1; index >= 0; index -= 1) {
+    const file = files[index];
+    if (
+      file?.kind === 'uploaded' &&
       isImageFile(file) &&
       file.mappedSubjectId === subjectId &&
-      file.reviewState === state,
-  );
+      file.reviewState === state &&
+      file.assetVariant === assetVariant
+    ) {
+      return file;
+    }
+  }
+
+  return undefined;
+};
+
+export const isColoringPageCurrentForSource = (
+  coloringPageFile: ManagedFile,
+  sourceFile: ManagedFile,
+): boolean =>
+  coloringPageFile.assetVariant === 'coloring-page' &&
+  (!coloringPageFile.sourceFileId || coloringPageFile.sourceFileId === sourceFile.id);
+
+export const getCurrentColoringPageForSubject = (
+  files: ManagedFile[],
+  subjectId: string,
+  sourceFile: ManagedFile,
+  state: ManagedFile['reviewState'] = 'approved',
+): ManagedFile | undefined => {
+  for (let index = files.length - 1; index >= 0; index -= 1) {
+    const file = files[index];
+    if (
+      file?.kind === 'uploaded' &&
+      isImageFile(file) &&
+      file.mappedSubjectId === subjectId &&
+      file.reviewState === state &&
+      isColoringPageCurrentForSource(file, sourceFile)
+    ) {
+      return file;
+    }
+  }
+
+  return undefined;
+};
 
 export const groupFilesForExport = (
   files: ManagedFile[],
   subjects: SubjectItem[],
 ): FileExportGroups => {
   const validSubjectIds = new Set(subjects.map((subject) => subject.id));
-  const usedSubjectIds = new Set<string>();
+  const usedColorSubjectIds = new Set<string>();
+  const usedColoringPageSubjectIds = new Set<string>();
+  const newestFiles = [...files].reverse();
 
-  const approvedMapped = files.filter((file) => {
+  const approvedMapped = newestFiles.filter((file) => {
     if (
       file.kind !== 'uploaded' ||
       !isImageFile(file) ||
+      file.assetVariant !== 'color' ||
       file.reviewState !== 'approved' ||
       !file.mappedSubjectId ||
       !validSubjectIds.has(file.mappedSubjectId) ||
-      usedSubjectIds.has(file.mappedSubjectId)
+      usedColorSubjectIds.has(file.mappedSubjectId)
     ) {
       return false;
     }
 
-    usedSubjectIds.add(file.mappedSubjectId);
+    usedColorSubjectIds.add(file.mappedSubjectId);
+    return true;
+  });
+  const approvedColorBySubjectId = new Map(
+    approvedMapped
+      .filter((file) => file.mappedSubjectId)
+      .map((file) => [file.mappedSubjectId!, file]),
+  );
+
+  const approvedColoringPages = newestFiles.filter((file) => {
+    const approvedColorFile = file.mappedSubjectId
+      ? approvedColorBySubjectId.get(file.mappedSubjectId)
+      : undefined;
+
+    if (
+      file.kind !== 'uploaded' ||
+      !isImageFile(file) ||
+      file.assetVariant !== 'coloring-page' ||
+      file.reviewState !== 'approved' ||
+      !file.mappedSubjectId ||
+      !validSubjectIds.has(file.mappedSubjectId) ||
+      !approvedColorFile ||
+      !isColoringPageCurrentForSource(file, approvedColorFile) ||
+      usedColoringPageSubjectIds.has(file.mappedSubjectId)
+    ) {
+      return false;
+    }
+
+    usedColoringPageSubjectIds.add(file.mappedSubjectId);
     return true;
   });
 
-  const approvedIds = new Set(approvedMapped.map((file) => file.id));
+  const approvedIds = new Set([...approvedMapped, ...approvedColoringPages].map((file) => file.id));
   const rejected = files.filter(
     (file) => file.kind === 'uploaded' && isImageFile(file) && file.reviewState === 'rejected',
   );
@@ -218,6 +309,7 @@ export const groupFilesForExport = (
 
   return {
     approvedMapped,
+    approvedColoringPages,
     rejected,
     unused,
   };

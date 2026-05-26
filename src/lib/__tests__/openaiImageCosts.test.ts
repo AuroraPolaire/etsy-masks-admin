@@ -21,6 +21,7 @@ describe('OpenAI image cost estimates', () => {
     expect(gptImage2?.oneImageUsd).toBe(0.165);
     expect(gptImage2?.missingImagesUsd).toBeCloseTo(0.495);
     expect(gptImage2?.fullBundleUsd).toBeCloseTo(1.98);
+    expect(gptImage2?.fullBundleWithColoringPagesUsd).toBeCloseTo(3.96);
   });
 
   it('marks auto settings as estimated with fallback assumptions', () => {

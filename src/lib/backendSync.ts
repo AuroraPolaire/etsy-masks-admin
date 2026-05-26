@@ -72,6 +72,8 @@ const backendFileSignature = (file: BackendFileRecord): string =>
     reviewState: file.reviewState,
     reviewNotes: file.reviewNotes,
     ...(file.mappedSubjectId ? { mappedSubjectId: file.mappedSubjectId } : {}),
+    assetVariant: file.assetVariant ?? 'color',
+    ...(file.sourceFileId ? { sourceFileId: file.sourceFileId } : {}),
     explicitlyConfirmed: file.explicitlyConfirmed,
     ...(file.imageMetadata ? { imageMetadata: file.imageMetadata } : {}),
   });

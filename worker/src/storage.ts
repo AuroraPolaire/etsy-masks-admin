@@ -98,9 +98,11 @@ const fileRowToRecord = (row: FileRow): Record<string, unknown> => {
     addedAt: row.added_at,
     reviewState: row.review_state,
     reviewNotes: row.review_notes,
+    assetVariant: row.asset_variant || 'color',
     explicitlyConfirmed: row.explicitly_confirmed === 1,
     updatedAt: row.updated_at,
     ...(row.mapped_subject_id ? { mappedSubjectId: row.mapped_subject_id } : {}),
+    ...(row.source_file_id ? { sourceFileId: row.source_file_id } : {}),
     ...(imageMetadata ? { imageMetadata } : {}),
   };
 };
@@ -334,6 +336,11 @@ const parseFileMetadata = (value: unknown): FileMetadataInput => {
       }
     : undefined;
   const mappedSubjectId = readOptionalString(parsed.mappedSubjectId);
+  const assetVariant = readOptionalString(parsed.assetVariant) ?? 'color';
+  if (assetVariant !== 'color' && assetVariant !== 'coloring-page') {
+    throw new ApiError(400, 'metadata.assetVariant is invalid.');
+  }
+  const sourceFileId = readOptionalString(parsed.sourceFileId);
 
   return {
     id: readRequiredString(parsed.id, 'metadata.id'),
@@ -346,6 +353,8 @@ const parseFileMetadata = (value: unknown): FileMetadataInput => {
     addedAt: readRequiredString(parsed.addedAt, 'metadata.addedAt'),
     reviewState: readRequiredString(parsed.reviewState, 'metadata.reviewState'),
     reviewNotes: typeof parsed.reviewNotes === 'string' ? parsed.reviewNotes : '',
+    assetVariant,
+    ...(sourceFileId ? { sourceFileId } : {}),
     explicitlyConfirmed: readBoolean(parsed.explicitlyConfirmed, 'metadata.explicitlyConfirmed'),
     ...(mappedSubjectId ? { mappedSubjectId } : {}),
     ...(imageMetadata ? { imageMetadata } : {}),
@@ -391,10 +400,10 @@ export const putRunFile = async (
   await env.DB.prepare(
     `INSERT INTO file_backups (
        id, run_id, project_id, r2_key, name, original_name, size, type, kind, added_at,
-       review_state, review_notes, mapped_subject_id, explicitly_confirmed,
-       image_width, image_height, updated_at
+       review_state, review_notes, mapped_subject_id, asset_variant, source_file_id,
+       explicitly_confirmed, image_width, image_height, updated_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(run_id, id) DO UPDATE SET
        project_id = excluded.project_id,
        r2_key = excluded.r2_key,
@@ -407,6 +416,8 @@ export const putRunFile = async (
        review_state = excluded.review_state,
        review_notes = excluded.review_notes,
        mapped_subject_id = excluded.mapped_subject_id,
+       asset_variant = excluded.asset_variant,
+       source_file_id = excluded.source_file_id,
        explicitly_confirmed = excluded.explicitly_confirmed,
        image_width = excluded.image_width,
        image_height = excluded.image_height,
@@ -426,6 +437,8 @@ export const putRunFile = async (
       metadata.reviewState,
       metadata.reviewNotes,
       metadata.mappedSubjectId ?? null,
+      metadata.assetVariant,
+      metadata.sourceFileId ?? null,
       metadata.explicitlyConfirmed ? 1 : 0,
       metadata.imageMetadata?.width ?? null,
       metadata.imageMetadata?.height ?? null,

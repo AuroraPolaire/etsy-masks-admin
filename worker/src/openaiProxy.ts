@@ -1,4 +1,11 @@
-import { ApiError, isRecord, readJsonObject, readRequiredString } from './http';
+import {
+  ApiError,
+  getMaxFileBytes,
+  isBlobLike,
+  isRecord,
+  readJsonObject,
+  readRequiredString,
+} from './http';
 
 import type { Env } from './types';
 
@@ -8,6 +15,7 @@ const IMAGE_SIZES = ['1024x1024', '1536x1024', '1024x1536', 'auto'] as const;
 const IMAGE_QUALITIES = ['low', 'medium', 'high', 'auto'] as const;
 const IMAGE_BACKGROUNDS = ['transparent', 'opaque', 'auto'] as const;
 const OUTPUT_FORMATS = ['png', 'webp', 'jpeg'] as const;
+const EDIT_IMAGE_MODELS = ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini'] as const;
 
 type ImageModel = (typeof IMAGE_MODELS)[number];
 type ImageSize = (typeof IMAGE_SIZES)[number];
@@ -27,6 +35,12 @@ type PromptItemInput = {
   expectedFilename: string;
   prompt: string;
   negativeRequirements: string;
+};
+
+type ColoringPageInput = {
+  settings: ImageSettings;
+  promptItem: PromptItemInput;
+  image: Blob;
 };
 
 type OpenAIImageGenerationResponse = {
@@ -235,6 +249,14 @@ const sanitizeFileName = (fileName: string): string =>
     .slice(0, 160)
     .trim() || 'generated-image.png';
 
+const createColoringPageFileName = (fileName: string): string => {
+  const sanitized = sanitizeFileName(fileName);
+  const extensionIndex = sanitized.lastIndexOf('.');
+  const baseName = extensionIndex > 0 ? sanitized.slice(0, extensionIndex) : sanitized;
+
+  return `${baseName}-coloring-page.png`;
+};
+
 const buildImageRequestBody = (
   settings: ImageSettings,
   promptItem: PromptItemInput,
@@ -253,6 +275,103 @@ const buildImageRequestBody = (
     background,
     output_format: settings.outputFormat,
   };
+};
+
+const getEditModel = (settings: ImageSettings): (typeof EDIT_IMAGE_MODELS)[number] =>
+  EDIT_IMAGE_MODELS.includes(settings.model as (typeof EDIT_IMAGE_MODELS)[number])
+    ? (settings.model as (typeof EDIT_IMAGE_MODELS)[number])
+    : 'gpt-image-1.5';
+
+const supportsHighInputFidelity = (model: (typeof EDIT_IMAGE_MODELS)[number]): boolean =>
+  model !== 'gpt-image-1-mini';
+
+const buildColoringPagePrompt = (promptItem: PromptItemInput): string =>
+  [
+    'Turn this image into a clean black and white coloring page.',
+    '',
+    'Style requirements:',
+    '- pure white background',
+    '- bold, clean black outlines',
+    '- no shading, no gradients, no color',
+    '- simplified shapes but keep key details',
+    '- smooth vector-like lines',
+    '- printable quality',
+    '',
+    'Remove:',
+    '- textures',
+    '- shadows',
+    '- highlights',
+    '- noise',
+    '',
+    'Keep:',
+    '- symmetrical composition',
+    '- main decorative elements',
+    '- the mask silhouette and eye holes from the source image',
+    '',
+    'Do not add text, watermark, crop marks, dashed cut guides, sticker borders, or an extra cut contour outside the mask.',
+    'Make it suitable for a kids coloring activity.',
+    `Original prompt context: ${promptItem.prompt}`,
+  ].join('\n');
+
+const readFormJsonObject = (formData: FormData, fieldName: string): Record<string, unknown> => {
+  const rawValue = readRequiredString(formData.get(fieldName), fieldName);
+
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+    if (isRecord(parsed)) {
+      return parsed;
+    }
+  } catch {
+    throw new ApiError(400, `${fieldName} must be valid JSON.`);
+  }
+
+  throw new ApiError(400, `${fieldName} must be a JSON object.`);
+};
+
+const readColoringPageInput = async (request: Request, env: Env): Promise<ColoringPageInput> => {
+  const formData = await request.formData();
+  const image = formData.get('image');
+  if (!isBlobLike(image)) {
+    throw new ApiError(400, 'image form field is required.');
+  }
+
+  if (image.size > getMaxFileBytes(env)) {
+    throw new ApiError(413, 'Image is larger than the configured backend limit.');
+  }
+
+  const imageType = image.type.toLowerCase();
+  if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(imageType)) {
+    throw new ApiError(400, 'image must be a PNG, JPG, or WEBP file.');
+  }
+
+  return {
+    settings: readImageSettings(readFormJsonObject(formData, 'settings')),
+    promptItem: readPromptItem(readFormJsonObject(formData, 'promptItem')),
+    image,
+  };
+};
+
+const buildColoringPageEditFormData = ({
+  settings,
+  promptItem,
+  image,
+}: ColoringPageInput): FormData => {
+  const formData = new FormData();
+  const model = getEditModel(settings);
+
+  formData.append('model', model);
+  formData.append('image', image, promptItem.expectedFilename);
+  formData.append('prompt', buildColoringPagePrompt(promptItem));
+  formData.append('n', '1');
+  formData.append('size', settings.size);
+  formData.append('quality', settings.quality);
+  formData.append('background', 'opaque');
+  formData.append('output_format', 'png');
+  if (supportsHighInputFidelity(model)) {
+    formData.append('input_fidelity', 'high');
+  }
+
+  return formData;
 };
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
@@ -353,6 +472,67 @@ export const proxyOpenAIImage = async (request: Request, env: Env): Promise<Resp
 
   return Response.json(
     { error: 'OpenAI returned an unsupported image response.' },
+    { status: 502 },
+  );
+};
+
+export const proxyOpenAIColoringPageImage = async (
+  request: Request,
+  env: Env,
+): Promise<Response> => {
+  const input = await readColoringPageInput(request, env);
+  const response = await fetch('https://api.openai.com/v1/images/edits', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getOpenAIKey(env)}`,
+    },
+    body: buildColoringPageEditFormData(input),
+  });
+  const result = await readImageGenerationResponse(response);
+
+  if (!response.ok) {
+    return Response.json(
+      { error: result.error?.message ?? `OpenAI image edit failed: ${response.status}` },
+      { status: response.status },
+    );
+  }
+
+  const firstImage = result.data?.[0];
+  const fileName = createColoringPageFileName(input.promptItem.expectedFilename);
+  if (!firstImage) {
+    return Response.json(
+      { error: 'OpenAI returned no coloring page image data.' },
+      { status: 502 },
+    );
+  }
+
+  if (firstImage.b64_json) {
+    return Response.json({
+      fileName,
+      mimeType: 'image/png',
+      base64: firstImage.b64_json,
+    });
+  }
+
+  if (firstImage.url) {
+    const imageResponse = await fetch(firstImage.url);
+    if (!imageResponse.ok) {
+      return Response.json(
+        { error: `Could not download generated coloring page: ${imageResponse.status}` },
+        { status: 502 },
+      );
+    }
+
+    const buffer = await imageResponse.arrayBuffer();
+    return Response.json({
+      fileName,
+      mimeType: imageResponse.headers.get('Content-Type') ?? 'image/png',
+      base64: arrayBufferToBase64(buffer),
+    });
+  }
+
+  return Response.json(
+    { error: 'OpenAI returned an unsupported coloring page image response.' },
     { status: 502 },
   );
 };
