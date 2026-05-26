@@ -16,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "etsy_masks_admin",
-      "database_id": "replace-with-d1-database-id",
+      "database_id": "e10b03d0-b018-4276-bc16-be5ab01dd0f1",
       "migrations_dir": "worker/migrations",
     },
   ],
