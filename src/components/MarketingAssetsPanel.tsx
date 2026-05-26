@@ -15,6 +15,7 @@ import { Card, CardBody, CardHeader } from './ui/Card';
 import { CheckboxCard } from './ui/CheckboxCard';
 import { EmptyState } from './ui/EmptyState';
 import { ImagePreviewButton } from './ui/ImagePreviewButton';
+import { Input } from './ui/Input';
 import { Surface } from './ui/Surface';
 
 import type {
@@ -131,6 +132,13 @@ export const MarketingAssetsPanel = ({
     });
   };
 
+  const updateSlogan = (slogan: string) => {
+    onMarketingSettingsChange({
+      ...project.marketingSettings,
+      slogan,
+    });
+  };
+
   const renderSourceMasks = () =>
     sourceMasks.length === 0 ? (
       <EmptyState>Approve at least one color mask before generating marketing assets.</EmptyState>
@@ -189,6 +197,14 @@ export const MarketingAssetsPanel = ({
               <h3 className="text-sm font-bold text-ink-strong">Approved mask sources</h3>
               {renderSourceMasks()}
             </section>
+            <Input
+              label="Marketing slogan"
+              name="marketingSlogan"
+              value={project.marketingSettings.slogan}
+              placeholder={project.settings.title || '30 printable dinosaur masks for kids'}
+              helperText="Used on slogan poster assets. If empty, the listing title is used."
+              onChange={(event) => updateSlogan(event.target.value)}
+            />
             <section className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>

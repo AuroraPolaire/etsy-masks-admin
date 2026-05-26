@@ -19,6 +19,7 @@ import {
 import {
   downloadBackendRunFiles,
   findReusableBackendDraftRun,
+  findUsableBackendDraftRun,
   getErrorMessage,
   getOversizedFiles,
   isAbortError,
@@ -90,6 +91,7 @@ export const useBackendCache = ({
   const canUseOpenAIProxy = Boolean(health?.openaiProxyReady);
   const resolvedSaveIdea = saveIdea.trim() || suggestedIdea;
   const shouldPauseDraftAutosave = shouldPauseBackendDraftAutosave(draftRestoreStatus);
+  const currentProjectIdRef = useRef(project.id);
   const previousProjectIdRef = useRef(project.id);
 
   const setActiveDraftRun = useCallback(
@@ -106,6 +108,10 @@ export const useBackendCache = ({
   useEffect(() => {
     healthRef.current = health;
   }, [health]);
+
+  useEffect(() => {
+    currentProjectIdRef.current = project.id;
+  }, [project.id]);
 
   useEffect(() => {
     if (previousProjectIdRef.current === project.id) {
@@ -181,6 +187,17 @@ export const useBackendCache = ({
       const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
       let runId = activeDraftRunId;
       let reusedExistingRun = false;
+      let existingRuns: BackendRunSummary[] | null = null;
+
+      if (runId) {
+        setProgress?.('Checking active draft ownership...');
+        existingRuns = (await client.listRuns(signal)).runs;
+        const usableRun = findUsableBackendDraftRun(existingRuns, runId, projectOverride.id);
+        if (usableRun?.id !== runId) {
+          reusedExistingRun = Boolean(usableRun);
+          runId = usableRun?.id ?? '';
+        }
+      }
 
       if (runId) {
         try {
@@ -197,7 +214,7 @@ export const useBackendCache = ({
 
       if (!runId) {
         setProgress?.('Checking for an existing draft for this project...');
-        const { runs: existingRuns } = await client.listRuns(signal);
+        existingRuns ??= (await client.listRuns(signal)).runs;
         const reusableRun = findReusableBackendDraftRun(existingRuns, projectOverride.id);
 
         if (reusableRun) {
@@ -222,11 +239,13 @@ export const useBackendCache = ({
               deleteMissingRemoteFiles,
             });
 
-      const { runs: nextRuns } = await client.listRuns(signal);
-      setRuns(nextRuns);
-      setSelectedRunId(runId);
-      setSnapshot(nextSnapshot);
-      setActiveDraftRun(runId, projectOverride.id);
+      if (currentProjectIdRef.current === projectOverride.id) {
+        const { runs: nextRuns } = await client.listRuns(signal);
+        setRuns(nextRuns);
+        setSelectedRunId(runId);
+        setSnapshot(nextSnapshot);
+        setActiveDraftRun(runId, projectOverride.id);
+      }
 
       return { runId, snapshot: nextSnapshot };
     },
@@ -281,10 +300,20 @@ export const useBackendCache = ({
         deleteMissingRemoteFiles,
       });
 
-      markDraftSaved(projectOverride, filesOverride, idea, result.runId);
+      if (currentProjectIdRef.current === projectOverride.id) {
+        markDraftSaved(projectOverride, filesOverride, idea, result.runId);
+      }
       return result;
     },
     [files, markDraftSaved, project, saveIdea, syncRunToBackend],
+  );
+
+  const startFreshDraft = useCallback(
+    (projectId: string) => {
+      setActiveDraftRun('', projectId);
+      clearAutosaveTracking();
+    },
+    [clearAutosaveTracking, setActiveDraftRun],
   );
 
   useBackendDraftAutoRestore({
@@ -378,6 +407,21 @@ export const useBackendCache = ({
           try {
             const restoreStartedAt = getBackendRestoreNowMs();
             let firstFileAppendedMs: number | null = null;
+
+            if (files.length > 0 && targetRunId !== activeDraftRunId) {
+              setProgress('Saving current run before restoring...');
+              const idea = saveIdea.trim() || getProjectIdeaLabel(project);
+              const savedRun = await syncRunToBackend({
+                projectOverride: project,
+                filesOverride: files,
+                signal,
+                setProgress: (message) => {
+                  setProgress(message ? `Saving current run before restoring: ${message}` : null);
+                },
+              });
+              markDraftSaved(project, files, idea, savedRun.runId);
+            }
+
             setDraftRestoreStatus('restoring');
             setSelectedRunId(targetRunId);
             setProgress('Reading selected run metadata...');
@@ -457,16 +501,22 @@ export const useBackendCache = ({
     [
       addActivity,
       appendFiles,
+      activeDraftRunId,
       client,
       confirmAction,
+      files,
+      markDraftSaved,
       markDraftRestored,
       markDraftRestoreFailed,
+      project,
       replaceFiles,
       replaceProject,
       runBusyAction,
       runs,
+      saveIdea,
       selectedRunId,
       setActiveDraftRun,
+      syncRunToBackend,
     ],
   );
 
@@ -646,6 +696,7 @@ export const useBackendCache = ({
     canUseOpenAIProxy,
     setSaveIdea,
     saveDraftNow,
+    startFreshDraft,
     testConnection,
     selectRun,
     restoreSelectedRun,

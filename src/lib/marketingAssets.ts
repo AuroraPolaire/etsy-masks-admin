@@ -1,3 +1,4 @@
+import { DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS } from '../constants';
 import { groupFilesForExport, isImageFile } from './files';
 
 import type {
@@ -54,7 +55,10 @@ export const normalizeMarketingImageSettings = (
 export const resolveMarketingPreviewSettings = (project: Project): MarketingImageSettings =>
   project.marketingSettings.preview.mode === 'custom'
     ? normalizeMarketingImageSettings(project.marketingSettings.preview.customSettings)
-    : normalizeMarketingImageSettings(project.openAIImageSettings);
+    : {
+        ...normalizeMarketingImageSettings(project.openAIImageSettings),
+        size: DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS.size,
+      };
 
 export const getApprovedMarketingSourceMasks = (
   project: Project,

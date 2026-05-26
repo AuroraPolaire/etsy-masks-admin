@@ -26,8 +26,8 @@ export const CloudDangerZone = ({
     <div className="space-y-4 border-t border-feedback-danger-border p-4">
       <p className="text-sm text-feedback-danger-fg">
         Individual runs can be deleted from the saved-runs table. Delete all cloud data removes
-        every saved run, backend event, and R2 object. Clearing current tab files only removes
-        in-browser file objects from this open session.
+        every saved run, backend event, and R2 object. Clearing current tab files first saves the
+        current run, then starts a fresh browser draft without those in-tab file objects.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button variant="ghost" onClick={onClearSessionFiles}>

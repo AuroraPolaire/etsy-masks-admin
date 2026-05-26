@@ -75,7 +75,7 @@ describe('marketing asset helpers', () => {
     ).toMatchObject({ quality: 'medium' });
   });
 
-  it('inherits mask preview settings with the same quality cap', () => {
+  it('uses 512 square previews by default while inheriting mask model and quality cap', () => {
     const project = {
       ...createProject(),
       openAIImageSettings: {
@@ -89,8 +89,35 @@ describe('marketing asset helpers', () => {
 
     expect(resolveMarketingPreviewSettings(project)).toMatchObject({
       model: 'gpt-image-1.5',
-      size: '1024x1536',
+      size: '512x512',
       quality: 'medium',
+    });
+  });
+
+  it('uses custom marketing preview size when configured', () => {
+    const project = {
+      ...createProject(),
+      marketingSettings: {
+        ...createProject().marketingSettings,
+        preview: {
+          mode: 'custom',
+          customSettings: {
+            ...createProject().marketingSettings.preview.customSettings,
+            size: '1024x1536',
+          },
+        },
+      },
+    } satisfies Project;
+
+    expect(resolveMarketingPreviewSettings(project)).toMatchObject({
+      size: '1024x1536',
+    });
+  });
+
+  it('defaults custom marketing preview settings to 512 square', () => {
+    expect(createDefaultProject().marketingSettings.preview.customSettings).toMatchObject({
+      quality: 'low',
+      size: '512x512',
     });
   });
 

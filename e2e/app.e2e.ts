@@ -47,16 +47,19 @@ const mockOpenAIImageBackend = async (page: Page) => {
   let imageRequestCount = 0;
   let coloringPageRequestCount = 0;
   let uploadFileCount = 0;
-  let activeRun = {
-    id: 'run-auto-coloring',
-    projectId: 'project-1',
-    idea: 'Moon party masks',
-    status: 'draft',
-    createdAt: '2026-05-26T09:00:00.000Z',
-    updatedAt: '2026-05-26T09:00:00.000Z',
-    fileCount: 0,
-    totalSizeBytes: 0,
-  };
+  let deleteFileCount = 0;
+  let runs = [
+    {
+      id: 'run-auto-coloring',
+      projectId: 'project-1',
+      idea: 'Moon party masks',
+      status: 'draft',
+      createdAt: '2026-05-26T09:00:00.000Z',
+      updatedAt: '2026-05-26T09:00:00.000Z',
+      fileCount: 0,
+      totalSizeBytes: 0,
+    },
+  ];
   const uploadedFiles: Array<{
     id: string;
     runId: string;
@@ -150,44 +153,50 @@ const mockOpenAIImageBackend = async (page: Page) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ runs: [activeRun] }),
+        body: JSON.stringify({ runs }),
       });
       return;
     }
 
     if (url.pathname === '/api/runs' && method === 'POST') {
+      const requestBody = route.request().postDataJSON() as {
+        project?: { id?: string };
+        idea?: string;
+      };
+      const run = {
+        id: `run-${runs.length + 1}`,
+        projectId: requestBody.project?.id ?? `project-${runs.length + 1}`,
+        idea: requestBody.idea ?? 'Generated masks',
+        status: 'draft',
+        createdAt: '2026-05-26T09:00:00.000Z',
+        updatedAt: '2026-05-26T09:00:00.000Z',
+        fileCount: 0,
+        totalSizeBytes: 0,
+      };
+      runs = [run, ...runs];
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          ok: true,
-          run: {
-            id: 'run-auto-coloring',
-            projectId: 'project-1',
-            idea: 'Moon party masks',
-            status: 'draft',
-            createdAt: '2026-05-26T09:00:00.000Z',
-            updatedAt: '2026-05-26T09:00:00.000Z',
-            fileCount: 0,
-            totalSizeBytes: 0,
-          },
-        }),
+        body: JSON.stringify({ ok: true, run }),
       });
       return;
     }
 
     const runMatch = /^\/api\/runs\/([^/]+)$/.exec(url.pathname);
     if (runMatch?.[1] && method === 'GET') {
+      const runId = decodeURIComponent(runMatch[1]);
+      const run = runs.find((item) => item.id === runId) ?? runs[0];
+      const runFiles = uploadedFiles.filter((file) => file.runId === runId);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          runId: runMatch[1],
-          idea: activeRun.idea,
-          status: activeRun.status,
+          runId,
+          idea: run?.idea ?? 'Generated masks',
+          status: run?.status ?? 'draft',
           project: null,
-          updatedAt: activeRun.updatedAt,
-          files: uploadedFiles,
+          updatedAt: run?.updatedAt ?? '2026-05-26T09:00:00.000Z',
+          files: runFiles,
           events: [],
         }),
       });
@@ -199,16 +208,20 @@ const mockOpenAIImageBackend = async (page: Page) => {
         project?: { id?: string };
         idea?: string;
       };
-      activeRun = {
-        ...activeRun,
-        projectId: requestBody.project?.id ?? activeRun.projectId,
-        idea: requestBody.idea ?? activeRun.idea,
+      const runId = decodeURIComponent(runMatch[1]);
+      const currentRun = runs.find((run) => run.id === runId);
+      const updatedRun = {
+        ...(currentRun ?? runs[0]),
+        id: runId,
+        projectId: requestBody.project?.id ?? currentRun?.projectId ?? 'project-1',
+        idea: requestBody.idea ?? currentRun?.idea ?? 'Generated masks',
         updatedAt: '2026-05-26T09:01:00.000Z',
       };
+      runs = [updatedRun, ...runs.filter((run) => run.id !== runId)];
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ok: true, run: activeRun }),
+        body: JSON.stringify({ ok: true, run: updatedRun }),
       });
       return;
     }
@@ -216,11 +229,13 @@ const mockOpenAIImageBackend = async (page: Page) => {
     const fileMatch = /^\/api\/runs\/([^/]+)\/files\/([^/]+)$/.exec(url.pathname);
     if (fileMatch?.[1] && fileMatch[2] && method === 'PUT') {
       uploadFileCount += 1;
+      const runId = decodeURIComponent(fileMatch[1]);
       const fileId = decodeURIComponent(fileMatch[2]);
+      const run = runs.find((item) => item.id === runId) ?? runs[0];
       uploadedFiles.push({
         id: fileId,
-        runId: decodeURIComponent(fileMatch[1]),
-        projectId: activeRun.projectId,
+        runId,
+        projectId: run?.projectId ?? 'project-1',
         name: `${fileId}.png`,
         originalName: `${fileId}.png`,
         size: onePixelPng.byteLength,
@@ -241,6 +256,16 @@ const mockOpenAIImageBackend = async (page: Page) => {
       return;
     }
 
+    if (fileMatch?.[1] && fileMatch[2] && method === 'DELETE') {
+      deleteFileCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -252,6 +277,7 @@ const mockOpenAIImageBackend = async (page: Page) => {
     getImageRequestCount: () => imageRequestCount,
     getColoringPageRequestCount: () => coloringPageRequestCount,
     getUploadFileCount: () => uploadFileCount,
+    getDeleteFileCount: () => deleteFileCount,
   };
 };
 
@@ -858,6 +884,38 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Next: topics and images' }).click();
     await expect(page.getByText('rainbow-unicorn.png').first()).toBeVisible();
     await expect(page.getByText('moon.png')).toHaveCount(0);
+  });
+
+  test('keeps saved cloud files when clearing current tab files', async ({ page }) => {
+    await page.unroute('**/api/**');
+    const backend = await mockOpenAIImageBackend(page);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
+    await fillCompleteBrief(page);
+    await page.getByRole('button', { name: 'Next: topics and images' }).click();
+    await page.getByLabel('Add mask topic').fill('Moon');
+    await page.getByRole('button', { name: 'Add topic' }).click();
+    await page.getByRole('button', { name: 'Generate mask' }).click();
+    await expect.poll(() => backend.getImageRequestCount()).toBe(1);
+    await expect.poll(() => backend.getUploadFileCount()).toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByText('Danger zone').click();
+    await page.getByRole('button', { name: 'Clear current tab files' }).click();
+    await page
+      .getByRole('dialog', { name: 'Clear session files?' })
+      .getByRole('button', { name: 'Clear files' })
+      .click();
+
+    await expect(
+      page.getByText('Cleared session files. Previous files remain in the saved cloud run.'),
+    ).toBeVisible();
+    await page.waitForTimeout(2200);
+    expect(backend.getDeleteFileCount()).toBe(0);
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {

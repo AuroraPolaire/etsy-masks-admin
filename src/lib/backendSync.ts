@@ -71,6 +71,19 @@ export const findReusableBackendDraftRun = (
     .filter((run) => run.projectId === projectId)
     .sort((left, right) => getRunUpdatedAtTime(right) - getRunUpdatedAtTime(left))[0];
 
+export const findUsableBackendDraftRun = (
+  runs: BackendRunSummary[],
+  activeRunId: string,
+  projectId: string,
+): BackendRunSummary | undefined => {
+  const activeRun = activeRunId ? runs.find((run) => run.id === activeRunId) : undefined;
+  if (activeRun?.projectId === projectId) {
+    return activeRun;
+  }
+
+  return findReusableBackendDraftRun(runs, projectId);
+};
+
 const metadataSignature = (value: unknown): string => JSON.stringify(value);
 
 const managedFileSignature = (project: Project, file: ManagedFile): string =>

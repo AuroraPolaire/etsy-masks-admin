@@ -20,6 +20,7 @@ import { useMarketingAssetGeneration } from './hooks/useMarketingAssetGeneration
 import { useOpenAIImageGeneration } from './hooks/useOpenAIImageGeneration';
 import { useProjectState } from './hooks/useProjectState';
 import { checkBrowserSupport } from './lib/browserSupport';
+import { nowIso } from './lib/dates';
 import {
   createPromptItems,
   getCurrentColoringPageForSubject,
@@ -38,6 +39,7 @@ import type {
   MarketingGenerationRecipe,
   MarketingImageSettings,
   OpenAIImageSettings,
+  Project,
   ProjectDraft,
   PromptItem,
 } from './types';
@@ -45,6 +47,17 @@ import type { WorkflowStepId } from './workflow/workflowState';
 
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : fallback;
+
+const createFreshProjectCopy = (project: Project): Project => {
+  const timestamp = nowIso();
+
+  return {
+    ...project,
+    id: crypto.randomUUID(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+};
 
 const toastTitles: Record<ActivityLevel, string> = {
   info: 'Updated',
@@ -156,15 +169,10 @@ export const App = () => {
       }
 
       const saveGeneratedFiles = async () => {
-        if (context?.signal.aborted) {
-          return;
-        }
-
         try {
           await backendCache.saveDraftNow({
             projectOverride: project,
             filesOverride: nextFiles,
-            ...(context?.signal ? { signal: context.signal } : {}),
             deleteMissingRemoteFiles: false,
             setProgress: (message) => {
               context?.setProgress(message ? `Saving generated files: ${message}` : null);
@@ -193,6 +201,26 @@ export const App = () => {
       await queuedSave;
     },
     [addActivity, appendFiles, backendCache, filesRef, project],
+  );
+  const saveCurrentRunBeforeLocalFileReset = useCallback(
+    async (context: BusyActionContext, progressPrefix: string) => {
+      await generatedCloudSaveQueueRef.current.catch(() => undefined);
+
+      const currentFiles = filesRef.current;
+      if (currentFiles.length === 0) {
+        return;
+      }
+
+      await backendCache.saveDraftNow({
+        projectOverride: project,
+        filesOverride: currentFiles,
+        signal: context.signal,
+        setProgress: (message) => {
+          context.setProgress(message ? `${progressPrefix}: ${message}` : null);
+        },
+      });
+    },
+    [backendCache, filesRef, project],
   );
   const generateImageFile = useCallback(
     async (
@@ -335,16 +363,16 @@ export const App = () => {
 
         try {
           context?.setProgress('Saving current run before replacing topics...');
-          await backendCache.saveDraftNow({
-            projectOverride: project,
-            filesOverride: files,
-            ...(context?.signal ? { signal: context.signal } : {}),
-            setProgress: (message) => {
-              context?.setProgress(
-                message ? `Saving current run before replacing topics: ${message}` : null,
-              );
-            },
-          });
+          const saveContext =
+            context ??
+            ({
+              signal: new AbortController().signal,
+              setProgress: () => undefined,
+            } satisfies BusyActionContext);
+          await saveCurrentRunBeforeLocalFileReset(
+            saveContext,
+            'Saving current run before replacing topics',
+          );
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
             addActivity('project-imported', 'warning', 'Brief replacement was cancelled.');
@@ -369,7 +397,14 @@ export const App = () => {
       }
       addActivity('project-imported', 'success', activityMessage);
     },
-    [addActivity, applyInitialDraft, backendCache, clearFiles, files, project, requestConfirmation],
+    [
+      addActivity,
+      applyInitialDraft,
+      clearFiles,
+      files,
+      requestConfirmation,
+      saveCurrentRunBeforeLocalFileReset,
+    ],
   );
 
   const handleFillProductBrief = useCallback(
@@ -501,16 +536,66 @@ export const App = () => {
       const shouldClear = await requestConfirmation({
         title: 'Clear session files?',
         description:
-          'This removes generated files from this browser session. Project text stays saved.',
+          'This saves the current run to Cloud, then clears generated files from this browser tab and starts a fresh draft copy.',
         confirmLabel: 'Clear files',
         tone: 'danger',
       });
 
       if (shouldClear) {
-        clearFiles('Cleared session files.');
+        void runBusyAction('backend-sync', async (context) => {
+          try {
+            const hadFiles = filesRef.current.length > 0;
+            context.setProgress('Saving current run before clearing this tab...');
+            await saveCurrentRunBeforeLocalFileReset(
+              context,
+              'Saving current run before clearing this tab',
+            );
+            if (hadFiles) {
+              const nextProject = createFreshProjectCopy(project);
+              backendCache.startFreshDraft(nextProject.id);
+              replaceProject(nextProject);
+            }
+            clearFiles(
+              hadFiles
+                ? 'Cleared session files. Previous files remain in the saved cloud run.'
+                : 'Cleared session files.',
+            );
+            if (hadFiles) {
+              addActivity(
+                'cloud-synced',
+                'success',
+                'Saved the previous run before clearing this browser tab.',
+              );
+            }
+          } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+              addActivity('cloud-synced', 'warning', 'File clearing was cancelled.');
+              return;
+            }
+
+            addActivity(
+              'error',
+              'error',
+              `Files were not cleared because cloud save failed: ${getErrorMessage(
+                error,
+                'Could not save the current run to Cloudflare.',
+              )}`,
+            );
+          }
+        });
       }
     })();
-  }, [clearFiles, requestConfirmation]);
+  }, [
+    addActivity,
+    backendCache,
+    clearFiles,
+    filesRef,
+    project,
+    replaceProject,
+    requestConfirmation,
+    runBusyAction,
+    saveCurrentRunBeforeLocalFileReset,
+  ]);
 
   const handleGenerateSubjectImage = useCallback(
     (subjectId: string, promptOverride?: string) => {

@@ -68,7 +68,7 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
 
 export const DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS: MarketingImageSettings = {
   model: 'gpt-image-2',
-  size: '1024x1024',
+  size: '512x512',
   quality: 'low',
   background: 'opaque',
   outputFormat: 'png',

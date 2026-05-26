@@ -251,6 +251,7 @@ export type ExportManifest = {
 export type OpenAIImageModel = 'gpt-image-1.5' | 'gpt-image-1' | 'gpt-image-1-mini' | 'gpt-image-2';
 
 export type OpenAIImageSize =
+  | '512x512'
   | '1024x1024'
   | '1536x1024'
   | '1024x1536'

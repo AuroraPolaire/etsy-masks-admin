@@ -12,6 +12,7 @@ import type { Env } from './types';
 const OPENAI_BRIEF_MODEL = 'gpt-5.4-mini';
 const IMAGE_MODELS = ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-image-2'] as const;
 const IMAGE_SIZES = [
+  '512x512',
   '1024x1024',
   '1536x1024',
   '1024x1536',

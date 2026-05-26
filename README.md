@@ -198,9 +198,9 @@ and Pages Functions from one origin.
 4. Generate one topic image or generate all missing color masks.
 5. Review each color mask; generate matching coloring pages manually for approved masks when
    needed.
-6. Optionally generate AI marketing assets from approved masks. Preview settings inherit the mask
-   generation settings by default, while final assets use separate cost-controlled settings capped
-   below high quality.
+6. Optionally generate AI marketing assets from approved masks. Preview generation defaults to
+   512 x 512 using the mask model and capped quality, while final assets use separate
+   cost-controlled settings capped below high quality.
 7. Add review notes or explicitly confirm reviewed images.
 
 ## Etsy Archive Workflow
@@ -229,8 +229,8 @@ and Pages Functions from one origin.
 - The default OpenAI image model is `gpt-image-2` with low quality to keep routine generation
   cost-efficient. Switch models or quality only when a specific run needs it.
 - Marketing asset generation sends approved masks as OpenAI image references for slogan posters,
-  mask sheets, and children scenes. It never sends `high` quality; if inherited mask settings use
-  high quality, marketing requests are capped to medium.
+  mask sheets, and children scenes. Previews default to 512 x 512. It never sends `high` quality; if
+  inherited mask settings use high quality, marketing requests are capped to medium.
 - OpenAI image costs shown in the app are approximate estimates based on common size/quality
   combinations. Actual billing can vary with token usage and pricing changes.
 - Final output resolution is applied after OpenAI generation. Use 4K output only when you need

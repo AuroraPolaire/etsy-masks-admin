@@ -5,6 +5,7 @@ import { getFileDownloadPath } from '../backendClient';
 import {
   downloadBackendRunFiles,
   findReusableBackendDraftRun,
+  findUsableBackendDraftRun,
   syncBackendRunFiles,
 } from '../backendSync';
 
@@ -111,6 +112,41 @@ describe('backend draft sync helpers', () => {
     expect(
       findReusableBackendDraftRun([createRun({ projectId: 'project-2' })], 'project-1'),
     ).toBeUndefined();
+  });
+
+  it('keeps the active draft only when it belongs to the current project', () => {
+    const activeRun = createRun({
+      id: 'active-run',
+      updatedAt: '2026-05-26T09:00:00.000Z',
+    });
+    const newerRun = createRun({
+      id: 'newer-run',
+      updatedAt: '2026-05-26T11:00:00.000Z',
+    });
+
+    expect(findUsableBackendDraftRun([newerRun, activeRun], 'active-run', 'project-1')?.id).toBe(
+      'active-run',
+    );
+  });
+
+  it('does not update an active draft from another project', () => {
+    const currentProjectRun = createRun({
+      id: 'current-project-run',
+      updatedAt: '2026-05-26T09:00:00.000Z',
+    });
+    const otherProjectActiveRun = createRun({
+      id: 'other-project-run',
+      projectId: 'project-2',
+      updatedAt: '2026-05-26T12:00:00.000Z',
+    });
+
+    expect(
+      findUsableBackendDraftRun(
+        [otherProjectActiveRun, currentProjectRun],
+        'other-project-run',
+        'project-1',
+      )?.id,
+    ).toBe('current-project-run');
   });
 
   it('downloads restored files with bounded concurrency', async () => {

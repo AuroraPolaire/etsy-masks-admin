@@ -65,6 +65,37 @@ describe('MarketingAssetsPanel', () => {
     expect(screen.getAllByRole('button', { name: 'Generate 3 previews' })[0]).toBeEnabled();
   });
 
+  it('updates the marketing slogan from the main workflow panel', () => {
+    const project = createProject();
+    const onMarketingSettingsChange = vi.fn();
+
+    render(
+      <MarketingAssetsPanel
+        project={project}
+        files={[createFile({ id: 'dino-mask' })]}
+        hasAIProvider
+        busyAction={null}
+        onMarketingSettingsChange={onMarketingSettingsChange}
+        onGenerateSloganPreviews={vi.fn()}
+        onFinalizeSloganPoster={vi.fn()}
+        onGenerateMaskSheets={vi.fn()}
+        onGenerateChildrenScenePreviews={vi.fn()}
+        onFinalizeChildrenScene={vi.fn()}
+        onApprovePreview={vi.fn()}
+        onDeleteFile={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Marketing slogan/ }), {
+      target: { value: 'Dinosaur masks for classroom parties' },
+    });
+
+    expect(onMarketingSettingsChange).toHaveBeenCalledWith({
+      ...project.marketingSettings,
+      slogan: 'Dinosaur masks for classroom parties',
+    });
+  });
+
   it('approves one preview option and requests final generation', () => {
     const project = createProject();
     const onApprovePreview = vi.fn();

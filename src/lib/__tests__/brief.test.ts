@@ -35,6 +35,22 @@ describe('brief prompt drafting', () => {
     expect(draft.settings.style).toContain('no side punch holes');
   });
 
+  it('keeps style templates complete and uniquely selectable', () => {
+    const ids = new Set(initialPromptStyleTemplates.map((template) => template.id));
+    const prompts = new Set(initialPromptStyleTemplates.map((template) => template.prompt));
+
+    expect(initialPromptStyleTemplates.length).toBeGreaterThanOrEqual(16);
+    expect(ids.size).toBe(initialPromptStyleTemplates.length);
+    expect(prompts.size).toBe(initialPromptStyleTemplates.length);
+    for (const template of initialPromptStyleTemplates) {
+      expect(template.prompt).toContain('Mask style:');
+      expect(template.prompt).toContain('Color painting:');
+      expect(template.prompt).toContain('Coloring page lines:');
+      expect(template.prompt).toContain('only eye holes');
+      expect(template.prompt).toContain('no side punch holes');
+    }
+  });
+
   it('does not inject mocked topics when the initial idea is vague', () => {
     const draft = createProjectDraftFromInitialPrompt('Printable party masks for kids.');
 

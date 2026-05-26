@@ -1,6 +1,5 @@
 import { sanitizeMarketingSettings } from '../lib/marketingAssets';
 import { Card, CardBody, CardHeader } from './ui/Card';
-import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 
 import type { MarketingImageSettings, MarketingSettings, OpenAIImageSettings } from '../types';
@@ -19,6 +18,7 @@ const modelOptions = [
 ];
 
 const previewSizeOptions = [
+  { value: '512x512', label: '512 x 512' },
   { value: '1024x1024', label: '1024 x 1024' },
   { value: '1536x1024', label: '1536 x 1024' },
   { value: '1024x1536', label: '1024 x 1536' },
@@ -114,21 +114,13 @@ export const MarketingSettingsPanel = ({
       </CardHeader>
       <CardBody>
         <div className="space-y-6">
-          <Input
-            label="Marketing slogan"
-            name="marketingSlogan"
-            value={settings.slogan}
-            placeholder="30 printable dinosaur masks for kids"
-            helperText="Used on slogan poster assets. If empty, the listing title is used."
-            onChange={(event) => update({ ...settings, slogan: event.target.value })}
-          />
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="space-y-4 rounded-control border border-surface-outline bg-surface-raised p-4">
               <div>
                 <h3 className="text-sm font-bold text-ink-strong">Preview generation</h3>
                 <p className="mt-1 text-sm text-ink-muted">
-                  Defaults to the mask settings: {maskSettings.model}, {maskSettings.size},{' '}
-                  {maskSettings.quality === 'high' ? 'medium cap' : maskSettings.quality}.
+                  Defaults to {maskSettings.model} with a 512 x 512 preview size and{' '}
+                  {maskSettings.quality === 'high' ? 'medium cap' : maskSettings.quality} quality.
                 </p>
               </div>
               <Select
@@ -136,7 +128,7 @@ export const MarketingSettingsPanel = ({
                 name="marketingPreviewMode"
                 value={settings.preview.mode}
                 options={[
-                  { value: 'inherit-mask', label: 'Same as mask settings' },
+                  { value: 'inherit-mask', label: 'Mask model with 512 preview size' },
                   { value: 'custom', label: 'Custom marketing preview settings' },
                 ]}
                 onChange={(event) =>
