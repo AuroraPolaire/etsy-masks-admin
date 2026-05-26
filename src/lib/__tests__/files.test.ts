@@ -60,8 +60,14 @@ describe('file helpers', () => {
     expect(prompt?.prompt).toContain('front view');
     expect(prompt?.prompt).toContain('no shadows');
     expect(prompt?.prompt).toContain('Clearly cut human eye holes');
+    expect(prompt?.prompt).toContain('Only the eye holes may be cut through the mask');
+    expect(prompt?.prompt).toContain('do not add side punch holes');
+    expect(prompt?.prompt).toContain('extra circular cutouts');
     expect(prompt?.prompt).toContain('without any black cutting outline');
     expect(prompt?.negativeRequirements).toContain('no multiple masks');
+    expect(prompt?.negativeRequirements).toContain('no side holes');
+    expect(prompt?.negativeRequirements).toContain('no round punch holes');
+    expect(prompt?.negativeRequirements).toContain('no attachment holes');
     expect(prompt?.negativeRequirements).toContain('no black outline');
   });
 

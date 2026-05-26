@@ -7,7 +7,7 @@ export const STORAGE_KEY = 'etsy-masks-admin/project-v1';
 export const DEFAULT_THEME = 'Printable Party Masks';
 
 export const DEFAULT_MASK_PROMPT_STYLE =
-  'Realistic printable mask for kids with eye holes and white background, front view, no shadows, no black cut outline';
+  'Realistic printable mask for kids with only eye holes, white background, front view, no shadows, no black cut outline, no side punch holes';
 
 export const DEFAULT_SETTINGS: ProjectSettings = {
   title: '',
@@ -60,7 +60,7 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
 };
 
 export const PROMPT_NEGATIVE_REQUIREMENTS =
-  'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
+  'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes, no extra holes, no side holes, no round punch holes, no string holes, no strap holes, no hanging holes, no attachment holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
 
 export const MAX_TOTAL_SOURCE_BYTES = 150 * 1024 * 1024;
 
