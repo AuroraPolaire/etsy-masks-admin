@@ -18,6 +18,7 @@ describe('OpenAI image cost estimates', () => {
     const estimates = getOpenAIImageCostComparison('high', '1024x1536', 3, 12);
     const gptImage2 = estimates.find((estimate) => estimate.model === 'gpt-image-2');
 
+    expect(estimates[0]?.model).toBe('gpt-image-2');
     expect(gptImage2?.oneImageUsd).toBe(0.165);
     expect(gptImage2?.missingImagesUsd).toBeCloseTo(0.495);
     expect(gptImage2?.fullBundleUsd).toBeCloseTo(1.98);
@@ -26,7 +27,7 @@ describe('OpenAI image cost estimates', () => {
 
   it('marks auto settings as estimated with fallback assumptions', () => {
     expect(getEstimatedOpenAIImageCost('gpt-image-2', 'auto', 'auto')).toMatchObject({
-      estimatedQuality: 'medium',
+      estimatedQuality: 'low',
       estimatedSize: '1024x1024',
       usesFallbackAssumption: true,
     });

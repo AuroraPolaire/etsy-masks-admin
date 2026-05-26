@@ -224,6 +224,8 @@ You can still upload externally generated files manually and map them to topics.
   smaller source images.
 - The default OpenAI background mode is opaque/white because it tends to match print-ready mask
   examples. Switch to transparent only when you specifically need cutout PNG or WEBP mask assets.
+- The default OpenAI image model is `gpt-image-2` with low quality to keep routine generation
+  cost-efficient. Switch models or quality only when a specific run needs it.
 - OpenAI image costs shown in the app are approximate estimates based on common size/quality
   combinations. Actual billing can vary with token usage and pricing changes.
 - `gpt-image-2` currently does not support transparent backgrounds; use GPT Image 1.x models when

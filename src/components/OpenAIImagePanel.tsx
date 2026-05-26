@@ -67,10 +67,10 @@ export const OpenAIImagePanel = ({
             name="openaiModel"
             value={settings.model}
             options={[
-              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (recommended)' },
+              { value: 'gpt-image-2', label: 'gpt-image-2 (preferred)' },
+              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (transparent backgrounds)' },
               { value: 'gpt-image-1', label: 'gpt-image-1' },
               { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
-              { value: 'gpt-image-2', label: 'gpt-image-2 (no transparent background)' },
             ]}
             onChange={(event) =>
               update('model', event.target.value as OpenAIImageSettings['model'])
@@ -93,9 +93,9 @@ export const OpenAIImagePanel = ({
             name="openaiQuality"
             value={settings.quality}
             options={[
-              { value: 'high', label: 'High' },
+              { value: 'low', label: 'Low (preferred)' },
               { value: 'medium', label: 'Medium' },
-              { value: 'low', label: 'Low' },
+              { value: 'high', label: 'High' },
               { value: 'auto', label: 'Auto' },
             ]}
             onChange={(event) =>
@@ -178,7 +178,7 @@ export const OpenAIImagePanel = ({
           </div>
           {hasCostFallbackAssumption ? (
             <p className="mt-3 text-xs text-ink-muted">
-              Auto is estimated as medium quality at 1024 x 1024.
+              Auto is estimated as low quality at 1024 x 1024.
             </p>
           ) : null}
         </Surface>

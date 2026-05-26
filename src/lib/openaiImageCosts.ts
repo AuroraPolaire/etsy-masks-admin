@@ -22,7 +22,7 @@ type ImageCostComparison = ImageCostEstimate & {
   fullBundleWithColoringPagesUsd: number;
 };
 
-const DEFAULT_ESTIMATE_QUALITY: EstimatedQuality = 'medium';
+const DEFAULT_ESTIMATE_QUALITY: EstimatedQuality = 'low';
 const DEFAULT_ESTIMATE_SIZE: EstimatedSize = '1024x1024';
 
 const ESTIMATED_COST_USD: Record<
@@ -96,7 +96,7 @@ export const getOpenAIImageCostComparison = (
   missingImageCount: number,
   subjectCount: number,
 ): ImageCostComparison[] =>
-  (['gpt-image-1.5', 'gpt-image-2'] as const).map((model) => {
+  (['gpt-image-2', 'gpt-image-1.5'] as const).map((model) => {
     const estimate = getEstimatedOpenAIImageCost(model, quality, size);
 
     return {

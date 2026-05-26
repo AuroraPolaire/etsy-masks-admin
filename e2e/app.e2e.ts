@@ -54,9 +54,9 @@ const mockSavedRunsBackend = async (page: Page) => {
       includeCalibrationPage: false,
     },
     openAIImageSettings: {
-      model: 'gpt-image-1.5',
+      model: 'gpt-image-2',
       size: '1024x1024',
-      quality: 'medium',
+      quality: 'low',
       background: 'opaque',
       outputFormat: 'png',
     },

@@ -52,9 +52,9 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
 };
 
 export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
-  model: 'gpt-image-1.5',
+  model: 'gpt-image-2',
   size: '1024x1024',
-  quality: 'high',
+  quality: 'low',
   background: 'opaque',
   outputFormat: 'png',
 };
