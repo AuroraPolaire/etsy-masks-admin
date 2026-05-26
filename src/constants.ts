@@ -97,6 +97,7 @@ export const createDefaultProject = (): Project => {
     settings: DEFAULT_SETTINGS,
     subjects: [],
     pdfSettings: DEFAULT_PDF_SETTINGS,
+    openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
     createdAt: now,
     updatedAt: now,
   };

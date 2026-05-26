@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 
-import { DEFAULT_OPENAI_IMAGE_SETTINGS } from '../constants';
 import { makeUniqueFile } from '../lib/fileLifecycle';
 import { createManagedFile, getExpectedFilename } from '../lib/files';
 
@@ -18,9 +17,11 @@ type UseOpenAIImageGenerationParams = {
   subjects: SubjectItem[];
   prompts: PromptItem[];
   missingImagePrompts: PromptItem[];
+  settings: OpenAIImageSettings;
   filesRef: MutableRefObject<ManagedFile[]>;
   appendFiles: (files: ManagedFile[]) => void;
   addActivity: AddActivity;
+  onSettingsChange: (settings: OpenAIImageSettings) => void;
   generateImageFile: (
     settings: OpenAIImageSettings,
     prompt: PromptItem,
@@ -50,12 +51,13 @@ export const useOpenAIImageGeneration = ({
   subjects,
   prompts,
   missingImagePrompts,
+  settings,
   filesRef,
   appendFiles,
   addActivity,
+  onSettingsChange,
   generateImageFile,
 }: UseOpenAIImageGenerationParams) => {
-  const [settings, setSettings] = useState<OpenAIImageSettings>(DEFAULT_OPENAI_IMAGE_SETTINGS);
   const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);
 
   const generateSubjectImage = useCallback(
@@ -176,7 +178,7 @@ export const useOpenAIImageGeneration = ({
 
   return {
     openAISettings: settings,
-    setOpenAISettings: setSettings,
+    setOpenAISettings: onSettingsChange,
     generatingSubjectId,
     generateSubjectImage,
     generateMissingSubjectImages,

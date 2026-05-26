@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_OPENAI_IMAGE_SETTINGS } from '../../constants';
 import { createManagedFileFromBackendRecord, managedFileToBackendMetadata } from '../backendFiles';
 
 import type { BackendFileRecord, ManagedFile, Project } from '../../types';
@@ -29,6 +30,7 @@ const createProject = (): Project => ({
     pageMarginMm: 12,
     includeCalibrationPage: true,
   },
+  openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 });

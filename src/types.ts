@@ -93,6 +93,7 @@ export type Project = {
   settings: ProjectSettings;
   subjects: SubjectItem[];
   pdfSettings: PdfSettings;
+  openAIImageSettings: OpenAIImageSettings;
   createdAt: string;
   updatedAt: string;
   lastProjectJsonExportAt?: string;

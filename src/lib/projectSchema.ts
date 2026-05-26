@@ -1,4 +1,16 @@
-import type { Marketplace, MaskScale, Project, ProjectSettings, SubjectItem } from '../types';
+import type {
+  Marketplace,
+  MaskScale,
+  OpenAIImageBackground,
+  OpenAIImageModel,
+  OpenAIImageOutputFormat,
+  OpenAIImageQuality,
+  OpenAIImageSize,
+  OpenAIImageSettings,
+  Project,
+  ProjectSettings,
+  SubjectItem,
+} from '../types';
 
 const LEGACY_MOCK_SUBJECT_SETS = [
   [
@@ -62,6 +74,13 @@ const readMarketplace = (value: unknown, fallback: Marketplace): Marketplace =>
 
 const readMaskScale = (value: unknown, fallback: MaskScale): MaskScale =>
   value === 'small' || value === 'medium' || value === 'large' ? value : fallback;
+
+const readEnum = <Value extends string>(
+  value: unknown,
+  allowedValues: readonly Value[],
+  fallback: Value,
+): Value =>
+  typeof value === 'string' && allowedValues.includes(value as Value) ? (value as Value) : fallback;
 
 const readBoolean = (value: unknown, fallback: boolean): boolean =>
   typeof value === 'boolean' ? value : fallback;
@@ -159,6 +178,41 @@ const readPdfSettings = (
   };
 };
 
+const readOpenAIImageSettings = (
+  settingsLike: unknown,
+  fallback: OpenAIImageSettings,
+): OpenAIImageSettings => {
+  const settings = isRecord(settingsLike) ? settingsLike : {};
+
+  return {
+    model: readEnum<OpenAIImageModel>(
+      settings.model,
+      ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-image-2'],
+      fallback.model,
+    ),
+    size: readEnum<OpenAIImageSize>(
+      settings.size,
+      ['1024x1024', '1536x1024', '1024x1536', 'auto'],
+      fallback.size,
+    ),
+    quality: readEnum<OpenAIImageQuality>(
+      settings.quality,
+      ['low', 'medium', 'high', 'auto'],
+      fallback.quality,
+    ),
+    background: readEnum<OpenAIImageBackground>(
+      settings.background,
+      ['transparent', 'opaque', 'auto'],
+      fallback.background,
+    ),
+    outputFormat: readEnum<OpenAIImageOutputFormat>(
+      settings.outputFormat,
+      ['png', 'webp', 'jpeg'],
+      fallback.outputFormat,
+    ),
+  };
+};
+
 const hasChangedSettings = (
   settings: ProjectSettings,
   fallbackSettings: ProjectSettings,
@@ -193,11 +247,18 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
   const settings = readSettings(projectLike.settings, fallback.settings);
   const subjects = removeLegacyMockSubjects(readSubjects(projectLike));
   const pdfSettings = readPdfSettings(projectLike.pdfSettings, fallback.pdfSettings);
+  const openAIImageSettings = readOpenAIImageSettings(
+    projectLike.openAIImageSettings ??
+      projectLike.openAISettings ??
+      projectLike.imageGenerationSettings,
+    fallback.openAIImageSettings,
+  );
 
   if (hasLegacyMockTitle(settings)) {
     return {
       ...fallback,
       pdfSettings,
+      openAIImageSettings,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -219,6 +280,7 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
     settings,
     subjects,
     pdfSettings,
+    openAIImageSettings,
     createdAt: readRequiredString(projectLike.createdAt, fallback.createdAt),
     updatedAt: new Date().toISOString(),
     ...optionalDates,

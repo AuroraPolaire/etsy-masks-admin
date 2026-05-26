@@ -3,7 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { nowIso } from '../lib/dates';
 import { loadProject, saveProject } from '../lib/storage';
 
-import type { PdfSettings, Project, ProjectSettings, SubjectItem } from '../types';
+import type {
+  OpenAIImageSettings,
+  PdfSettings,
+  Project,
+  ProjectSettings,
+  SubjectItem,
+} from '../types';
 
 type InitialProjectDraft = {
   settings: ProjectSettings;
@@ -41,6 +47,13 @@ export const useProjectState = () => {
   const updatePdfSettings = useCallback(
     (pdfSettings: PdfSettings) => {
       updateProject((currentProject) => ({ ...currentProject, pdfSettings }));
+    },
+    [updateProject],
+  );
+
+  const updateOpenAIImageSettings = useCallback(
+    (openAIImageSettings: OpenAIImageSettings) => {
+      updateProject((currentProject) => ({ ...currentProject, openAIImageSettings }));
     },
     [updateProject],
   );
@@ -94,6 +107,7 @@ export const useProjectState = () => {
     replaceProject,
     updateSettings,
     updatePdfSettings,
+    updateOpenAIImageSettings,
     applyInitialDraft,
     addSubject,
     removeSubject,

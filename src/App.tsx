@@ -72,6 +72,7 @@ export const App = () => {
     replaceProject,
     updateSettings,
     updatePdfSettings,
+    updateOpenAIImageSettings,
     applyInitialDraft,
     addSubject,
     removeSubject,
@@ -158,9 +159,11 @@ export const App = () => {
     subjects: project.subjects,
     prompts,
     missingImagePrompts,
+    settings: project.openAIImageSettings,
     filesRef,
     appendFiles,
     addActivity,
+    onSettingsChange: updateOpenAIImageSettings,
     generateImageFile,
   });
   const hasAIProvider = backendCache.canUseOpenAIProxy;

@@ -1,3 +1,6 @@
+import { createDefaultProject } from '../constants';
+import { normalizeProject } from './projectSchema';
+
 import type {
   BackendHealth,
   BackendImageResponse,
@@ -12,6 +15,10 @@ import type { BackendManagedFileMetadata } from './backendFiles';
 import type { OpenAIResponsesApiResponse } from './openaiBrief';
 
 export const MAX_BACKEND_FILE_BYTES = 50 * 1024 * 1024;
+
+type BackendProjectSnapshotResponse = Omit<BackendProjectSnapshot, 'project'> & {
+  project: unknown;
+};
 
 export class BackendApiError extends Error {
   status: number;
@@ -92,6 +99,13 @@ const base64ToFile = (payload: BackendImageResponse): File => {
   return new File([bytes], payload.fileName, { type: payload.mimeType || 'image/png' });
 };
 
+const normalizeBackendSnapshot = (
+  snapshot: BackendProjectSnapshotResponse,
+): BackendProjectSnapshot => ({
+  ...snapshot,
+  project: snapshot.project ? normalizeProject(snapshot.project, createDefaultProject()) : null,
+});
+
 export const createBackendClient = () => ({
   getHealth: (signal?: AbortSignal) => requestJson<BackendHealth>('/api/health', { signal }),
 
@@ -108,13 +122,17 @@ export const createBackendClient = () => ({
       signal,
     }),
 
-  getRun: (runId: string, signal?: AbortSignal) =>
-    requestJson<BackendProjectSnapshot>(`/api/runs/${encodeURIComponent(runId)}`, {
-      signal,
-    }),
+  getRun: async (runId: string, signal?: AbortSignal) =>
+    normalizeBackendSnapshot(
+      await requestJson<BackendProjectSnapshotResponse>(`/api/runs/${encodeURIComponent(runId)}`, {
+        signal,
+      }),
+    ),
 
-  getLatestRun: (signal?: AbortSignal) =>
-    requestJson<BackendProjectSnapshot>('/api/project', { signal }),
+  getLatestRun: async (signal?: AbortSignal) =>
+    normalizeBackendSnapshot(
+      await requestJson<BackendProjectSnapshotResponse>('/api/project', { signal }),
+    ),
 
   uploadFile: async (
     runId: string,

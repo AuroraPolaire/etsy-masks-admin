@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { STORAGE_KEY, createDefaultProject } from '../../constants';
+import { DEFAULT_OPENAI_IMAGE_SETTINGS, STORAGE_KEY, createDefaultProject } from '../../constants';
 import { loadProject, parseProjectBackup } from '../storage';
 
 import type { Project, ProjectJsonBackup } from '../../types';
@@ -51,8 +51,10 @@ describe('project storage', () => {
   it('starts new projects without mocked topics', () => {
     expect(createDefaultProject().subjects).toEqual([]);
     expect(createDefaultProject().settings.title).toBe('');
+    expect(createDefaultProject().openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
     expect(loadProject().subjects).toEqual([]);
     expect(loadProject().settings.title).toBe('');
+    expect(loadProject().openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
     expect(loadProject().lastBriefUpdatedAt).toBeUndefined();
   });
 
@@ -100,6 +102,22 @@ describe('project storage', () => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
 
     expect(loadProject().settings.description).toBe('');
+  });
+
+  it('preserves image generation settings from browser state', () => {
+    const project: Project = {
+      ...createDefaultProject(),
+      openAIImageSettings: {
+        model: 'gpt-image-1-mini',
+        size: '1024x1536',
+        quality: 'low',
+        background: 'transparent',
+        outputFormat: 'webp',
+      },
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+
+    expect(loadProject().openAIImageSettings).toEqual(project.openAIImageSettings);
   });
 
   it('does not mark untouched default copy as brief progress', () => {
@@ -187,5 +205,26 @@ describe('project storage', () => {
       pageMarginMm: 30,
       includeCalibrationPage: true,
     });
+  });
+
+  it('normalizes invalid image generation settings from imported project backups', () => {
+    const backup = {
+      appVersion: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      project: {
+        ...createDefaultProject(),
+        openAIImageSettings: {
+          model: 'expensive-image-model',
+          size: '4096x4096',
+          quality: 'ultra',
+          background: 'neon',
+          outputFormat: 'tiff',
+        },
+      },
+    };
+
+    const project = parseProjectBackup(JSON.stringify(backup));
+
+    expect(project.openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
   });
 });

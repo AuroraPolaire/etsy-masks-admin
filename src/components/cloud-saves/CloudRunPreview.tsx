@@ -25,6 +25,7 @@ export const CloudRunPreview = ({
   onRestoreRun,
 }: CloudRunPreviewProps) => {
   const updatedAt = snapshot?.updatedAt ? formatCloudSaveDateTime(snapshot.updatedAt) : 'Never';
+  const imageSettings = snapshot?.project?.openAIImageSettings;
 
   return (
     <Surface variant="muted" className="p-4">
@@ -47,6 +48,18 @@ export const CloudRunPreview = ({
             <div>
               <dt className="text-xs uppercase text-ink-muted">Size</dt>
               <dd className="mt-1 font-semibold">{formatBytes(cloudTotalBytes)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-ink-muted">AI model</dt>
+              <dd className="mt-1 font-semibold">{imageSettings?.model ?? 'Default'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-ink-muted">AI output</dt>
+              <dd className="mt-1 font-semibold">
+                {imageSettings
+                  ? `${imageSettings.quality} / ${imageSettings.size} / ${imageSettings.outputFormat}`
+                  : 'Default'}
+              </dd>
             </div>
           </dl>
         </div>

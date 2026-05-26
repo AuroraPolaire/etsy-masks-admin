@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { FileInput } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_SETTINGS } from '../../constants';
+import { DEFAULT_OPENAI_IMAGE_SETTINGS, DEFAULT_SETTINGS } from '../../constants';
 import { createPromptItems } from '../../lib/files';
 import { EtsySeoPanel } from '../EtsySeoPanel';
 import { InitialPromptPanel } from '../InitialPromptPanel';
@@ -112,6 +112,7 @@ describe('EtsySeoPanel', () => {
         pageMarginMm: 12,
         includeCalibrationPage: true,
       },
+      openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
       createdAt: '2026-05-25T10:00:00.000Z',
       updatedAt: '2026-05-25T10:00:00.000Z',
     };
