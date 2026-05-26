@@ -87,7 +87,6 @@ export const App = () => {
     files,
     filesRef,
     appendFiles,
-    uploadFiles,
     approveFile,
     approveFiles,
     rejectFile,
@@ -248,8 +247,7 @@ export const App = () => {
       if (files.length > 0) {
         const shouldApply = await requestConfirmation({
           title: 'Replace current topics?',
-          description:
-            'A new brief replaces the topic list and clears assigned images. Uploaded files stay in this session.',
+          description: 'A new brief replaces the topic list and clears assigned generated images.',
           confirmLabel: 'Replace topics',
         });
         if (!shouldApply) {
@@ -347,8 +345,7 @@ export const App = () => {
       void (async () => {
         const shouldRemove = await requestConfirmation({
           title: `Remove ${subjectName}?`,
-          description:
-            'This removes the topic and clears its assigned image. Uploaded files stay in this session.',
+          description: 'This removes the topic and clears its assigned generated image.',
           confirmLabel: 'Remove topic',
           tone: 'danger',
         });
@@ -375,8 +372,7 @@ export const App = () => {
       void (async () => {
         const shouldDelete = await requestConfirmation({
           title: `Delete ${fileName}?`,
-          description:
-            'This removes the file from this session. Upload or generate it again if you need it later.',
+          description: 'This removes the file from this session. Generate it again if needed.',
           confirmLabel: 'Delete file',
           tone: 'danger',
         });
@@ -394,7 +390,7 @@ export const App = () => {
       const shouldClear = await requestConfirmation({
         title: 'Clear session files?',
         description:
-          'This removes uploaded and generated files from this browser session. Project text stays saved.',
+          'This removes generated files from this browser session. Project text stays saved.',
         confirmLabel: 'Clear files',
         tone: 'danger',
       });
@@ -404,13 +400,6 @@ export const App = () => {
       }
     })();
   }, [clearFiles, requestConfirmation]);
-
-  const handleFilesSelected = useCallback(
-    (incomingFiles: File[]) => {
-      void runBusyAction('uploading', () => uploadFiles(incomingFiles));
-    },
-    [runBusyAction, uploadFiles],
-  );
 
   const handleGenerateSubjectImage = useCallback(
     (subjectId: string) => {
@@ -561,7 +550,6 @@ export const App = () => {
         onDeleteFile={handleDeleteFile}
         onNotesChange={updateNotes}
         onCopyPrompt={(message) => addActivity('notes-updated', 'success', message)}
-        onFilesSelected={handleFilesSelected}
         onExportArchive={exportArchive}
         onExportProjectJson={exportProjectJson}
         onImportProjectJson={importProjectJson}

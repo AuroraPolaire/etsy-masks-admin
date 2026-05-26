@@ -33,7 +33,6 @@ export type ActivityType =
 export type AddActivity = (type: ActivityType, level: ActivityLevel, message: string) => void;
 
 export type BusyAction =
-  | 'uploading'
   | 'brief-generation'
   | 'ai-analysis'
   | 'image-generation'

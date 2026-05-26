@@ -43,7 +43,8 @@ const mockUnavailableBackend = async (page: Page) => {
   });
 };
 
-const mockOpenAIColoringBackend = async (page: Page) => {
+const mockOpenAIImageBackend = async (page: Page) => {
+  let imageRequestCount = 0;
   let coloringPageRequestCount = 0;
 
   await page.route('**/api/**', async (route) => {
@@ -80,6 +81,20 @@ const mockOpenAIColoringBackend = async (page: Page) => {
       return;
     }
 
+    if (url.pathname === '/api/openai/images' && method === 'POST') {
+      imageRequestCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          fileName: 'moon.png',
+          mimeType: 'image/png',
+          base64: onePixelPng.toString('base64'),
+        }),
+      });
+      return;
+    }
+
     if (url.pathname === '/api/runs' && method === 'POST') {
       await route.fulfill({
         status: 200,
@@ -109,6 +124,7 @@ const mockOpenAIColoringBackend = async (page: Page) => {
   });
 
   return {
+    getImageRequestCount: () => imageRequestCount,
     getColoringPageRequestCount: () => coloringPageRequestCount,
   };
 };
@@ -282,6 +298,14 @@ test.describe('production workflow', () => {
   test('starts from an empty brief, unlocks image review, and has no frontend secret fields', async ({
     page,
   }) => {
+    await page.unroute('**/api/**');
+    const backend = await mockOpenAIImageBackend(page);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
     await expect(page.getByRole('heading', { name: 'Mask Bundle Studio' })).toBeVisible();
     await fillCompleteBrief(page);
 
@@ -290,19 +314,12 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Add topic' }).click();
     await expect(page.getByText('moon.png').first()).toBeVisible();
 
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'moon.png',
-      mimeType: 'image/png',
-      buffer: onePixelPng,
-    });
+    await page.getByRole('button', { name: 'Generate image' }).click();
+    await expect.poll(() => backend.getImageRequestCount()).toBe(1);
     await expect(page.getByText('Review needed').first()).toBeVisible();
     await page.getByRole('button', { name: 'Approve Moon' }).click();
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'moon-coloring-page.png',
-      mimeType: 'image/png',
-      buffer: onePixelPng,
-    });
-    await page.getByRole('button', { name: 'Approve coloring page for Moon' }).click();
+    await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
+    await expect(page.getByText('Coloring page ready').first()).toBeVisible();
     await page.getByRole('button', { name: 'Next: QA and export' }).click();
     await expect(page.getByRole('heading', { name: 'Export package' })).toBeVisible();
 
@@ -324,7 +341,7 @@ test.describe('production workflow', () => {
 
   test('auto-generates a coloring page when a color mask is approved', async ({ page }) => {
     await page.unroute('**/api/**');
-    const backend = await mockOpenAIColoringBackend(page);
+    const backend = await mockOpenAIImageBackend(page);
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
@@ -337,11 +354,9 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Add topic' }).click();
     await expect(page.getByRole('button', { name: 'Generate image' })).toBeEnabled();
 
-    await page.locator('input[type="file"]').setInputFiles({
-      name: 'moon.png',
-      mimeType: 'image/png',
-      buffer: onePixelPng,
-    });
+    await page.getByRole('button', { name: 'Generate image' }).click();
+    await expect.poll(() => backend.getImageRequestCount()).toBe(1);
+    await expect(page.getByText('Review needed').first()).toBeVisible();
     await page.getByRole('button', { name: 'Approve Moon' }).click();
 
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);

@@ -30,7 +30,7 @@ const formatOptionalDateTime = (value: string | undefined): string => {
 const formatStatusLabel = (complete: boolean): string => (complete ? 'Ready' : 'Needs work');
 
 export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPanelProps) => {
-  const uploadedFileCount = files.filter((file) => file.kind === 'uploaded').length;
+  const assetFileCount = files.filter((file) => file.kind === 'uploaded').length;
   const approvedImageCount = workflow.approvedImageCount;
   const approvedColoringPageCount = workflow.approvedColoringPageCount;
   const pendingImageCount = files.filter((file) => file.reviewState === 'pending').length;
@@ -99,7 +99,7 @@ export const InsightsPanel = ({ project, files, qaResult, workflow }: InsightsPa
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Session files</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    {uploadedFileCount} uploaded, {files.length} total, {formatBytes(totalBytes)}.
+                    {assetFileCount} assets, {files.length} total, {formatBytes(totalBytes)}.
                   </p>
                 </div>
               </div>

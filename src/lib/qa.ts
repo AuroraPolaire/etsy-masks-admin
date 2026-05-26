@@ -174,8 +174,8 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'source-total-size',
       'warning',
       sourceTotalSize <= MAX_TOTAL_SOURCE_BYTES,
-      'Total source files are below 150MB',
-      `${sourceFiles.length} source files total ${Math.round(sourceTotalSize / 1024 / 1024)}MB.`,
+      'Session files are below 150MB',
+      `${sourceFiles.length} session files total ${Math.round(sourceTotalSize / 1024 / 1024)}MB.`,
     ),
     createCheck(
       'single-source-size',

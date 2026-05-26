@@ -98,8 +98,7 @@ export const createWorkflowState = ({
     {
       id: 'images',
       title: 'Topics and AI images',
-      description:
-        'Add mask topics, generate or upload color masks, and create coloring-page versions.',
+      description: 'Add mask topics, generate color masks, and create coloring-page versions.',
       summary:
         subjectCount === 0
           ? 'No mask topics yet.'
@@ -147,9 +146,9 @@ export const createWorkflowState = ({
   const nextAction = !briefComplete
     ? 'Draft the brief or edit listing copy.'
     : !topicsComplete
-      ? 'Add mask topics, then generate or upload their images.'
+      ? 'Add mask topics, then generate their images.'
       : !hasAIProvider && !imagesComplete
-        ? 'Configure the backend OpenAI proxy or upload images.'
+        ? 'Configure the backend OpenAI proxy before generating images.'
         : approvedImageCount !== subjectCount
           ? 'Generate and approve missing images.'
           : !imagesComplete

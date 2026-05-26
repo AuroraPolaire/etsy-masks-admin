@@ -229,7 +229,7 @@ export const PromptCard = ({
               </div>
             ) : (
               <Alert tone="info" className="mt-3">
-                Generate or upload an image to review it here.
+                Generate an image to review it here.
               </Alert>
             )}
           </Surface>

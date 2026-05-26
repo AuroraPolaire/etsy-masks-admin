@@ -29,8 +29,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <section className="max-w-xl rounded-panel border border-feedback-danger-border bg-surface-panel p-6 shadow-panel">
             <h1 className="text-xl font-bold text-feedback-danger-fg">Something went wrong.</h1>
             <p className="mt-3 text-sm text-ink-base">
-              Refresh to continue. Saved listing copy should still be available, but uploaded files
-              need to be re-uploaded.
+              Refresh to continue. Saved listing copy should still be available. Restore a backend
+              run if generated files are missing.
             </p>
             {this.state.message ? (
               <p className="mt-4 rounded-control bg-feedback-danger-bg p-3 text-sm text-feedback-danger-fg">

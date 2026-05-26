@@ -16,7 +16,6 @@ type WorkflowStatusProps = {
 };
 
 const busyActionLabels: Record<Exclude<BusyAction, null>, string> = {
-  uploading: 'Uploading files',
   'brief-generation': 'Drafting brief',
   'ai-analysis': 'Reviewing listing',
   'image-generation': 'Generating images',

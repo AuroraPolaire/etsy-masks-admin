@@ -16,7 +16,6 @@ same-origin `/api/*` backend.
 - OpenAI Images API generation through Cloudflare Pages Functions. The frontend never stores OpenAI
   keys, Worker URLs, or backend tokens.
 - Approximate OpenAI image cost estimates for one mask, missing images, and the full bundle.
-- Drag-and-drop multi-file upload for PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON.
 - Image preview, dimension reading, approval/rejection, review notes, and topic mapping.
 - Browser-only PDF generation with jsPDF for A4 and US Letter printable files.
 - Browser canvas generation for Etsy marketplace preview PNGs.
@@ -29,16 +28,15 @@ same-origin `/api/*` backend.
 
 ## Privacy
 
-Most processing happens in your browser. Uploaded files are not sent anywhere unless you explicitly
-back up to Cloudflare, generate through the backend OpenAI proxy, or export files from the browser.
+Most packaging work happens in your browser. Generated files are not sent anywhere except when you
+generate through the backend OpenAI proxy, back up to Cloudflare, or export files from the browser.
 
 OpenAI credentials and backend access policy live only in Cloudflare Pages configuration. The
 frontend calls same-origin `/api/*` endpoints and does not contain browser-entered API keys, Worker
 URLs, or admin tokens.
 
-Uploaded binary files are kept in browser memory only unless you explicitly use Cloud saves to
-back up to Cloudflare R2. Export the archive, back up to Cloudflare, or re-upload files after
-refreshing the page.
+Generated binary files are kept in browser memory and backend saves when Cloudflare is reachable.
+Export the archive or restore a backend run if files are missing after refreshing the page.
 
 ## Local Setup
 
@@ -200,8 +198,6 @@ and Pages Functions from one origin.
    OpenAI proxy is ready.
 6. Add review notes or explicitly confirm reviewed images.
 
-You can still upload externally generated files manually and map them to topics.
-
 ## Etsy Archive Workflow
 
 1. Generate A4 and US Letter PDFs.
@@ -214,13 +210,13 @@ You can still upload externally generated files manually and map them to topics.
 
 ## Limitations
 
-- Uploaded files persist after refresh when Cloud saves are configured and reachable.
+- Generated files persist after refresh when Cloud saves are configured and reachable.
 - OpenAI brief and image generation require a configured Cloudflare Pages OpenAI secret.
 - Backend features require a same-origin `/api/*` route. Cloudflare Pages provides this through
   Pages Functions on the free `*.pages.dev` URL.
 - Cloudflare direct backup uploads are capped by the Pages `MAX_FILE_BYTES` setting, defaulting to 50
   MB per file.
-- Large browser ZIP/PDF generation can be slow or fail if source files are very large.
+- Large browser ZIP/PDF generation can be slow or fail if generated files are very large.
 - Etsy upload ZIPs over 20MB are marked as a blocking QA issue and may need manual splitting or
   smaller source images.
 - The default OpenAI background mode is opaque/white because it tends to match print-ready mask

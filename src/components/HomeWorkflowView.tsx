@@ -1,7 +1,6 @@
 import { ArchiveActions } from './ArchiveActions';
 import { BrowserSupportWarning } from './BrowserSupportWarning';
 import { EtsySeoPanel } from './EtsySeoPanel';
-import { FileUploader } from './FileUploader';
 import { InitialPromptPanel } from './InitialPromptPanel';
 import { PrivacyNotice } from './PrivacyNotice';
 import { ProductBriefForm } from './ProductBriefForm';
@@ -54,7 +53,6 @@ type HomeWorkflowViewProps = {
   onDeleteFile: (fileId: string) => void;
   onNotesChange: (fileId: string, notes: string) => void;
   onCopyPrompt: (message: string) => void;
-  onFilesSelected: (files: File[]) => void;
   onExportArchive: () => void;
   onExportProjectJson: () => void;
   onImportProjectJson: (file: File) => void;
@@ -91,7 +89,6 @@ export const HomeWorkflowView = ({
   onDeleteFile,
   onNotesChange,
   onCopyPrompt,
-  onFilesSelected,
   onExportArchive,
   onExportProjectJson,
   onImportProjectJson,
@@ -150,10 +147,7 @@ export const HomeWorkflowView = ({
                 tone="info"
                 className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <span>
-                  Configure the backend OpenAI proxy for AI generation, or upload files manually for
-                  each topic.
-                </span>
+                <span>Configure the backend OpenAI proxy before generating mask images.</span>
                 <Button onClick={onOpenCloudSaves}>Open backend saves</Button>
               </Alert>
             ) : null}
@@ -180,7 +174,6 @@ export const HomeWorkflowView = ({
               onNotesChange={onNotesChange}
               onCopy={onCopyPrompt}
             />
-            <FileUploader onFilesSelected={onFilesSelected} disabled={busyAction !== null} />
             <StepAdvanceButton
               disabled={!workflow.imagesComplete}
               onClick={() => onStepSelected('export')}

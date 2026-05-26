@@ -1,8 +1,4 @@
-import {
-  ACCEPTED_FILE_EXTENSIONS,
-  DEFAULT_MASK_PROMPT_STYLE,
-  PROMPT_NEGATIVE_REQUIREMENTS,
-} from '../constants';
+import { DEFAULT_MASK_PROMPT_STYLE, PROMPT_NEGATIVE_REQUIREMENTS } from '../constants';
 import { readImageMetadata } from './imageMetadata';
 import { slugify } from './slugify';
 
@@ -43,11 +39,6 @@ export const isImageFile = (file: File | ManagedFile): boolean => {
   const name = 'name' in file ? file.name : '';
   const type = 'type' in file ? file.type : '';
   return type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(name);
-};
-
-export const isAcceptedFile = (file: File): boolean => {
-  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-  return ACCEPTED_FILE_EXTENSIONS.includes(extension);
 };
 
 export const formatBytes = (bytes: number): string => {
@@ -129,35 +120,6 @@ export const createManagedFile = async (
     assetVariant: fileNameMatch?.assetVariant ?? 'color',
     explicitlyConfirmed: false,
   };
-};
-
-export const dedupeIncomingFiles = (
-  existingFiles: ManagedFile[],
-  incomingFiles: File[],
-): { accepted: File[]; duplicates: string[]; unsupported: string[] } => {
-  const existingNames = new Set(existingFiles.map((file) => file.name.toLowerCase()));
-  const accepted: File[] = [];
-  const duplicates: string[] = [];
-  const unsupported: string[] = [];
-
-  incomingFiles.forEach((file) => {
-    const normalizedName = file.name.toLowerCase();
-
-    if (!isAcceptedFile(file)) {
-      unsupported.push(file.name);
-      return;
-    }
-
-    if (existingNames.has(normalizedName)) {
-      duplicates.push(file.name);
-      return;
-    }
-
-    existingNames.add(normalizedName);
-    accepted.push(file);
-  });
-
-  return { accepted, duplicates, unsupported };
 };
 
 const cleanPromptStyle = (style: string | undefined): string => {

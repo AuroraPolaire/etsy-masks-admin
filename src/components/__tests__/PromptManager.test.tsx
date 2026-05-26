@@ -241,7 +241,7 @@ describe('ConfirmDialog', () => {
         <ConfirmDialog
           open
           title="Clear files?"
-          description="This removes uploaded and generated files from this browser session."
+          description="This removes generated files from this browser session."
           confirmLabel="Clear files"
           onCancel={onCancel}
           onConfirm={onConfirm}
@@ -260,7 +260,7 @@ describe('ConfirmDialog', () => {
         <ConfirmDialog
           open={false}
           title="Clear files?"
-          description="This removes uploaded and generated files from this browser session."
+          description="This removes generated files from this browser session."
           confirmLabel="Clear files"
           onCancel={onCancel}
           onConfirm={onConfirm}

@@ -26,7 +26,7 @@ Mostly, but not completely.
 | Cloudflare R2                  | Yes within Free limits               | Stores saved-run files. Very large backups can exceed free usage.            |
 | Cloudflare Access              | Yes for small teams                  | Cloudflare Zero Trust Free is listed for teams under 50 users.               |
 | Custom domain                  | Not required                         | You can add one later for branding, but the backend works on `*.pages.dev`.  |
-| OpenAI API                     | No                                   | Brief and image generation cost money. Manual uploads are free.              |
+| OpenAI API                     | No                                   | Brief and image generation cost money. Keep defaults low-cost.               |
 
 Official references checked on 2026-05-26:
 

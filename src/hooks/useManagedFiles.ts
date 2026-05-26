@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { clearMappedSubject, revokeObjectUrl, withMappedSubject } from '../lib/fileLifecycle';
-import { createManagedFile, dedupeIncomingFiles } from '../lib/files';
 
 import type { AddActivity, ManagedFile, SubjectItem } from '../types';
 
@@ -28,45 +27,6 @@ export const useManagedFiles = ({
   const appendFiles = useCallback((managedFiles: ManagedFile[]) => {
     setFiles((currentFiles) => [...currentFiles, ...managedFiles]);
   }, []);
-
-  const uploadFiles = useCallback(
-    async (incomingFiles: File[]) => {
-      try {
-        const { accepted, duplicates, unsupported } = dedupeIncomingFiles(files, incomingFiles);
-        duplicates.forEach((name) =>
-          addActivity('file-added', 'warning', `Skipped duplicate file: ${name}.`),
-        );
-        unsupported.forEach((name) =>
-          addActivity('file-added', 'warning', `Skipped unsupported file: ${name}.`),
-        );
-
-        const managedFiles: ManagedFile[] = [];
-        for (const file of accepted) {
-          try {
-            managedFiles.push(await createManagedFile(file, subjects));
-          } catch (error) {
-            addActivity(
-              'error',
-              'error',
-              error instanceof Error ? error.message : `Could not read ${file.name}.`,
-            );
-          }
-        }
-
-        if (managedFiles.length > 0) {
-          appendFiles(managedFiles);
-          addActivity('file-added', 'success', `Added ${managedFiles.length} file(s).`);
-        }
-      } catch (error) {
-        addActivity(
-          'error',
-          'error',
-          error instanceof Error ? error.message : 'File upload failed.',
-        );
-      }
-    },
-    [addActivity, appendFiles, files, subjects],
-  );
 
   const updateFile = useCallback((fileId: string, updater: (file: ManagedFile) => ManagedFile) => {
     setFiles((currentFiles) =>
@@ -211,7 +171,6 @@ export const useManagedFiles = ({
     files,
     filesRef,
     appendFiles,
-    uploadFiles,
     approveFile,
     approveFiles,
     rejectFile,
