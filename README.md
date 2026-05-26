@@ -72,6 +72,9 @@ npm run test:e2e
 
 The repository includes `.github/workflows/deploy.yml` using GitHub Actions Pages deployment.
 
+For a beginner-friendly production checklist with Cloudflare, custom domain, cost notes, and smoke
+tests, read [Production Setup Guide For Beginners](docs/production-guide-for-dummies.md).
+
 1. Push this repo to GitHub.
 2. In repository settings, open **Pages**.
 3. Set **Build and deployment** source to **GitHub Actions**.
