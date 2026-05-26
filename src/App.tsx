@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppAside } from './components/AppAside';
 import { AppMainLayout } from './components/AppMainLayout';
@@ -67,8 +67,9 @@ export const App = () => {
   );
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('brief');
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
-  const [hasAutoLoadedCloudSaves, setHasAutoLoadedCloudSaves] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const previousSectionIdRef = useRef<AppSectionId>(activeSectionId);
+  const pendingBackendRefreshOnOpenRef = useRef(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
@@ -137,19 +138,25 @@ export const App = () => {
     runBusyAction,
     confirmAction: requestConfirmation,
   });
-  const backendHealth = backendCache.health;
   const testBackendConnection = backendCache.testConnection;
   useEffect(() => {
-    if (
-      activeSectionId === 'backend' &&
-      !hasAutoLoadedCloudSaves &&
-      backendHealth === null &&
-      busyAction === null
-    ) {
-      setHasAutoLoadedCloudSaves(true);
+    const previousSectionId = previousSectionIdRef.current;
+    previousSectionIdRef.current = activeSectionId;
+
+    if (activeSectionId !== 'backend') {
+      pendingBackendRefreshOnOpenRef.current = false;
+      return;
+    }
+
+    if (previousSectionId !== 'backend') {
+      pendingBackendRefreshOnOpenRef.current = true;
+    }
+
+    if (pendingBackendRefreshOnOpenRef.current && busyAction === null) {
+      pendingBackendRefreshOnOpenRef.current = false;
       testBackendConnection();
     }
-  }, [activeSectionId, backendHealth, busyAction, hasAutoLoadedCloudSaves, testBackendConnection]);
+  }, [activeSectionId, busyAction, testBackendConnection]);
   const generateImageFile = useCallback(
     async (
       settings: OpenAIImageSettings,

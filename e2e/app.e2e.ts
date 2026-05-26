@@ -191,12 +191,15 @@ const mockSavedRunsBackend = async (page: Page) => {
       totalSizeBytes: 3_145_728,
     },
   ];
+  let healthRequestCount = 0;
+  let listRunsRequestCount = 0;
 
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
 
     if (url.pathname === '/api/health') {
+      healthRequestCount += 1;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -213,6 +216,7 @@ const mockSavedRunsBackend = async (page: Page) => {
     }
 
     if (url.pathname === '/api/runs' && method === 'GET') {
+      listRunsRequestCount += 1;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -280,6 +284,11 @@ const mockSavedRunsBackend = async (page: Page) => {
       body: JSON.stringify({ ok: true, run: runs[0] }),
     });
   });
+
+  return {
+    getHealthRequestCount: () => healthRequestCount,
+    getListRunsRequestCount: () => listRunsRequestCount,
+  };
 };
 
 const createRefreshDraftProject = () => ({
@@ -586,6 +595,34 @@ test.describe('production workflow', () => {
 });
 
 test.describe('backend saves workflow', () => {
+  test('refreshes saved runs when Backend saves is opened after startup health is known', async ({
+    page,
+  }) => {
+    const backend = await mockSavedRunsBackend(page);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Mask Bundle Studio' })).toBeVisible();
+    await expect.poll(() => backend.getHealthRequestCount()).toBeGreaterThan(0);
+    const listRunsBeforeOpen = backend.getListRunsRequestCount();
+
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+
+    await expect.poll(() => backend.getListRunsRequestCount()).toBeGreaterThan(listRunsBeforeOpen);
+    await expect(page.getByText('Ocean birthday masks')).toBeVisible();
+    const listRunsAfterFirstOpen = backend.getListRunsRequestCount();
+
+    await page.getByRole('button', { name: 'Insights' }).click();
+    await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+
+    await expect
+      .poll(() => backend.getListRunsRequestCount())
+      .toBeGreaterThan(listRunsAfterFirstOpen);
+  });
+
   test('restores an existing project draft on refresh instead of creating a duplicate run', async ({
     page,
   }) => {
