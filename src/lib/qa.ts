@@ -297,7 +297,7 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'warning',
       approvedImages.length > 0 && everyApprovedImageReviewed,
       'Every approved image is reviewed',
-      'Add notes or mark reviewed to record manual review.',
+      'Approve each image or add notes to record manual review.',
     ),
     createCheck(
       'etsy-file-count',

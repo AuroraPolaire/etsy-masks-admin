@@ -29,7 +29,6 @@ type PromptManagerProps = {
   onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
   onNotesChange: (fileId: string, notes: string) => void;
-  onConfirmReview: (fileId: string) => void;
   onCopy: (label: string) => void;
 };
 
@@ -51,7 +50,6 @@ export const PromptManager = ({
   onReject,
   onDelete,
   onNotesChange,
-  onConfirmReview,
   onCopy,
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
@@ -156,7 +154,6 @@ export const PromptManager = ({
                 onReject={onReject}
                 onDelete={onDelete}
                 onNotesChange={onNotesChange}
-                onConfirmReview={onConfirmReview}
                 onCopy={onCopy}
               />
             ))}

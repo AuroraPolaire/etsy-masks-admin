@@ -86,7 +86,6 @@ export const App = () => {
     rejectFile,
     deleteFile,
     updateNotes,
-    confirmReview,
     clearAllMappings,
     clearSubjectMapping,
     clearFiles,
@@ -400,7 +399,6 @@ export const App = () => {
         onRejectFile={rejectFile}
         onDeleteFile={handleDeleteFile}
         onNotesChange={updateNotes}
-        onConfirmReview={confirmReview}
         onCopyPrompt={(message) => addActivity('notes-updated', 'success', message)}
         onFilesSelected={handleFilesSelected}
         onExportArchive={exportArchive}

@@ -17,7 +17,6 @@ type FilePreviewCardProps = {
   onDelete: (fileId: string) => void;
   onMap: (fileId: string, subjectId: string | undefined) => void;
   onNotesChange: (fileId: string, notes: string) => void;
-  onConfirmReview: (fileId: string) => void;
 };
 
 const reviewTone = {
@@ -34,7 +33,6 @@ export const FilePreviewCard = ({
   onDelete,
   onMap,
   onNotesChange,
-  onConfirmReview,
 }: FilePreviewCardProps) => {
   const image = isImageFile(file);
   const isLowResolution =
@@ -130,7 +128,6 @@ export const FilePreviewCard = ({
               <Button variant="danger" onClick={() => onReject(file.id)}>
                 Reject
               </Button>
-              <Button onClick={() => onConfirmReview(file.id)}>Mark reviewed</Button>
               <Button variant="ghost" onClick={() => onDelete(file.id)}>
                 Delete
               </Button>

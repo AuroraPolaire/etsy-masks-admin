@@ -15,7 +15,6 @@ type FileReviewGridProps = {
   onDelete: (fileId: string) => void;
   onMap: (fileId: string, subjectId: string | undefined) => void;
   onNotesChange: (fileId: string, notes: string) => void;
-  onConfirmReview: (fileId: string) => void;
 };
 
 export const FileReviewGrid = ({
@@ -26,7 +25,6 @@ export const FileReviewGrid = ({
   onDelete,
   onMap,
   onNotesChange,
-  onConfirmReview,
 }: FileReviewGridProps) => {
   const sourceFiles = getSourceFiles(files);
   const sourceTotal = sourceFiles.reduce((total, file) => total + file.size, 0);
@@ -54,8 +52,8 @@ export const FileReviewGrid = ({
         ) : null}
         {files.length === 0 ? (
           <EmptyState>
-            Upload generated masks to start reviewing. Filename matches are assigned automatically,
-            and mismatches can be fixed with the topic dropdown.
+            Upload generated masks to start reviewing. Images are assigned to topics when possible,
+            and assignments can be fixed with the topic dropdown.
           </EmptyState>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -69,7 +67,6 @@ export const FileReviewGrid = ({
                 onDelete={onDelete}
                 onMap={onMap}
                 onNotesChange={onNotesChange}
-                onConfirmReview={onConfirmReview}
               />
             ))}
           </div>

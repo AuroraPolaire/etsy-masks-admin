@@ -33,13 +33,14 @@ describe('PromptManager', () => {
         onReject={vi.fn()}
         onDelete={vi.fn()}
         onNotesChange={vi.fn()}
-        onConfirmReview={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
 
     expect(screen.getByText('lion.png')).toBeInTheDocument();
     expect(screen.getByText(/white background/i)).toBeInTheDocument();
+    expect(screen.getByText('Needs image')).toBeInTheDocument();
+    expect(screen.queryByText(/filename match/i)).not.toBeInTheDocument();
   });
 
   it('hides topic editing controls when topic editing is disabled', () => {
@@ -59,7 +60,6 @@ describe('PromptManager', () => {
         onReject={vi.fn()}
         onDelete={vi.fn()}
         onNotesChange={vi.fn()}
-        onConfirmReview={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
@@ -101,7 +101,6 @@ describe('PromptManager', () => {
         onReject={vi.fn()}
         onDelete={vi.fn()}
         onNotesChange={vi.fn()}
-        onConfirmReview={vi.fn()}
         onCopy={vi.fn()}
       />,
     );

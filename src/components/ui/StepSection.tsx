@@ -2,7 +2,6 @@ import { Lock, Pencil } from 'lucide-react';
 
 import { Badge } from './Badge';
 import { Button } from './Button';
-import { IconButton } from './IconButton';
 
 import type { ReactNode } from 'react';
 
@@ -51,8 +50,12 @@ export const StepSection = ({
 
   if (state === 'complete') {
     return (
-      <section className="rounded-panel border border-surface-outline bg-surface-panel p-4 shadow-panel">
-        <div className="flex items-start gap-3">
+      <section>
+        <button
+          type="button"
+          className="flex w-full items-start gap-3 rounded-panel border border-surface-outline bg-surface-panel p-4 text-left shadow-panel transition hover:border-brand-border hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/25 focus:ring-offset-2 focus:ring-offset-surface-panel"
+          onClick={onActivate}
+        >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-badge border border-feedback-success-border bg-feedback-success-bg text-sm font-bold text-feedback-success-fg">
             {number}
           </span>
@@ -63,16 +66,20 @@ export const StepSection = ({
             </div>
             <p className="mt-1 text-sm text-ink-muted">{summary}</p>
           </div>
-          <IconButton icon={Pencil} label={`Edit ${title}`} variant="ghost" onClick={onActivate} />
-        </div>
+          <Pencil aria-hidden="true" className="ml-auto shrink-0 text-ink-muted" size={18} />
+        </button>
       </section>
     );
   }
 
   if (state === 'available') {
     return (
-      <section className="rounded-panel border border-surface-outline bg-surface-panel p-4 shadow-panel">
-        <div className="flex items-start gap-3">
+      <section>
+        <button
+          type="button"
+          className="flex w-full items-start gap-3 rounded-panel border border-surface-outline bg-surface-panel p-4 text-left shadow-panel transition hover:border-brand-border hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/25 focus:ring-offset-2 focus:ring-offset-surface-panel"
+          onClick={onActivate}
+        >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-badge border border-brand-border bg-brand-subtle text-sm font-bold text-brand-strong">
             {number}
           </span>
@@ -83,8 +90,10 @@ export const StepSection = ({
             </div>
             <p className="mt-1 text-sm text-ink-muted">{summary}</p>
           </div>
-          <Button onClick={onActivate}>Open</Button>
-        </div>
+          <span className="pointer-events-none ml-auto inline-flex min-h-10 shrink-0 items-center justify-center rounded-control border border-surface-outline bg-surface-raised px-3 py-2 text-center text-sm font-semibold text-ink-strong shadow-sm">
+            Open
+          </span>
+        </button>
       </section>
     );
   }

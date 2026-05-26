@@ -49,7 +49,6 @@ type HomeWorkflowViewProps = {
   onRejectFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onNotesChange: (fileId: string, notes: string) => void;
-  onConfirmReview: (fileId: string) => void;
   onCopyPrompt: (message: string) => void;
   onFilesSelected: (files: File[]) => void;
   onExportArchive: () => void;
@@ -82,7 +81,6 @@ export const HomeWorkflowView = ({
   onRejectFile,
   onDeleteFile,
   onNotesChange,
-  onConfirmReview,
   onCopyPrompt,
   onFilesSelected,
   onExportArchive,
@@ -177,7 +175,6 @@ export const HomeWorkflowView = ({
               onReject={onRejectFile}
               onDelete={onDeleteFile}
               onNotesChange={onNotesChange}
-              onConfirmReview={onConfirmReview}
               onCopy={onCopyPrompt}
             />
             <FileUploader onFilesSelected={onFilesSelected} disabled={busyAction !== null} />
