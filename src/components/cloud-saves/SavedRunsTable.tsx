@@ -75,7 +75,8 @@ export const SavedRunsTable = ({
         <div>
           <h2 className="text-base font-bold text-ink-strong">Saved runs</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Search by idea, click a row for details, then restore or delete the run you need.
+            Search by idea, click a row to expand or collapse details, then use Restore only when
+            you want to load a run.
           </p>
         </div>
         <div className="w-full lg:max-w-sm">
@@ -113,6 +114,7 @@ export const SavedRunsTable = ({
                 const isSelected = run.id === selectedRunId;
                 const isSnapshotReady = snapshot?.runId === run.id && Boolean(snapshot.project);
                 const detailsId = `saved-run-details-${run.id}`;
+                const toggleDetails = () => onRunSelected(isSelected ? '' : run.id);
 
                 return (
                   <Fragment key={run.id}>
@@ -120,7 +122,7 @@ export const SavedRunsTable = ({
                       className={`cursor-pointer border-b border-surface-divider transition hover:bg-surface-muted focus:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/20 ${
                         isSelected ? 'bg-brand-subtle' : ''
                       }`}
-                      onClick={() => onRunSelected(run.id)}
+                      onClick={toggleDetails}
                     >
                       <td className="max-w-80 py-3 pr-3">
                         <button
@@ -130,7 +132,7 @@ export const SavedRunsTable = ({
                           className="flex w-full min-w-0 items-start gap-2 rounded-control text-left focus:outline-none focus:ring-2 focus:ring-brand/20"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onRunSelected(run.id);
+                            toggleDetails();
                           }}
                         >
                           <ChevronDown

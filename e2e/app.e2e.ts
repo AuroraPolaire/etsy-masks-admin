@@ -625,7 +625,7 @@ test.describe('backend saves workflow', () => {
     expect(backend.getDeleteFileCount()).toBe(0);
   });
 
-  test('expands rows directly and deletes individual saved runs', async ({ page }, testInfo) => {
+  test('expands, collapses, and deletes individual saved runs', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium', 'Desktop-only table interaction smoke.');
 
     await mockSavedRunsBackend(page);
@@ -643,6 +643,13 @@ test.describe('backend saves workflow', () => {
       .first()
       .click();
     await expect(page.getByText('Ocean Masks, 2 Kids Paper Masks')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Restore selected run?' })).toHaveCount(0);
+
+    await page
+      .getByRole('button', { name: /Ocean birthday masks/ })
+      .first()
+      .click();
+    await expect(page.getByText('Ocean Masks, 2 Kids Paper Masks')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Delete saved run Ocean birthday masks' }).click();
     const dialog = page.getByRole('dialog', { name: 'Delete saved run?' });
