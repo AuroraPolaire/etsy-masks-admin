@@ -99,6 +99,15 @@ const fileRowToRecord = (row: FileRow): Record<string, unknown> => {
     ...(row.mapped_subject_id ? { mappedSubjectId: row.mapped_subject_id } : {}),
     ...(row.source_file_id ? { sourceFileId: row.source_file_id } : {}),
     ...(imageMetadata ? { imageMetadata } : {}),
+    ...(row.thumbnail_r2_key && row.thumbnail_size !== null && row.thumbnail_type
+      ? {
+          thumbnail: {
+            size: row.thumbnail_size,
+            type: row.thumbnail_type,
+            updatedAt: row.thumbnail_updated_at ?? row.updated_at,
+          },
+        }
+      : {}),
   };
 };
 
@@ -400,6 +409,11 @@ export const putRunFile = async (
   if (fileValue.size > getMaxFileBytes(env)) {
     throw new ApiError(413, 'File is larger than the configured backend limit.');
   }
+  const thumbnailValue: unknown = formData.get('thumbnail');
+  if (thumbnailValue !== null && !isBlobLike(thumbnailValue)) {
+    throw new ApiError(400, 'thumbnail form field must be a file.');
+  }
+  const thumbnailBlob = isBlobLike(thumbnailValue) ? thumbnailValue : null;
 
   const run = await env.DB.prepare('SELECT id, project_id FROM project_runs WHERE id = ?')
     .bind(runId)
@@ -415,20 +429,31 @@ export const putRunFile = async (
 
   const timestamp = nowIso();
   const r2Key = `${runId}/${metadata.id}/${sanitizeFileName(metadata.name)}`;
+  const thumbnailR2Key = thumbnailBlob
+    ? `${runId}/${metadata.id}/thumbnail-${sanitizeFileName(metadata.name)}.webp`
+    : null;
 
   await env.FILES.put(r2Key, fileValue.stream(), {
     httpMetadata: {
       contentType: fileValue.type || metadata.type || 'application/octet-stream',
     },
   });
+  if (thumbnailBlob && thumbnailR2Key) {
+    await env.FILES.put(thumbnailR2Key, thumbnailBlob.stream(), {
+      httpMetadata: {
+        contentType: thumbnailBlob.type || 'image/webp',
+      },
+    });
+  }
 
   await env.DB.prepare(
     `INSERT INTO file_backups (
        id, run_id, project_id, r2_key, name, original_name, size, type, kind, added_at,
        review_state, review_notes, mapped_subject_id, asset_variant, source_file_id,
-       explicitly_confirmed, image_width, image_height, updated_at
+       explicitly_confirmed, image_width, image_height, thumbnail_r2_key, thumbnail_size,
+       thumbnail_type, thumbnail_updated_at, updated_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(run_id, id) DO UPDATE SET
        project_id = excluded.project_id,
        r2_key = excluded.r2_key,
@@ -446,6 +471,10 @@ export const putRunFile = async (
        explicitly_confirmed = excluded.explicitly_confirmed,
        image_width = excluded.image_width,
        image_height = excluded.image_height,
+       thumbnail_r2_key = excluded.thumbnail_r2_key,
+       thumbnail_size = excluded.thumbnail_size,
+       thumbnail_type = excluded.thumbnail_type,
+       thumbnail_updated_at = excluded.thumbnail_updated_at,
        updated_at = excluded.updated_at`,
   )
     .bind(
@@ -467,6 +496,10 @@ export const putRunFile = async (
       metadata.explicitlyConfirmed ? 1 : 0,
       metadata.imageMetadata?.width ?? null,
       metadata.imageMetadata?.height ?? null,
+      thumbnailR2Key,
+      thumbnailBlob?.size ?? null,
+      thumbnailBlob?.type ?? null,
+      thumbnailBlob ? timestamp : null,
       timestamp,
     )
     .run();
@@ -480,12 +513,12 @@ export const getRunFile = async (
   env: Env,
   runId: string,
   fileId: string,
-): Promise<{ object: R2ObjectBody; row: Pick<FileRow, 'name' | 'type'> }> => {
+): Promise<{ object: R2ObjectBody; row: Pick<FileRow, 'name' | 'type' | 'size'> }> => {
   const row = await env.DB.prepare(
-    'SELECT r2_key, type, name FROM file_backups WHERE run_id = ? AND id = ?',
+    'SELECT r2_key, type, name, size FROM file_backups WHERE run_id = ? AND id = ?',
   )
     .bind(runId, fileId)
-    .first<Pick<FileRow, 'r2_key' | 'type' | 'name'>>();
+    .first<Pick<FileRow, 'r2_key' | 'type' | 'name' | 'size'>>();
 
   if (!row) {
     throw new ApiError(404, 'File metadata was not found.');
@@ -499,16 +532,51 @@ export const getRunFile = async (
   return { object, row };
 };
 
-export const deleteRunFile = async (env: Env, runId: string, fileId: string): Promise<void> => {
-  const row = await env.DB.prepare('SELECT r2_key FROM file_backups WHERE run_id = ? AND id = ?')
+export const getRunFileThumbnail = async (
+  env: Env,
+  runId: string,
+  fileId: string,
+): Promise<{
+  object: R2ObjectBody;
+  row: { name: string; type: string; size: number };
+}> => {
+  const row = await env.DB.prepare(
+    'SELECT thumbnail_r2_key, thumbnail_type, thumbnail_size, name FROM file_backups WHERE run_id = ? AND id = ?',
+  )
     .bind(runId, fileId)
-    .first<Pick<FileRow, 'r2_key'>>();
+    .first<Pick<FileRow, 'thumbnail_r2_key' | 'thumbnail_type' | 'thumbnail_size' | 'name'>>();
+
+  if (!row?.thumbnail_r2_key || row.thumbnail_size === null) {
+    throw new ApiError(404, 'File thumbnail was not found.');
+  }
+
+  const object = await env.FILES.get(row.thumbnail_r2_key);
+  if (!object) {
+    throw new ApiError(404, 'File thumbnail object was not found.');
+  }
+
+  return {
+    object,
+    row: {
+      name: row.name,
+      type: row.thumbnail_type ?? 'image/webp',
+      size: row.thumbnail_size,
+    },
+  };
+};
+
+export const deleteRunFile = async (env: Env, runId: string, fileId: string): Promise<void> => {
+  const row = await env.DB.prepare(
+    'SELECT r2_key, thumbnail_r2_key FROM file_backups WHERE run_id = ? AND id = ?',
+  )
+    .bind(runId, fileId)
+    .first<Pick<FileRow, 'r2_key' | 'thumbnail_r2_key'>>();
 
   if (!row) {
     return;
   }
 
-  await deleteR2Keys(env, [row.r2_key]);
+  await deleteR2Keys(env, [row.r2_key, row.thumbnail_r2_key].filter(Boolean) as string[]);
   await env.DB.prepare('DELETE FROM file_backups WHERE run_id = ? AND id = ?')
     .bind(runId, fileId)
     .run();
@@ -518,12 +586,16 @@ export const deleteRunFile = async (env: Env, runId: string, fileId: string): Pr
 };
 
 export const deleteRun = async (env: Env, runId: string): Promise<void> => {
-  const fileRows = await env.DB.prepare('SELECT r2_key FROM file_backups WHERE run_id = ?')
+  const fileRows = await env.DB.prepare(
+    'SELECT r2_key, thumbnail_r2_key FROM file_backups WHERE run_id = ?',
+  )
     .bind(runId)
-    .all<Pick<FileRow, 'r2_key'>>();
+    .all<Pick<FileRow, 'r2_key' | 'thumbnail_r2_key'>>();
   await deleteR2Keys(
     env,
-    (fileRows.results ?? []).map((row) => row.r2_key),
+    (fileRows.results ?? []).flatMap((row) =>
+      [row.r2_key, row.thumbnail_r2_key].filter(Boolean),
+    ) as string[],
   );
   await env.DB.prepare('DELETE FROM file_backups WHERE run_id = ?').bind(runId).run();
   await env.DB.prepare('DELETE FROM project_runs WHERE id = ?').bind(runId).run();
@@ -531,12 +603,14 @@ export const deleteRun = async (env: Env, runId: string): Promise<void> => {
 };
 
 export const deleteAllRuns = async (env: Env): Promise<void> => {
-  const fileRows = await env.DB.prepare('SELECT r2_key FROM file_backups').all<
-    Pick<FileRow, 'r2_key'>
+  const fileRows = await env.DB.prepare('SELECT r2_key, thumbnail_r2_key FROM file_backups').all<
+    Pick<FileRow, 'r2_key' | 'thumbnail_r2_key'>
   >();
   await deleteR2Keys(
     env,
-    (fileRows.results ?? []).map((row) => row.r2_key),
+    (fileRows.results ?? []).flatMap((row) =>
+      [row.r2_key, row.thumbnail_r2_key].filter(Boolean),
+    ) as string[],
   );
   await env.DB.prepare('DELETE FROM file_backups').run();
   await env.DB.prepare('DELETE FROM project_runs').run();

@@ -352,6 +352,7 @@ const mockRefreshDraftBackend = async (page: Page) => {
     addedAt: '2026-05-26T09:35:00.000Z',
     reviewState: 'approved',
     reviewNotes: 'Approved before refresh.',
+    mappedSubjectId: 'moon',
     assetVariant: 'color',
     explicitlyConfirmed: true,
     imageMetadata: { width: 1, height: 1 },
@@ -458,6 +459,155 @@ const mockRefreshDraftBackend = async (page: Page) => {
     getCreateRunCount: () => createRunCount,
     getDeleteFileCount: () => deleteFileCount,
     getDownloadFileCount: () => downloadFileCount,
+  };
+};
+
+const mockProgressiveRestoreBackend = async (page: Page) => {
+  const project = {
+    ...createRefreshDraftProject(),
+    id: 'project-progressive-1',
+    settings: {
+      ...createRefreshDraftProject().settings,
+      title: 'Progressive Masks, 12 Kids Paper Masks',
+      theme: 'Progressive masks',
+    },
+    subjects: Array.from({ length: 12 }, (_, index) => ({
+      id: `subject-${index + 1}`,
+      name: `Mask ${index + 1}`,
+    })),
+  };
+  const run = {
+    id: 'run-progressive-001',
+    projectId: project.id,
+    idea: 'Progressive masks',
+    status: 'draft',
+    createdAt: '2026-05-26T09:00:00.000Z',
+    updatedAt: '2026-05-26T09:40:00.000Z',
+    fileCount: project.subjects.length,
+    totalSizeBytes: onePixelPng.byteLength * project.subjects.length,
+  };
+  const files = project.subjects.map((subject, index) => ({
+    id: `file-${index + 1}`,
+    runId: run.id,
+    projectId: project.id,
+    name: `mask-${index + 1}.png`,
+    originalName: `mask-${index + 1}.png`,
+    size: onePixelPng.byteLength,
+    type: 'image/png',
+    kind: 'uploaded',
+    addedAt: `2026-05-26T09:35:${String(index).padStart(2, '0')}.000Z`,
+    reviewState: 'approved',
+    reviewNotes: 'Approved before restore.',
+    mappedSubjectId: subject.id,
+    assetVariant: 'color',
+    explicitlyConfirmed: true,
+    imageMetadata: { width: 1, height: 1 },
+    updatedAt: `2026-05-26T09:40:${String(index).padStart(2, '0')}.000Z`,
+  }));
+  let downloadStartedCount = 0;
+  let downloadCompletedCount = 0;
+  let updateRunCount = 0;
+  let deleteFileCount = 0;
+
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === '/api/health') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          version: 'test',
+          storage: { d1: true, r2: true },
+          auth: { mode: 'access', configured: true },
+          openaiProxyReady: true,
+          maxFileBytes: 52_428_800,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ runs: [run] }),
+      });
+      return;
+    }
+
+    if (url.pathname === `/api/runs/${run.id}` && method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          runId: run.id,
+          idea: run.idea,
+          status: run.status,
+          project,
+          updatedAt: run.updatedAt,
+          files,
+          events: [],
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === `/api/runs/${run.id}` && method === 'PUT') {
+      updateRunCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, run }),
+      });
+      return;
+    }
+
+    const fileId = /^\/api\/runs\/run-progressive-001\/files\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (fileId && method === 'GET') {
+      downloadStartedCount += 1;
+      if (fileId !== 'file-1') {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      }
+      downloadCompletedCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        headers: {
+          'Content-Length': `${onePixelPng.byteLength}`,
+          ETag: '"one-pixel"',
+        },
+        body: onePixelPng,
+      });
+      return;
+    }
+
+    if (fileId && method === 'DELETE') {
+      deleteFileCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
+  return {
+    project,
+    run,
+    getDownloadStartedCount: () => downloadStartedCount,
+    getDownloadCompletedCount: () => downloadCompletedCount,
+    getUpdateRunCount: () => updateRunCount,
+    getDeleteFileCount: () => deleteFileCount,
   };
 };
 
@@ -622,6 +772,61 @@ test.describe('backend saves workflow', () => {
 
     expect(backend.getDownloadFileCount()).toBe(1);
     expect(backend.getCreateRunCount()).toBe(0);
+    expect(backend.getDeleteFileCount()).toBe(0);
+  });
+
+  test('shows restored images progressively before all backend files finish', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'Desktop-only restore timing smoke.');
+
+    const backend = await mockProgressiveRestoreBackend(page);
+
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+    });
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await expect(page.getByText('Progressive masks').first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Restore' }).click();
+    await page.getByRole('button', { name: 'Restore run' }).click();
+    await expect(page.getByText(/Downloading \d+\/12/).first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Home' }).click();
+    await expect(page.getByLabel('Bundle theme')).toHaveValue('Progressive masks');
+    await page.getByRole('button', { name: 'Next: topics and images' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Open full-size color mask preview for Mask 1' }),
+    ).toBeVisible();
+    expect(backend.getDownloadCompletedCount()).toBeLessThan(12);
+    await expect(page.getByText(/Downloading \d+\/12/).first()).toBeVisible();
+    expect(backend.getDeleteFileCount()).toBe(0);
+  });
+
+  test('auto-restores saved images without deleting backend files', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'Desktop-only restore smoke.');
+
+    const backend = await mockProgressiveRestoreBackend(page);
+
+    await page.addInitScript(
+      ({ project, runId }) => {
+        window.localStorage.clear();
+        window.localStorage.setItem('etsy-masks-admin/project-v1', JSON.stringify(project));
+        window.localStorage.setItem(
+          'etsy-masks-admin/active-backend-draft-run-id-by-project-v1',
+          JSON.stringify({ [project.id]: runId }),
+        );
+      },
+      { project: backend.project, runId: backend.run.id },
+    );
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(page.getByLabel('Bundle theme')).toHaveValue('Progressive masks');
+    await expect.poll(() => backend.getDownloadCompletedCount(), { timeout: 12_000 }).toBe(12);
     expect(backend.getDeleteFileCount()).toBe(0);
   });
 

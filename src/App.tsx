@@ -133,6 +133,7 @@ export const App = () => {
     files,
     replaceProject,
     replaceFiles,
+    appendFiles,
     addActivity,
     runBusyAction,
     confirmAction: requestConfirmation,

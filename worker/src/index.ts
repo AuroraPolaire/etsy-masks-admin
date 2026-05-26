@@ -22,6 +22,7 @@ import {
   deleteRun,
   deleteRunFile,
   getRunFile,
+  getRunFileThumbnail,
   getRunSnapshot,
   listRuns,
   putRunFile,
@@ -103,6 +104,28 @@ const getRun = async (request: Request, env: Env, runId?: string): Promise<Respo
   });
 };
 
+export const createRunFileHeaders = ({
+  request,
+  object,
+  row,
+}: {
+  request: Request;
+  object: Pick<R2ObjectBody, 'httpEtag' | 'httpMetadata' | 'writeHttpMetadata'>;
+  row: { name: string; type: string; size: number };
+}): Headers => {
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('Content-Type', object.httpMetadata?.contentType ?? row.type);
+  headers.set('Content-Length', `${row.size}`);
+  headers.set('ETag', object.httpEtag);
+  headers.set('Content-Disposition', `attachment; filename="${row.name.replace(/"/g, '')}"`);
+  if (new URL(request.url).searchParams.has('v')) {
+    headers.set('Cache-Control', 'private, max-age=3600');
+  }
+
+  return headers;
+};
+
 const getFile = async (
   request: Request,
   env: Env,
@@ -113,10 +136,24 @@ const getFile = async (
 
   return withCors(
     new Response(object.body, {
-      headers: {
-        'Content-Type': object.httpMetadata?.contentType ?? row.type,
-        'Content-Disposition': `attachment; filename="${row.name.replace(/"/g, '')}"`,
-      },
+      headers: createRunFileHeaders({ request, object, row }),
+    }),
+    request,
+    env,
+  );
+};
+
+const getFileThumbnail = async (
+  request: Request,
+  env: Env,
+  runId: string,
+  fileId: string,
+): Promise<Response> => {
+  const { object, row } = await getRunFileThumbnail(env, runId, fileId);
+
+  return withCors(
+    new Response(object.body, {
+      headers: createRunFileHeaders({ request, object, row }),
     }),
     request,
     env,
@@ -158,6 +195,16 @@ const routeAuthenticatedRequest = async (
   if (runId && fileId && parts.length === 5 && request.method === 'PUT') {
     await putRunFile(env, runId, fileId, await request.formData());
     return jsonResponse(request, env, { ok: true, runId, fileId });
+  }
+
+  if (
+    runId &&
+    fileId &&
+    parts[5] === 'thumbnail' &&
+    parts.length === 6 &&
+    request.method === 'GET'
+  ) {
+    return getFileThumbnail(request, env, runId, fileId);
   }
 
   if (runId && fileId && parts.length === 5 && request.method === 'GET') {

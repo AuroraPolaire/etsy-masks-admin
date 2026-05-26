@@ -13,6 +13,10 @@ import {
 } from '../lib/backendDraftSession';
 import { getProjectIdeaLabel } from '../lib/backendIdea';
 import {
+  getBackendRestoreNowMs,
+  logBackendRestoreInstrumentation,
+} from '../lib/backendRestoreInstrumentation';
+import {
   downloadBackendRunFiles,
   findReusableBackendDraftRun,
   getErrorMessage,
@@ -51,6 +55,7 @@ type UseBackendCacheParams = {
   files: ManagedFile[];
   replaceProject: (project: Project) => void;
   replaceFiles: (files: ManagedFile[], activityMessage?: string) => void;
+  appendFiles: (files: ManagedFile[]) => void;
   addActivity: AddActivity;
   runBusyAction: RunBusyAction;
   confirmAction: ConfirmAction;
@@ -61,6 +66,7 @@ export const useBackendCache = ({
   files,
   replaceProject,
   replaceFiles,
+  appendFiles,
   addActivity,
   runBusyAction,
   confirmAction,
@@ -254,6 +260,7 @@ export const useBackendCache = ({
     addActivity,
     replaceProject,
     replaceFiles,
+    appendFiles,
     setActiveDraftRun,
     setSaveIdea,
     setSelectedRunId,
@@ -338,9 +345,14 @@ export const useBackendCache = ({
 
         void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
           try {
+            const restoreStartedAt = getBackendRestoreNowMs();
+            let firstFileAppendedMs: number | null = null;
+            setDraftRestoreStatus('restoring');
             setSelectedRunId(targetRunId);
             setProgress('Reading selected run metadata...');
+            const metadataStartedAt = getBackendRestoreNowMs();
             const nextSnapshot = await client.getRun(targetRunId, signal);
+            const metadataFetchMs = getBackendRestoreNowMs() - metadataStartedAt;
             setSnapshot(nextSnapshot);
 
             if (!nextSnapshot.project) {
@@ -348,46 +360,76 @@ export const useBackendCache = ({
               return;
             }
 
-            const restoredFiles = await downloadBackendRunFiles(client, targetRunId, nextSnapshot, {
+            const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
+
+            setActiveDraftRun(targetRunId, nextSnapshot.project.id);
+            setSaveIdea(restoredIdea);
+            replaceProject(nextSnapshot.project);
+            replaceFiles([]);
+
+            const result = await downloadBackendRunFiles(client, targetRunId, nextSnapshot, {
               signal,
               setProgress,
+              onFileRestored: (file) => {
+                firstFileAppendedMs ??= getBackendRestoreNowMs() - restoreStartedAt;
+                appendFiles([file]);
+              },
+            });
+            logBackendRestoreInstrumentation({
+              label: 'manual',
+              metadataFetchMs,
+              firstFileAppendedMs,
+              totalRestoreMs: getBackendRestoreNowMs() - restoreStartedAt,
+              result,
             });
 
-            replaceProject(nextSnapshot.project);
-            setActiveDraftRun(targetRunId, nextSnapshot.project.id);
-            replaceFiles(
-              restoredFiles,
-              `Restored ${restoredFiles.length} file(s) from Cloudflare.`,
-            );
-            const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
-            setSaveIdea(restoredIdea);
+            if (result.cancelled || result.failedFiles.length > 0) {
+              const message = result.cancelled
+                ? 'Cloud restore was cancelled. Autosave is paused to protect cloud files.'
+                : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
+              markDraftRestoreFailed(message, targetRunId);
+              setDraftRestoreStatus('failed');
+              addActivity(
+                result.cancelled ? 'cloud-synced' : 'error',
+                result.cancelled ? 'warning' : 'error',
+                message,
+              );
+              return;
+            }
+
             await client.updateRun(targetRunId, nextSnapshot.project, restoredIdea, signal);
-            markDraftRestored(nextSnapshot.project, restoredFiles, restoredIdea, targetRunId);
+            markDraftRestored(nextSnapshot.project, result.files, restoredIdea, targetRunId);
+            setDraftRestoreStatus('complete');
             addActivity(
               'cloud-synced',
               'success',
-              `Restored "${nextSnapshot.idea ?? 'saved run'}".`,
+              `Restored ${result.files.length} file(s) from "${nextSnapshot.idea ?? 'saved run'}".`,
             );
           } catch (error) {
             if (isAbortError(error)) {
+              setDraftRestoreStatus('complete');
               addActivity('cloud-synced', 'warning', 'Cloud restore was cancelled.');
               return;
             }
 
-            addActivity(
-              'error',
-              'error',
-              getErrorMessage(error, 'Could not restore the selected Cloudflare run.'),
+            const message = getErrorMessage(
+              error,
+              'Could not restore the selected Cloudflare run.',
             );
+            markDraftRestoreFailed(message, targetRunId);
+            setDraftRestoreStatus('failed');
+            addActivity('error', 'error', message);
           }
         });
       })();
     },
     [
       addActivity,
+      appendFiles,
       client,
       confirmAction,
       markDraftRestored,
+      markDraftRestoreFailed,
       replaceFiles,
       replaceProject,
       runBusyAction,

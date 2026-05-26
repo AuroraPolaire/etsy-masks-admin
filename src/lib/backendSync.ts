@@ -4,6 +4,8 @@ import type { createBackendClient } from './backendClient';
 import type {
   BackendHealth,
   BackendProjectSnapshot,
+  BackendRestoreProgress,
+  BackendRestoreResult,
   BackendRunSummary,
   BusyActionContext,
   BackendFileRecord,
@@ -12,6 +14,8 @@ import type {
 } from '../types';
 
 type BackendClient = ReturnType<typeof createBackendClient>;
+
+const DEFAULT_RESTORE_CONCURRENCY = 4;
 
 export type BackendRunCacheState = {
   health: BackendHealth;
@@ -187,23 +191,205 @@ export const uploadBackendRunFiles = async (
   });
 };
 
+const formatBackendBytes = (bytes: number): string => {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const getNowMs = (): number =>
+  typeof performance === 'object' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+
+const errorMessageFromUnknown = (error: unknown): string =>
+  error instanceof Error ? error.message : 'Could not download file.';
+
+const clampRestoreConcurrency = (value: number | undefined, totalFiles: number): number => {
+  const requestedConcurrency =
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.max(1, Math.floor(value))
+      : DEFAULT_RESTORE_CONCURRENCY;
+
+  return Math.max(1, Math.min(requestedConcurrency, Math.max(totalFiles, 1)));
+};
+
+const logRestoreSummary = (result: BackendRestoreResult, totalDurationMs: number): void => {
+  if (!import.meta.env.DEV || import.meta.env.MODE === 'test') {
+    return;
+  }
+
+  const downloadedBytes = result.files.reduce((total, file) => total + file.size, 0);
+  console.info('[backend restore]', {
+    files: result.files.length,
+    failedFiles: result.failedFiles.length,
+    cancelled: result.cancelled,
+    downloadedBytes,
+    totalDurationMs: Math.round(totalDurationMs),
+    slowestFiles: [...result.timings]
+      .sort((left, right) => right.durationMs - left.durationMs)
+      .slice(0, 5)
+      .map((timing) => ({
+        name: timing.name,
+        bytes: timing.bytes,
+        durationMs: Math.round(timing.durationMs),
+        blobConstructionMs: Math.round(timing.blobConstructionMs),
+      })),
+  });
+};
+
+type DownloadBackendRunFilesOptions = {
+  signal: AbortSignal;
+  setProgress?: (message: string | null) => void;
+  concurrency?: number;
+  onProgress?: (progress: BackendRestoreProgress) => void;
+  onFileRestored?: (file: ManagedFile, index: number) => void;
+  onFileFailed?: (record: BackendFileRecord, error: Error) => void;
+};
+
 export const downloadBackendRunFiles = async (
   client: BackendClient,
   runId: string,
   snapshot: BackendProjectSnapshot,
-  { signal, setProgress }: BusyActionContext,
-): Promise<ManagedFile[]> => {
-  const restoredFiles: ManagedFile[] = [];
+  {
+    signal,
+    setProgress,
+    concurrency: concurrencyOption,
+    onProgress,
+    onFileRestored,
+    onFileFailed,
+  }: DownloadBackendRunFilesOptions,
+): Promise<BackendRestoreResult> => {
+  const startedAt = getNowMs();
+  const restoredFilesByIndex: Array<ManagedFile | undefined> = Array.from({
+    length: snapshot.files.length,
+  });
+  const failedFiles: BackendRestoreResult['failedFiles'] = [];
+  const timings: BackendRestoreResult['timings'] = [];
+  const totalFiles = snapshot.files.length;
+  const totalBytes = snapshot.files.reduce((total, file) => total + file.size, 0);
+  const concurrency = clampRestoreConcurrency(concurrencyOption, totalFiles);
+  let nextIndex = 0;
+  let completedFiles = 0;
+  let failedFileCount = 0;
+  let downloadedBytes = 0;
+  let cancelled = false;
 
-  for (const [index, file] of snapshot.files.entries()) {
-    if (signal.aborted) {
-      throw new DOMException('Backend restore cancelled', 'AbortError');
+  const emitProgress = (phase: BackendRestoreProgress['phase'], currentFileName = '') => {
+    const progress: BackendRestoreProgress = {
+      totalFiles,
+      completedFiles,
+      failedFiles: failedFileCount,
+      downloadedBytes,
+      totalBytes,
+      currentFileName,
+      phase,
+    };
+
+    onProgress?.(progress);
+
+    if (phase === 'files') {
+      setProgress?.(
+        `Downloading ${completedFiles}/${totalFiles}, ${formatBackendBytes(
+          downloadedBytes,
+        )} of ${formatBackendBytes(totalBytes)}${currentFileName ? `: ${currentFileName}` : ''}`,
+      );
+      return;
     }
 
-    setProgress(`Downloading ${index + 1}/${snapshot.files.length}: ${file.name}`);
-    const blob = await client.downloadFile(runId, file.id, signal);
-    restoredFiles.push(createManagedFileFromBackendRecord(file, blob));
+    if (phase === 'complete') {
+      setProgress?.(
+        `Downloaded ${completedFiles}/${totalFiles}, ${formatBackendBytes(downloadedBytes)}.`,
+      );
+      return;
+    }
+
+    if (phase === 'failed') {
+      setProgress?.(
+        `Downloaded ${completedFiles}/${totalFiles}, ${failedFileCount} failed, ${formatBackendBytes(
+          downloadedBytes,
+        )} restored.`,
+      );
+    }
+  };
+
+  emitProgress(totalFiles === 0 ? 'complete' : 'files');
+
+  const downloadFile = async (file: BackendFileRecord, index: number) => {
+    if (signal.aborted) {
+      cancelled = true;
+      return;
+    }
+
+    const fileStartedAt = getNowMs();
+    try {
+      emitProgress('files', file.name);
+      const blob = await client.downloadFile(runId, file, signal);
+      const blobDownloadedAt = getNowMs();
+      const restoredFile = createManagedFileFromBackendRecord(file, blob);
+      const fileFinishedAt = getNowMs();
+
+      restoredFilesByIndex[index] = restoredFile;
+      downloadedBytes += restoredFile.size;
+      completedFiles += 1;
+      timings.push({
+        fileId: file.id,
+        name: file.name,
+        bytes: restoredFile.size,
+        durationMs: fileFinishedAt - fileStartedAt,
+        blobConstructionMs: fileFinishedAt - blobDownloadedAt,
+      });
+      onFileRestored?.(restoredFile, index);
+      emitProgress('files', file.name);
+    } catch (error) {
+      if (isAbortError(error)) {
+        cancelled = true;
+      } else {
+        const nextError =
+          error instanceof Error ? error : new Error(errorMessageFromUnknown(error));
+        failedFileCount += 1;
+        failedFiles.push({
+          file,
+          message: nextError.message,
+        });
+        onFileFailed?.(file, nextError);
+      }
+
+      emitProgress('files', file.name);
+    }
+  };
+
+  const worker = async () => {
+    while (nextIndex < totalFiles && !signal.aborted) {
+      const fileIndex = nextIndex;
+      nextIndex += 1;
+      const file = snapshot.files[fileIndex];
+      if (file) {
+        await downloadFile(file, fileIndex);
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: concurrency }, worker));
+
+  if (signal.aborted) {
+    cancelled = true;
   }
 
-  return restoredFiles;
+  const result: BackendRestoreResult = {
+    files: restoredFilesByIndex.filter((file): file is ManagedFile => Boolean(file)),
+    failedFiles,
+    timings,
+    cancelled,
+  };
+  emitProgress(cancelled || failedFiles.length > 0 ? 'failed' : 'complete');
+  logRestoreSummary(result, getNowMs() - startedAt);
+
+  return result;
 };

@@ -324,7 +324,37 @@ export type BackendFileRecord = {
   sourceFileId?: string;
   explicitlyConfirmed: boolean;
   imageMetadata?: ImageMetadata;
+  thumbnail?: {
+    size: number;
+    type: string;
+    updatedAt: string;
+  };
   updatedAt: string;
+};
+
+export type BackendRestoreProgress = {
+  totalFiles: number;
+  completedFiles: number;
+  failedFiles: number;
+  downloadedBytes: number;
+  totalBytes: number;
+  currentFileName: string;
+  phase: 'metadata' | 'files' | 'complete' | 'failed';
+};
+
+export type BackendRestoreTiming = {
+  fileId: string;
+  name: string;
+  bytes: number;
+  durationMs: number;
+  blobConstructionMs: number;
+};
+
+export type BackendRestoreResult = {
+  files: ManagedFile[];
+  failedFiles: Array<{ file: BackendFileRecord; message: string }>;
+  timings: BackendRestoreTiming[];
+  cancelled: boolean;
 };
 
 export type BackendEvent = {

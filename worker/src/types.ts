@@ -42,6 +42,10 @@ export type FileRow = {
   explicitly_confirmed: number;
   image_width: number | null;
   image_height: number | null;
+  thumbnail_r2_key: string | null;
+  thumbnail_size: number | null;
+  thumbnail_type: string | null;
+  thumbnail_updated_at: string | null;
   updated_at: string;
 };
 

@@ -2,6 +2,7 @@ import { createDefaultProject } from '../constants';
 import { normalizeProject } from './projectSchema';
 
 import type {
+  BackendFileRecord,
   BackendHealth,
   BackendImageResponse,
   BackendProjectSnapshot,
@@ -90,6 +91,15 @@ const requestBlob = async (path: string, signal?: AbortSignal): Promise<Blob> =>
   return response.blob();
 };
 
+export const getFileDownloadPath = (
+  runId: string,
+  file: Pick<BackendFileRecord, 'id' | 'updatedAt'>,
+): string => {
+  const query = file.updatedAt ? `?v=${encodeURIComponent(file.updatedAt)}` : '';
+
+  return `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(file.id)}${query}`;
+};
+
 const base64ToFile = (payload: BackendImageResponse): File => {
   const binary = atob(payload.base64);
   const bytes = new Uint8Array(binary.length);
@@ -165,9 +175,14 @@ export const createBackendClient = () => ({
     file: File,
     signal?: AbortSignal,
   ): Promise<void> => {
+    const { createImageThumbnailBlob } = await import('./imageThumbnails');
+    const thumbnail = await createImageThumbnailBlob(file);
     const formData = new FormData();
     formData.append('metadata', JSON.stringify(metadata));
     formData.append('file', file, metadata.name);
+    if (thumbnail) {
+      formData.append('thumbnail', thumbnail, `${metadata.id}-thumbnail.webp`);
+    }
 
     const response = await fetch(
       `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(metadata.id)}`,
@@ -184,11 +199,11 @@ export const createBackendClient = () => ({
     }
   },
 
-  downloadFile: (runId: string, fileId: string, signal?: AbortSignal) =>
-    requestBlob(
-      `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(fileId)}`,
-      signal,
-    ),
+  downloadFile: (
+    runId: string,
+    file: Pick<BackendFileRecord, 'id' | 'updatedAt'>,
+    signal?: AbortSignal,
+  ) => requestBlob(getFileDownloadPath(runId, file), signal),
 
   deleteFile: (runId: string, fileId: string, signal?: AbortSignal) =>
     requestJson<{ ok: true }>(
