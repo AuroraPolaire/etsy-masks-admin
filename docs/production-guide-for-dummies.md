@@ -355,9 +355,9 @@ Then test this exact flow:
 6. Go to **Home**.
 7. Fill a product idea.
 8. Generate a brief.
-9. Add or confirm topics.
-10. Generate one image.
-11. Approve the image.
+9. Add or confirm topics in **Topics and AI images**.
+10. Generate one color mask.
+11. Approve the color mask and confirm the coloring page appears beside it.
 12. Generate PDFs.
 13. Generate previews.
 14. Confirm the run appears in **Cloud saves**.

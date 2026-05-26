@@ -7,7 +7,6 @@ import { PrivacyNotice } from './PrivacyNotice';
 import { ProductBriefForm } from './ProductBriefForm';
 import { PromptManager } from './PromptManager';
 import { QAPanel } from './QAPanel';
-import { TopicSetupPanel } from './TopicSetupPanel';
 import { Alert } from './ui/Alert';
 import { Button } from './ui/Button';
 import { Stepper } from './ui/Stepper';
@@ -138,24 +137,9 @@ export const HomeWorkflowView = ({
             />
             <StepAdvanceButton
               disabled={!workflow.briefComplete}
-              onClick={() => onStepSelected('topics')}
-            >
-              Next: topics
-            </StepAdvanceButton>
-          </div>
-        ) : null}
-        {step.id === 'topics' ? (
-          <div className="space-y-6">
-            <TopicSetupPanel
-              subjects={project.subjects}
-              onAddSubject={onAddSubject}
-              onRemoveSubject={onRemoveSubject}
-            />
-            <StepAdvanceButton
-              disabled={!workflow.topicsComplete}
               onClick={() => onStepSelected('images')}
             >
-              Next: AI images
+              Next: topics and images
             </StepAdvanceButton>
           </div>
         ) : null}
@@ -183,7 +167,6 @@ export const HomeWorkflowView = ({
               missingImageCount={missingImageCount}
               missingColoringPageCount={missingColoringPageCount}
               imageGenerationHint={imageGenerationHint}
-              allowTopicEditing={false}
               onAddSubject={onAddSubject}
               onRemoveSubject={onRemoveSubject}
               onGenerateImage={onGenerateImage}

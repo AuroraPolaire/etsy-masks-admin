@@ -63,7 +63,6 @@ describe('workflow state', () => {
     expect(workflow.nextAction).toBe('Configure the backend OpenAI proxy or upload images.');
     expect(workflow.stepperItems.map((step) => step.status)).toEqual([
       'active',
-      'complete',
       'available',
       'locked',
     ]);

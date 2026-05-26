@@ -39,9 +39,9 @@ describe('PromptManager', () => {
       />,
     );
 
-    expect(screen.getByText('lion.png')).toBeInTheDocument();
+    expect(screen.getAllByText('lion.png').length).toBeGreaterThan(0);
     expect(screen.getByText(/white background/i)).toBeInTheDocument();
-    expect(screen.getByText('Needs image')).toBeInTheDocument();
+    expect(screen.getAllByText('Needs image').length).toBeGreaterThan(0);
     expect(screen.queryByText(/filename match/i)).not.toBeInTheDocument();
   });
 
@@ -68,7 +68,7 @@ describe('PromptManager', () => {
       />,
     );
 
-    expect(screen.queryByLabelText('Add topic')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Add mask topic')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Remove Lion')).not.toBeInTheDocument();
   });
 

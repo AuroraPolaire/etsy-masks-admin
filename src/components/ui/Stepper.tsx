@@ -24,7 +24,7 @@ export const Stepper = ({ steps }: StepperProps) => (
     className="rounded-panel border border-surface-outline bg-surface-panel p-3 shadow-panel"
     aria-label="Production workflow"
   >
-    <ol className="grid gap-2 md:grid-cols-5">
+    <ol className="grid gap-2 md:auto-cols-fr md:grid-flow-col">
       {steps.map((step, index) => (
         <li key={step.id} className="flex items-center gap-2 md:flex-col md:items-start">
           <span

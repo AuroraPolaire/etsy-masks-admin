@@ -3,7 +3,7 @@ import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/file
 import type { StepperItem } from '../components/ui/Stepper';
 import type { ManagedFile, Project, QAResult } from '../types';
 
-export type WorkflowStepId = 'brief' | 'topics' | 'images' | 'export';
+export type WorkflowStepId = 'brief' | 'images' | 'export';
 
 export type WorkflowStepState = 'active' | 'available' | 'complete' | 'locked';
 
@@ -79,11 +79,9 @@ export const createWorkflowState = ({
   const canExportFinalFiles = approvedImageCount > 0;
   const recommendedStepId: WorkflowStepId = !briefComplete
     ? 'brief'
-    : !topicsComplete
-      ? 'topics'
-      : !imagesComplete
-        ? 'images'
-        : 'export';
+    : !imagesComplete
+      ? 'images'
+      : 'export';
   const steps: WorkflowStep[] = [
     {
       id: 'brief',
@@ -98,22 +96,17 @@ export const createWorkflowState = ({
       unlocked: true,
     },
     {
-      id: 'topics',
-      title: 'Topics',
-      description: 'Choose the masks included in the bundle.',
-      summary: `${subjectCount} topic${subjectCount === 1 ? '' : 's'} configured.`,
-      complete: topicsComplete,
+      id: 'images',
+      title: 'Topics and AI images',
+      description:
+        'Add mask topics, generate or upload color masks, and create coloring-page versions.',
+      summary:
+        subjectCount === 0
+          ? 'No mask topics yet.'
+          : `${subjectCount} topic${subjectCount === 1 ? '' : 's'}, ${approvedImageCount}/${subjectCount} color masks, ${approvedColoringPageCount}/${subjectCount} coloring pages.`,
+      complete: imagesComplete,
       unlocked: briefComplete,
       lockedReason: 'Finish the brief first.',
-    },
-    {
-      id: 'images',
-      title: 'AI images',
-      description: 'Generate or upload color masks, then create coloring-page versions.',
-      summary: `${approvedImageCount}/${subjectCount} color masks, ${approvedColoringPageCount}/${subjectCount} coloring pages.`,
-      complete: imagesComplete,
-      unlocked: topicsComplete,
-      lockedReason: 'Add at least one topic first.',
     },
     {
       id: 'export',
@@ -154,7 +147,7 @@ export const createWorkflowState = ({
   const nextAction = !briefComplete
     ? 'Draft the brief or edit listing copy.'
     : !topicsComplete
-      ? 'Add the mask topics for this bundle.'
+      ? 'Add mask topics, then generate or upload their images.'
       : !hasAIProvider && !imagesComplete
         ? 'Configure the backend OpenAI proxy or upload images.'
         : approvedImageCount !== subjectCount

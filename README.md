@@ -194,9 +194,10 @@ and Pages Functions from one origin.
 1. Configure the Cloudflare Pages OpenAI proxy.
 2. Paste an initial bundle idea and fill the product brief with backend AI, or write the brief
    manually.
-3. Edit the product brief and mask topic list.
-4. Generate one topic image or generate all missing images.
-5. Review generated files, repair mappings if needed, and approve or reject each image.
+3. Edit the product brief, then add or adjust mask topics in the image step.
+4. Generate one topic image or generate all missing color masks.
+5. Review each color mask; approving it auto-generates the matching coloring page when the backend
+   OpenAI proxy is ready.
 6. Add review notes or explicitly confirm reviewed images.
 
 You can still upload externally generated files manually and map them to topics.

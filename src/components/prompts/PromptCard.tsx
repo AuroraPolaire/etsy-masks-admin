@@ -156,25 +156,31 @@ export const PromptCard = ({
             />
           ) : null}
         </div>
-        <div className="min-w-0">
-          {isGenerating ? (
-            <Surface
-              variant="default"
-              className="flex aspect-square flex-col items-center justify-center gap-3 p-4 text-center text-sm text-ink-muted"
-            >
-              <RotateCw aria-hidden="true" className="animate-spin" size={26} />
-              Generating with OpenAI...
-            </Surface>
-          ) : previewFile?.objectUrl ? (
-            <Surface variant="default" className="overflow-hidden">
-              <div className="flex aspect-square items-center justify-center bg-surface-muted">
-                <img
-                  className="size-full object-contain p-3"
-                  src={previewFile.objectUrl}
-                  alt={`Generated preview of ${prompt.subjectName}`}
-                />
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          <Surface variant="default" className="min-w-0 overflow-hidden p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-strong">Color mask</p>
+                <p className="mt-1 break-all font-mono text-xs text-ink-muted">
+                  {previewFile?.name ?? prompt.expectedFilename}
+                </p>
               </div>
-              <div className="space-y-3 p-3">
+              <Badge tone={reviewStatus.tone}>{reviewStatus.label}</Badge>
+            </div>
+            {isGenerating ? (
+              <div className="mt-3 flex aspect-square flex-col items-center justify-center gap-3 rounded-control border border-surface-outline bg-surface-muted p-4 text-center text-sm text-ink-muted">
+                <RotateCw aria-hidden="true" className="animate-spin" size={26} />
+                Generating with OpenAI...
+              </div>
+            ) : previewFile?.objectUrl ? (
+              <div className="mt-3 space-y-3">
+                <div className="flex aspect-square items-center justify-center rounded-control bg-surface-muted">
+                  <img
+                    className="size-full object-contain p-3"
+                    src={previewFile.objectUrl}
+                    alt={`Generated preview of ${prompt.subjectName}`}
+                  />
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     tone={
@@ -221,45 +227,45 @@ export const PromptCard = ({
                   />
                 </div>
               </div>
-            </Surface>
-          ) : (
-            <Alert tone="info">Generate or upload an image to review it here.</Alert>
-          )}
-        </div>
-        <Surface variant="default" className="p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-strong">Coloring page</p>
-              <p className="mt-1 text-xs text-ink-muted">
-                Black and white line-art PNG for kids coloring.
-              </p>
-            </div>
-            {coloringPageFile && !isGeneratingColoringPage && !isColoringPageStale ? (
-              <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
             ) : (
-              <AIButton
-                disabled={!canGenerateImages || !mappedFile || isAnyImageGenerating}
-                onClick={() => onGenerateColoringPage(prompt.subjectId)}
-              >
-                {isGeneratingColoringPage ? 'Generating' : 'Generate coloring page'}
-              </AIButton>
+              <Alert tone="info" className="mt-3">
+                Generate or upload an image to review it here.
+              </Alert>
             )}
-          </div>
-          {isGeneratingColoringPage ? (
-            <div className="mt-3 flex min-h-32 items-center justify-center gap-3 rounded-control border border-surface-outline bg-surface-muted p-4 text-sm text-ink-muted">
-              <RotateCw aria-hidden="true" className="animate-spin" size={20} />
-              Creating line art...
-            </div>
-          ) : coloringPageFile?.objectUrl ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
-              <div className="flex aspect-square items-center justify-center rounded-control bg-white">
-                <img
-                  className="size-full object-contain p-2"
-                  src={coloringPageFile.objectUrl}
-                  alt={`Coloring page preview of ${prompt.subjectName}`}
-                />
+          </Surface>
+          <Surface variant="default" className="min-w-0 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-strong">Coloring page</p>
+                <p className="mt-1 break-all font-mono text-xs text-ink-muted">
+                  {coloringPageFile?.name ?? `${prompt.subjectName} line-art PNG`}
+                </p>
               </div>
-              <div className="min-w-0 space-y-3">
+              {coloringPageFile && !isGeneratingColoringPage && !isColoringPageStale ? (
+                <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
+              ) : (
+                <AIButton
+                  disabled={!canGenerateImages || !mappedFile || isAnyImageGenerating}
+                  onClick={() => onGenerateColoringPage(prompt.subjectId)}
+                >
+                  {isGeneratingColoringPage ? 'Generating' : 'Generate coloring page'}
+                </AIButton>
+              )}
+            </div>
+            {isGeneratingColoringPage ? (
+              <div className="mt-3 flex aspect-square items-center justify-center gap-3 rounded-control border border-surface-outline bg-surface-muted p-4 text-sm text-ink-muted">
+                <RotateCw aria-hidden="true" className="animate-spin" size={20} />
+                Creating line art...
+              </div>
+            ) : coloringPageFile?.objectUrl ? (
+              <div className="mt-3 space-y-3">
+                <div className="flex aspect-square items-center justify-center rounded-control bg-white">
+                  <img
+                    className="size-full object-contain p-3"
+                    src={coloringPageFile.objectUrl}
+                    alt={`Coloring page preview of ${prompt.subjectName}`}
+                  />
+                </div>
                 {isColoringPageStale ? (
                   <Alert tone="warning">
                     This coloring page was generated from an older color mask. Regenerate it from
@@ -312,13 +318,13 @@ export const PromptCard = ({
                   />
                 </div>
               </div>
-            </div>
-          ) : (
-            <Alert tone="info" className="mt-3">
-              Approve the color mask, then generate the coloring page.
-            </Alert>
-          )}
-        </Surface>
+            ) : (
+              <Alert tone="info" className="mt-3">
+                Approve the color mask to auto-create the coloring page.
+              </Alert>
+            )}
+          </Surface>
+        </div>
         <details className="rounded-control border border-surface-outline bg-surface-raised p-3 text-sm text-ink-base">
           <summary className="cursor-pointer font-semibold text-ink-strong">Prompt details</summary>
           <div className="mt-3 space-y-3">

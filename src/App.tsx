@@ -23,6 +23,7 @@ import {
   createPromptItems,
   getCurrentColoringPageForSubject,
   getFileForSubject,
+  isImageFile,
 } from './lib/files';
 import { runQA } from './lib/qa';
 import { createWorkflowState } from './workflow/workflowState';
@@ -32,6 +33,7 @@ import type { ConfirmDialogRequest } from './components/ui/ConfirmDialog';
 import type {
   ActivityLevel,
   ActivityType,
+  ManagedFile,
   OpenAIImageSettings,
   ProjectDraft,
   PromptItem,
@@ -185,6 +187,7 @@ export const App = () => {
     generatingColoringPageSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
+    generateColoringPageFromSourceFile,
     generateSubjectColoringPage,
     generateMissingColoringPages,
   } = useOpenAIImageGeneration({
@@ -433,6 +436,75 @@ export const App = () => {
     void runBusyAction('image-generation', generateMissingColoringPages);
   }, [generateMissingColoringPages, runBusyAction]);
 
+  const shouldAutoGenerateColoringPage = useCallback(
+    (file: ManagedFile) => {
+      if (
+        !backendCache.canUseOpenAIProxy ||
+        file.kind !== 'uploaded' ||
+        file.assetVariant !== 'color' ||
+        !isImageFile(file) ||
+        !file.mappedSubjectId
+      ) {
+        return false;
+      }
+
+      const existingCurrentColoringPage =
+        getCurrentColoringPageForSubject(files, file.mappedSubjectId, file, 'approved') ??
+        getCurrentColoringPageForSubject(files, file.mappedSubjectId, file, 'pending');
+
+      return !existingCurrentColoringPage;
+    },
+    [backendCache.canUseOpenAIProxy, files],
+  );
+
+  const autoGenerateColoringPages = useCallback(
+    (sourceFiles: ManagedFile[]) => {
+      if (sourceFiles.length === 0) {
+        return;
+      }
+
+      void runBusyAction('image-generation', async (context) => {
+        for (const [index, sourceFile] of sourceFiles.entries()) {
+          if (context.signal.aborted) {
+            return;
+          }
+
+          context.setProgress(
+            `Generating coloring page ${index + 1}/${sourceFiles.length}: ${sourceFile.name}...`,
+          );
+          await generateColoringPageFromSourceFile(sourceFile, context);
+        }
+      });
+    },
+    [generateColoringPageFromSourceFile, runBusyAction],
+  );
+
+  const handleApproveFile = useCallback(
+    (fileId: string) => {
+      const sourceFile = files.find((file) => file.id === fileId);
+
+      approveFile(fileId);
+
+      if (sourceFile && shouldAutoGenerateColoringPage(sourceFile)) {
+        autoGenerateColoringPages([sourceFile]);
+      }
+    },
+    [approveFile, autoGenerateColoringPages, files, shouldAutoGenerateColoringPage],
+  );
+
+  const handleApproveFiles = useCallback(
+    (fileIds: string[]) => {
+      const targetIds = new Set(fileIds);
+      const sourceFiles = files.filter(
+        (file) => targetIds.has(file.id) && shouldAutoGenerateColoringPage(file),
+      );
+
+      approveFiles(fileIds);
+      autoGenerateColoringPages(sourceFiles);
+    },
+    [approveFiles, autoGenerateColoringPages, files, shouldAutoGenerateColoringPage],
+  );
+
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
@@ -483,8 +555,8 @@ export const App = () => {
         onGenerateMissingImages={handleGenerateMissingSubjectImages}
         onGenerateColoringPage={handleGenerateSubjectColoringPage}
         onGenerateMissingColoringPages={handleGenerateMissingColoringPages}
-        onApproveAllFiles={approveFiles}
-        onApproveFile={approveFile}
+        onApproveAllFiles={handleApproveFiles}
+        onApproveFile={handleApproveFile}
         onRejectFile={rejectFile}
         onDeleteFile={handleDeleteFile}
         onNotesChange={updateNotes}

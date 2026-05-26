@@ -281,15 +281,15 @@ export const useOpenAIImageGeneration = ({
     ],
   );
 
-  const generateSubjectColoringPage = useCallback(
-    async (subjectId: string, context?: BusyActionContext) => {
-      const prompt = prompts.find((item) => item.subjectId === subjectId);
-      const sourceFile = getFileForSubject(filesRef.current, subjectId);
-      if (!prompt || !sourceFile) {
+  const generateColoringPageFromSourceFile = useCallback(
+    async (sourceFile: ManagedFile, context?: BusyActionContext) => {
+      const subjectId = sourceFile.mappedSubjectId;
+      const prompt = subjectId ? prompts.find((item) => item.subjectId === subjectId) : undefined;
+      if (!prompt || !subjectId) {
         return;
       }
 
-      startGeneratingColoringPage(subjectId);
+      startGeneratingColoringPage(prompt.subjectId);
       context?.setProgress(`Generating coloring page for ${prompt.subjectName}...`);
 
       try {
@@ -330,7 +330,7 @@ export const useOpenAIImageGeneration = ({
           error instanceof Error ? error.message : `Could not generate ${prompt.subjectName}.`,
         );
       } finally {
-        finishGeneratingColoringPage(subjectId);
+        finishGeneratingColoringPage(prompt.subjectId);
       }
     },
     [
@@ -344,6 +344,18 @@ export const useOpenAIImageGeneration = ({
       startGeneratingColoringPage,
       subjects,
     ],
+  );
+
+  const generateSubjectColoringPage = useCallback(
+    async (subjectId: string, context?: BusyActionContext) => {
+      const sourceFile = getFileForSubject(filesRef.current, subjectId);
+      if (!sourceFile) {
+        return;
+      }
+
+      await generateColoringPageFromSourceFile(sourceFile, context);
+    },
+    [filesRef, generateColoringPageFromSourceFile],
   );
 
   const generateMissingColoringPages = useCallback(
@@ -397,6 +409,7 @@ export const useOpenAIImageGeneration = ({
     generatingColoringPageSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
+    generateColoringPageFromSourceFile,
     generateSubjectColoringPage,
     generateMissingColoringPages,
   };

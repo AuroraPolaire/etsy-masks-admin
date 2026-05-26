@@ -14,6 +14,25 @@ const waitForUiToSettle = async (page: Page) => {
   });
 };
 
+const fillCompleteBrief = async (page: Page) => {
+  await page.getByLabel('Listing title').fill('Moon Printable Mask, 1 Kids Paper Mask');
+  await page.getByLabel('Bundle theme').fill('Moon party masks');
+  await page.getByLabel('Target buyer').fill('Parents and teachers');
+  await page.getByLabel('Visual style').fill('Realistic printable paper mask');
+  await page
+    .getByLabel('Listing description')
+    .fill('Printable moon mask for parties, classrooms, and pretend play.');
+  await page.getByLabel('Etsy tags').fill('printable mask, moon mask, kids craft, party printable');
+  await page
+    .getByLabel('Safety note')
+    .fill('Adult supervision required. Not intended for children under 3.');
+  await page
+    .getByLabel('Print instructions')
+    .fill('Print at 100% scale on cardstock, cut, and use with supervision.');
+  await page.getByLabel('Usage license').fill('Personal and classroom use only.');
+  await page.getByLabel('Refund note').fill('Digital downloads are not refundable.');
+};
+
 const mockUnavailableBackend = async (page: Page) => {
   await page.route('**/api/**', async (route) => {
     await route.fulfill({
@@ -22,6 +41,76 @@ const mockUnavailableBackend = async (page: Page) => {
       body: JSON.stringify({ error: 'Backend unavailable in E2E smoke tests' }),
     });
   });
+};
+
+const mockOpenAIColoringBackend = async (page: Page) => {
+  let coloringPageRequestCount = 0;
+
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+
+    if (url.pathname === '/api/health') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          version: 'test',
+          storage: { d1: true, r2: true },
+          auth: { mode: 'access', configured: true },
+          openaiProxyReady: true,
+          maxFileBytes: 52_428_800,
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/openai/images/coloring-page' && method === 'POST') {
+      coloringPageRequestCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          fileName: 'moon-coloring-page.png',
+          mimeType: 'image/png',
+          base64: onePixelPng.toString('base64'),
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/runs' && method === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          run: {
+            id: 'run-auto-coloring',
+            projectId: 'project-1',
+            idea: 'Moon party masks',
+            status: 'draft',
+            createdAt: '2026-05-26T09:00:00.000Z',
+            updatedAt: '2026-05-26T09:00:00.000Z',
+            fileCount: 0,
+            totalSizeBytes: 0,
+          },
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, runs: [] }),
+    });
+  });
+
+  return {
+    getColoringPageRequestCount: () => coloringPageRequestCount,
+  };
 };
 
 const mockSavedRunsBackend = async (page: Page) => {
@@ -194,37 +283,19 @@ test.describe('production workflow', () => {
     page,
   }) => {
     await expect(page.getByRole('heading', { name: 'Mask Bundle Studio' })).toBeVisible();
-    await page.getByLabel('Listing title').fill('Moon Printable Mask, 1 Kids Paper Mask');
-    await page.getByLabel('Bundle theme').fill('Moon party masks');
-    await page.getByLabel('Target buyer').fill('Parents and teachers');
-    await page.getByLabel('Visual style').fill('Realistic printable paper mask');
-    await page
-      .getByLabel('Listing description')
-      .fill('Printable moon mask for parties, classrooms, and pretend play.');
-    await page
-      .getByLabel('Etsy tags')
-      .fill('printable mask, moon mask, kids craft, party printable');
-    await page
-      .getByLabel('Safety note')
-      .fill('Adult supervision required. Not intended for children under 3.');
-    await page
-      .getByLabel('Print instructions')
-      .fill('Print at 100% scale on cardstock, cut, and use with supervision.');
-    await page.getByLabel('Usage license').fill('Personal and classroom use only.');
-    await page.getByLabel('Refund note').fill('Digital downloads are not refundable.');
+    await fillCompleteBrief(page);
 
-    await page.getByRole('button', { name: 'Next: topics' }).click();
+    await page.getByRole('button', { name: 'Next: topics and images' }).click();
     await page.getByLabel('Add mask topic').fill('Moon');
     await page.getByRole('button', { name: 'Add topic' }).click();
-    await expect(page.getByText('moon.png')).toBeVisible();
-    await page.getByRole('button', { name: 'Next: AI images' }).click();
+    await expect(page.getByText('moon.png').first()).toBeVisible();
 
     await page.locator('input[type="file"]').setInputFiles({
       name: 'moon.png',
       mimeType: 'image/png',
       buffer: onePixelPng,
     });
-    await expect(page.getByText('Review needed')).toBeVisible();
+    await expect(page.getByText('Review needed').first()).toBeVisible();
     await page.getByRole('button', { name: 'Approve Moon' }).click();
     await page.locator('input[type="file"]').setInputFiles({
       name: 'moon-coloring-page.png',
@@ -249,6 +320,33 @@ test.describe('production workflow', () => {
     await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Current project snapshot' })).toBeVisible();
     await expect(page.getByText('TODO')).toHaveCount(0);
+  });
+
+  test('auto-generates a coloring page when a color mask is approved', async ({ page }) => {
+    await page.unroute('**/api/**');
+    const backend = await mockOpenAIColoringBackend(page);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+
+    await fillCompleteBrief(page);
+    await page.getByRole('button', { name: 'Next: topics and images' }).click();
+    await page.getByLabel('Add mask topic').fill('Moon');
+    await page.getByRole('button', { name: 'Add topic' }).click();
+    await expect(page.getByRole('button', { name: 'Generate image' })).toBeEnabled();
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'moon.png',
+      mimeType: 'image/png',
+      buffer: onePixelPng,
+    });
+    await page.getByRole('button', { name: 'Approve Moon' }).click();
+
+    await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
+    await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
+    await expect(page.getByText('Coloring page ready').first()).toBeVisible();
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {

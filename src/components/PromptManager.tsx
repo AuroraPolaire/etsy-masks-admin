@@ -97,69 +97,74 @@ export const PromptManager = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-ink-strong">AI image prompts</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              Generate, copy, and review one image per topic.
-            </p>
-          </div>
-          {!allowTopicEditing && prompts.length > 0 ? (
-            <div className="flex flex-col items-start gap-2 md:items-end">
-              <div className="flex flex-wrap gap-2 md:justify-end">
-                <AIButton
-                  disabled={
-                    !onGenerateMissingImages ||
-                    !canGenerateImages ||
-                    missingImageCount === 0 ||
-                    isGeneratingImages
-                  }
-                  onClick={onGenerateMissingImages}
-                >
-                  {isGeneratingImages ? 'Generating' : 'Generate missing images'}
-                </AIButton>
-                <Button
-                  disabled={fileIdsReadyForApproval.length === 0}
-                  onClick={() => onApproveAll(fileIdsReadyForApproval)}
-                >
-                  <CheckCheck aria-hidden="true" className="mr-2" size={17} />
-                  Approve all
-                </Button>
-                <Button
-                  disabled={
-                    !onGenerateMissingColoringPages ||
-                    !canGenerateImages ||
-                    missingColoringPageCount === 0 ||
-                    isGeneratingImages
-                  }
-                  onClick={onGenerateMissingColoringPages}
-                >
-                  <FilePenLine aria-hidden="true" className="mr-2" size={17} />
-                  Coloring pages
-                </Button>
-              </div>
-              <p className="max-w-sm text-sm text-ink-muted md:text-right">
-                {imageGenerationHint ??
-                  `${missingImageCount} topic${missingImageCount === 1 ? '' : 's'} still need an approved image.`}
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-ink-strong">Topics and AI images</h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                Add mask topics, generate color masks, and review matching coloring pages.
               </p>
             </div>
-          ) : null}
+            {prompts.length > 0 ? (
+              <div className="flex flex-col items-start gap-2 lg:items-end">
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <AIButton
+                    disabled={
+                      !onGenerateMissingImages ||
+                      !canGenerateImages ||
+                      missingImageCount === 0 ||
+                      isGeneratingImages
+                    }
+                    onClick={onGenerateMissingImages}
+                  >
+                    {isGeneratingImages ? 'Generating' : 'Generate missing images'}
+                  </AIButton>
+                  <Button
+                    disabled={fileIdsReadyForApproval.length === 0}
+                    onClick={() => onApproveAll(fileIdsReadyForApproval)}
+                  >
+                    <CheckCheck aria-hidden="true" className="mr-2" size={17} />
+                    Approve all
+                  </Button>
+                  <Button
+                    disabled={
+                      !onGenerateMissingColoringPages ||
+                      !canGenerateImages ||
+                      missingColoringPageCount === 0 ||
+                      isGeneratingImages
+                    }
+                    onClick={onGenerateMissingColoringPages}
+                  >
+                    <FilePenLine aria-hidden="true" className="mr-2" size={17} />
+                    Missing coloring pages
+                  </Button>
+                </div>
+                <p className="max-w-sm text-sm text-ink-muted lg:text-right">
+                  {imageGenerationHint ??
+                    `${missingImageCount} topic${missingImageCount === 1 ? '' : 's'} still need an approved image.`}
+                </p>
+              </div>
+            ) : null}
+          </div>
           {allowTopicEditing ? (
-            <div className="flex w-full gap-2 md:w-auto">
-              <Input
-                label="Add topic"
-                name="addSubject"
-                value={subjectName}
-                onChange={(event) => setSubjectName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    addSubject();
-                  }
-                }}
-              />
-              <Button className="self-end" variant="primary" onClick={addSubject}>
-                Add
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <Input
+                  label="Add mask topic"
+                  name="addSubject"
+                  value={subjectName}
+                  placeholder="Lion, robot, butterfly"
+                  onChange={(event) => setSubjectName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      addSubject();
+                    }
+                  }}
+                />
+              </div>
+              <Button className="sm:self-end" variant="primary" onClick={addSubject}>
+                Add topic
               </Button>
             </div>
           ) : null}
@@ -167,9 +172,9 @@ export const PromptManager = ({
       </CardHeader>
       <CardBody>
         {prompts.length === 0 ? (
-          <EmptyState>Add topics before generating image prompts.</EmptyState>
+          <EmptyState>Add mask topics here to generate image prompts.</EmptyState>
         ) : (
-          <div className="grid gap-4 2xl:grid-cols-2">
+          <div className="grid gap-4">
             {prompts.map((prompt) => (
               <PromptCard
                 key={prompt.subjectId}
