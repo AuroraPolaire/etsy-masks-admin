@@ -543,6 +543,46 @@ test.describe('production workflow', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
   });
+
+  test('keeps the workflow summary rail scrollable in a short desktop viewport', async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium', 'Desktop-only sidebar layout smoke.');
+
+    await page.setViewportSize({ width: 1280, height: 520 });
+    await page.getByRole('button', { name: 'Show QA checks' }).click();
+
+    const aside = page.getByLabel('Workflow summary');
+    await expect(aside).toBeVisible();
+
+    const scrollMetrics = await aside.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      overflowY: window.getComputedStyle(element).overflowY,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(scrollMetrics.overflowY).toBe('auto');
+    expect(scrollMetrics.scrollHeight).toBeGreaterThan(scrollMetrics.clientHeight);
+
+    await aside.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+
+    const bottomActionIsReachable = await page
+      .getByRole('button', { name: 'Clear session files' })
+      .evaluate((element) => {
+        const asideElement = element.closest('aside');
+        if (!asideElement) {
+          return false;
+        }
+
+        const actionRect = element.getBoundingClientRect();
+        const asideRect = asideElement.getBoundingClientRect();
+
+        return actionRect.top >= asideRect.top && actionRect.bottom <= asideRect.bottom;
+      });
+
+    expect(bottomActionIsReachable).toBe(true);
+  });
 });
 
 test.describe('backend saves workflow', () => {

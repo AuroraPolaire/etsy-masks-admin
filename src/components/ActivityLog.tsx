@@ -55,7 +55,7 @@ export const ActivityLog = ({ items }: ActivityLogProps) => (
       {items.length === 0 ? (
         <p className="text-sm text-ink-muted">No activity yet.</p>
       ) : (
-        <div className="max-h-96 space-y-4 overflow-auto pr-1">
+        <div className="space-y-4">
           {groupActivityItems(items).map((group) => (
             <section key={group.label}>
               <h3 className="text-xs font-semibold uppercase text-ink-muted">{group.label}</h3>

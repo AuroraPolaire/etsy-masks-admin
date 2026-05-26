@@ -27,7 +27,10 @@ export const AppAside = ({
   onCancelBusyAction,
   onClearFiles,
 }: AppAsideProps) => (
-  <aside className="min-w-0 space-y-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto lg:pr-1">
+  <aside
+    aria-label="Workflow summary"
+    className="min-w-0 space-y-5 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-4 lg:pr-2 lg:[scrollbar-gutter:stable]"
+  >
     <WorkflowStatus
       workflow={workflow}
       qaResult={qaResult}
