@@ -31,6 +31,7 @@ type BackendDataPanelProps = {
   onTestConnection: () => void;
   onDeleteRun: (runId: string) => void;
   onDeleteAllCloudData: () => void;
+  onClearSessionFiles: () => void;
 };
 
 export const BackendDataPanel = ({
@@ -49,6 +50,7 @@ export const BackendDataPanel = ({
   onTestConnection,
   onDeleteRun,
   onDeleteAllCloudData,
+  onClearSessionFiles,
 }: BackendDataPanelProps) => {
   const [runSearchQuery, setRunSearchQuery] = useState('');
   const backendBusy = busyAction === 'backend-sync';
@@ -100,6 +102,7 @@ export const BackendDataPanel = ({
         backendBusy={backendBusy}
         backendReachable={backendReachable}
         onDeleteAllCloudData={onDeleteAllCloudData}
+        onClearSessionFiles={onClearSessionFiles}
       />
     </div>
   );

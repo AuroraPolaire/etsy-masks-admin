@@ -1,8 +1,8 @@
-import { BarChart3, Cloud, Home, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
+import { Cloud, Home, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 
 import type { LucideIcon } from 'lucide-react';
 
-export type AppSectionId = 'home' | 'backend' | 'insights' | 'settings';
+export type AppSectionId = 'home' | 'backend' | 'settings';
 
 type AppSidebarProps = {
   activeSection: AppSectionId;
@@ -20,7 +20,6 @@ type SidebarItem = {
 const sidebarItems: SidebarItem[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'backend', label: 'Backend saves', icon: Cloud },
-  { id: 'insights', label: 'Insights', icon: BarChart3 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

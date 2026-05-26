@@ -1,11 +1,9 @@
-import { Download, FileInput, FileJson, FileText } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
-import { FileInputButton } from './ui/FileInputButton';
-import { IconButton } from './ui/IconButton';
 import { Surface } from './ui/Surface';
 
 import type { BusyAction, QAResult } from '../types';
@@ -14,8 +12,6 @@ type ArchiveActionsProps = {
   qaResult: QAResult;
   busyAction: BusyAction;
   onExportArchive: () => void;
-  onExportProjectJson: () => void;
-  onImportProjectJson: (file: File) => void;
   canExportFinalFiles: boolean;
 };
 
@@ -23,8 +19,6 @@ export const ArchiveActions = ({
   qaResult,
   busyAction,
   onExportArchive,
-  onExportProjectJson,
-  onImportProjectJson,
   canExportFinalFiles,
 }: ArchiveActionsProps) => {
   const disabled = busyAction !== null;
@@ -50,29 +44,6 @@ export const ArchiveActions = ({
               </p>
             </div>
             <FileText aria-hidden="true" className="shrink-0 text-ink-muted" size={20} />
-          </div>
-        </Surface>
-        <Surface variant="muted" className="p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-strong">Project backup</p>
-              <p className="mt-1 text-xs text-ink-muted">JSON metadata only. Files are excluded.</p>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <IconButton
-                icon={FileJson}
-                label="Export project JSON"
-                disabled={disabled}
-                onClick={onExportProjectJson}
-              />
-              <FileInputButton
-                icon={FileInput}
-                label="Import project JSON"
-                accept=".json,application/json"
-                disabled={disabled}
-                onFileSelected={onImportProjectJson}
-              />
-            </div>
           </div>
         </Surface>
         <Button

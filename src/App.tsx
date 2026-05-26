@@ -7,7 +7,6 @@ import { AppSidebar } from './components/AppSidebar';
 import { BackendDataPanel } from './components/BackendDataPanel';
 import { Header } from './components/Header';
 import { HomeWorkflowView } from './components/HomeWorkflowView';
-import { InsightsPanel } from './components/InsightsPanel';
 import { OpenAIImagePanel } from './components/OpenAIImagePanel';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { useToast } from './components/ui/toastContext';
@@ -239,7 +238,7 @@ export const App = () => {
     setConfirmRequest(null);
   }, [confirmRequest]);
 
-  const { exportProjectJson, importProjectJson, exportArchive } = useExportActions({
+  const { exportArchive } = useExportActions({
     project,
     files,
     replaceProject,
@@ -511,21 +510,19 @@ export const App = () => {
     />
   );
 
-  const renderAside = (showQA = false) => (
+  const renderAside = () => (
     <AppAside
       workflow={workflow}
       qaResult={qaResult}
       busyAction={busyAction}
       busyProgress={busyProgress}
       activityLog={activityLog}
-      showQA={showQA}
       onCancelBusyAction={cancelBusyAction}
-      onClearFiles={handleClearFiles}
     />
   );
 
   const renderHomeView = () => (
-    <AppMainLayout aside={renderAside(true)}>
+    <AppMainLayout aside={renderAside()}>
       <HomeWorkflowView
         browserSupport={browserSupport}
         workflow={workflow}
@@ -558,8 +555,6 @@ export const App = () => {
         onNotesChange={updateNotes}
         onCopyPrompt={(message) => addActivity('notes-updated', 'success', message)}
         onExportArchive={exportArchive}
-        onExportProjectJson={exportProjectJson}
-        onImportProjectJson={importProjectJson}
       />
     </AppMainLayout>
   );
@@ -598,18 +593,8 @@ export const App = () => {
         onTestConnection={backendCache.testConnection}
         onDeleteRun={backendCache.deleteRun}
         onDeleteAllCloudData={backendCache.deleteAllCloudData}
+        onClearSessionFiles={handleClearFiles}
       />
-    </AppMainLayout>
-  );
-
-  const renderInsightsView = () => (
-    <AppMainLayout aside={renderAside()}>
-      <AppSectionHeader
-        eyebrow="Insights"
-        title="Project insights"
-        description="Review current readiness, file counts, and local save/export history before publishing."
-      />
-      <InsightsPanel project={project} files={files} qaResult={qaResult} workflow={workflow} />
     </AppMainLayout>
   );
 
@@ -620,10 +605,6 @@ export const App = () => {
 
     if (activeSectionId === 'settings') {
       return renderSettingsView();
-    }
-
-    if (activeSectionId === 'insights') {
-      return renderInsightsView();
     }
 
     return renderHomeView();

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { AIButton } from './ui/AIButton';
 import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { Textarea } from './ui/Textarea';
 
@@ -10,6 +11,7 @@ type InitialPromptPanelProps = {
   disabled: boolean;
   isGenerating: boolean;
   onFillBrief: (initialPrompt: string) => void;
+  onOpenBackendSaves: () => void;
 };
 
 export const InitialPromptPanel = ({
@@ -17,6 +19,7 @@ export const InitialPromptPanel = ({
   disabled,
   isGenerating,
   onFillBrief,
+  onOpenBackendSaves,
 }: InitialPromptPanelProps) => {
   const [initialPrompt, setInitialPrompt] = useState('');
 
@@ -48,16 +51,15 @@ export const InitialPromptPanel = ({
           value={initialPrompt}
           onChange={(event) => setInitialPrompt(event.target.value)}
         />
-        <p className="text-xs text-ink-muted">
-          Brief drafting is handled by the backend OpenAI proxy. Configure Cloudflare Access and the
-          Worker OpenAI secret before using AI actions.
-        </p>
-        <AIButton
-          disabled={disabled || !aiReady || initialPrompt.trim().length === 0}
-          onClick={applyDraft}
-        >
-          {isGenerating ? 'Drafting brief...' : 'Draft brief with backend AI'}
-        </AIButton>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {!aiReady ? <Button onClick={onOpenBackendSaves}>Open backend saves</Button> : <span />}
+          <AIButton
+            disabled={disabled || !aiReady || initialPrompt.trim().length === 0}
+            onClick={applyDraft}
+          >
+            {isGenerating ? 'Drafting brief...' : 'Draft brief'}
+          </AIButton>
+        </div>
       </CardBody>
     </Card>
   );

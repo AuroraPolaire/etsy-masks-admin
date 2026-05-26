@@ -515,10 +515,6 @@ test.describe('production workflow', () => {
     await expect(page.getByLabel('Search saved runs')).toBeVisible();
     await expect(page.getByText('Worker API URL')).toHaveCount(0);
     await expect(page.getByText('Admin token')).toHaveCount(0);
-
-    await page.getByRole('button', { name: 'Insights' }).click();
-    await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Current project snapshot' })).toBeVisible();
     await expect(page.getByText('TODO')).toHaveCount(0);
   });
 
@@ -548,7 +544,9 @@ test.describe('production workflow', () => {
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {
-    await page.getByRole('button', { name: 'Clear session files' }).click();
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByText('Danger zone').click();
+    await page.getByRole('button', { name: 'Clear current tab files' }).click();
     const dialog = page.getByRole('dialog', { name: 'Clear session files?' });
 
     await expect(dialog).toBeVisible();
@@ -563,7 +561,6 @@ test.describe('production workflow', () => {
     test.skip(testInfo.project.name !== 'chromium', 'Desktop-only sidebar layout smoke.');
 
     await page.setViewportSize({ width: 1280, height: 520 });
-    await page.getByRole('button', { name: 'Show QA checks' }).click();
 
     const aside = page.getByLabel('Workflow summary');
     await expect(aside).toBeVisible();
@@ -574,27 +571,8 @@ test.describe('production workflow', () => {
       scrollHeight: element.scrollHeight,
     }));
     expect(scrollMetrics.overflowY).toBe('auto');
-    expect(scrollMetrics.scrollHeight).toBeGreaterThan(scrollMetrics.clientHeight);
-
-    await aside.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-
-    const bottomActionIsReachable = await page
-      .getByRole('button', { name: 'Clear session files' })
-      .evaluate((element) => {
-        const asideElement = element.closest('aside');
-        if (!asideElement) {
-          return false;
-        }
-
-        const actionRect = element.getBoundingClientRect();
-        const asideRect = asideElement.getBoundingClientRect();
-
-        return actionRect.top >= asideRect.top && actionRect.bottom <= asideRect.bottom;
-      });
-
-    expect(bottomActionIsReachable).toBe(true);
+    expect(scrollMetrics.scrollHeight).toBeLessThanOrEqual(scrollMetrics.clientHeight + 24);
+    await expect(page.getByRole('heading', { name: 'Latest activity' })).toBeVisible();
   });
 });
 
@@ -618,8 +596,8 @@ test.describe('backend saves workflow', () => {
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     const listRunsAfterFirstOpen = backend.getListRunsRequestCount();
 
-    await page.getByRole('button', { name: 'Insights' }).click();
-    await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
     await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
 
     await expect
@@ -681,9 +659,7 @@ test.describe('accessibility smoke checks', () => {
     await prepareCleanPage(page);
   });
 
-  test('home, backend saves, insights, and settings have no obvious axe violations', async ({
-    page,
-  }) => {
+  test('home, backend saves, and settings have no obvious axe violations', async ({ page }) => {
     await waitForUiToSettle(page);
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
@@ -694,27 +670,18 @@ test.describe('accessibility smoke checks', () => {
     results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
-    await page.getByRole('button', { name: 'Insights' }).click();
-    await expect(page.getByRole('heading', { name: 'Project insights' })).toBeVisible();
-    await waitForUiToSettle(page);
-    results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-    expect(results.violations).toEqual([]);
-
     await page.getByRole('button', { name: 'Settings' }).click();
     await waitForUiToSettle(page);
     results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
   });
 
-  test('dialog and expanded QA panel have no obvious axe violations', async ({ page }) => {
-    await page.getByRole('button', { name: 'Show QA checks' }).click();
+  test('destructive dialog has no obvious axe violations', async ({ page }) => {
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByText('Danger zone').click();
+    await page.getByRole('button', { name: 'Clear current tab files' }).click();
     await waitForUiToSettle(page);
-    let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-    expect(results.violations).toEqual([]);
-
-    await page.getByRole('button', { name: 'Clear session files' }).click();
-    await waitForUiToSettle(page);
-    results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
   });
 });

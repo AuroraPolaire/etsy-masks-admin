@@ -1,6 +1,4 @@
 import { ActivityLog } from './ActivityLog';
-import { QAPanel } from './QAPanel';
-import { Button } from './ui/Button';
 import { WorkflowStatus } from './WorkflowStatus';
 
 import type { ActivityItem, BusyAction, QAResult } from '../types';
@@ -12,9 +10,7 @@ type AppAsideProps = {
   busyAction: BusyAction;
   busyProgress: string | null;
   activityLog: ActivityItem[];
-  showQA?: boolean;
   onCancelBusyAction: () => void;
-  onClearFiles: () => void;
 };
 
 export const AppAside = ({
@@ -23,9 +19,7 @@ export const AppAside = ({
   busyAction,
   busyProgress,
   activityLog,
-  showQA = false,
   onCancelBusyAction,
-  onClearFiles,
 }: AppAsideProps) => (
   <aside
     aria-label="Workflow summary"
@@ -38,10 +32,6 @@ export const AppAside = ({
       busyProgress={busyProgress}
       onCancelBusyAction={onCancelBusyAction}
     />
-    {showQA ? <QAPanel result={qaResult} /> : null}
     <ActivityLog items={activityLog} />
-    <Button className="w-full" variant="ghost" onClick={onClearFiles}>
-      Clear session files
-    </Button>
   </aside>
 );

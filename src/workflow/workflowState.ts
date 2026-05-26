@@ -1,11 +1,16 @@
 import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/files';
 
-import type { StepperItem } from '../components/ui/Stepper';
 import type { ManagedFile, Project, QAResult } from '../types';
 
 export type WorkflowStepId = 'brief' | 'images' | 'export';
 
 export type WorkflowStepState = 'active' | 'available' | 'complete' | 'locked';
+
+type StepperItem = {
+  id: string;
+  title: string;
+  status: WorkflowStepState;
+};
 
 export type WorkflowStep = {
   id: WorkflowStepId;

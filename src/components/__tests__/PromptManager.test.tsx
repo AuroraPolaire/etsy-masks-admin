@@ -343,7 +343,13 @@ describe('FileInputButton', () => {
 describe('InitialPromptPanel', () => {
   it('shows the busy label while generating through backend AI', () => {
     render(
-      <InitialPromptPanel aiReady={false} disabled={false} isGenerating onFillBrief={vi.fn()} />,
+      <InitialPromptPanel
+        aiReady={false}
+        disabled={false}
+        isGenerating
+        onFillBrief={vi.fn()}
+        onOpenBackendSaves={vi.fn()}
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Drafting brief...' })).toBeDisabled();

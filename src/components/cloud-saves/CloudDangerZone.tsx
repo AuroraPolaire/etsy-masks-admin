@@ -9,6 +9,7 @@ type CloudDangerZoneProps = {
   backendBusy: boolean;
   backendReachable: boolean;
   onDeleteAllCloudData: () => void;
+  onClearSessionFiles: () => void;
 };
 
 export const CloudDangerZone = ({
@@ -16,6 +17,7 @@ export const CloudDangerZone = ({
   backendBusy,
   backendReachable,
   onDeleteAllCloudData,
+  onClearSessionFiles,
 }: CloudDangerZoneProps) => (
   <details className="rounded-control border border-feedback-danger-border bg-feedback-danger-bg">
     <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-feedback-danger-fg">
@@ -24,9 +26,14 @@ export const CloudDangerZone = ({
     <div className="space-y-4 border-t border-feedback-danger-border p-4">
       <p className="text-sm text-feedback-danger-fg">
         Individual runs can be deleted from the saved-runs table. Delete all cloud data removes
-        every saved run, backend event, and R2 object.
+        every saved run, backend event, and R2 object. Clearing current tab files only removes
+        in-browser file objects from this open session.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
+        <Button variant="ghost" onClick={onClearSessionFiles}>
+          <Trash2 aria-hidden="true" className="mr-2" size={17} />
+          Clear current tab files
+        </Button>
         <Button
           variant="danger"
           disabled={!backendReachable || backendBusy || runs.length === 0}
