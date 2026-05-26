@@ -50,12 +50,12 @@ export const OpenAIImagePanel = ({
             <h2 className="text-lg font-bold text-ink-strong">Generation defaults</h2>
             <p className="mt-1 text-sm text-ink-muted">
               Configure image model, size, quality, background, and output format. Generation runs
-              through the backend OpenAI proxy.
+              through the Cloud OpenAI proxy.
             </p>
           </div>
           <div>
             <Badge tone={backendOpenAIReady ? 'success' : 'warning'}>
-              {backendOpenAIReady ? 'Backend proxy ready' : 'Backend required'}
+              {backendOpenAIReady ? 'Cloud proxy ready' : 'Cloud required'}
             </Badge>
           </div>
         </div>

@@ -8,7 +8,7 @@ same-origin `/api/*` backend.
 
 - Product brief editor for title, theme, audience, marketplace, style, description, tags, safety
   note, printing instructions, license, and refund policy.
-- Initial idea prompt that drafts the listing fields and mask topic list through the backend OpenAI
+- Initial idea prompt that drafts the listing fields and mask topic list through the Cloud OpenAI
   proxy when the Worker is configured.
 - Mask topic list and copyable AI image prompts with expected filenames.
 - Default prompts target realistic, front-view printable masks with clear eye holes, a white
@@ -23,20 +23,20 @@ same-origin `/api/*` backend.
 - JSZip export for a full review archive plus nested Etsy upload ZIP.
 - localStorage persistence for project metadata.
 - Project JSON export/import for metadata backup.
-- Cloudflare Pages Functions backend with D1 project metadata, R2 file backups, and a Cloud saves
-  sidebar page for saved-run restore.
+- Cloudflare Pages Functions backend with D1 project metadata, R2 file backups, and a Cloud page for
+  saved-run restore.
 
 ## Privacy
 
 Most packaging work happens in your browser. Generated files are not sent anywhere except when you
-generate through the backend OpenAI proxy, back up to Cloudflare, or export files from the browser.
+generate through the Cloud OpenAI proxy, back up to Cloudflare, or export files from the browser.
 
 OpenAI credentials and backend access policy live only in Cloudflare Pages configuration. The
 frontend calls same-origin `/api/*` endpoints and does not contain browser-entered API keys, Worker
 URLs, or admin tokens.
 
-Generated binary files are kept in browser memory and backend saves when Cloudflare is reachable.
-Export the archive or restore a backend run if files are missing after refreshing the page.
+Generated binary files are kept in browser memory and cloud saves when Cloudflare is reachable.
+Export the archive or restore a cloud run if files are missing after refreshing the page.
 
 ## Local Setup
 
@@ -190,11 +190,11 @@ and Pages Functions from one origin.
 ## Image Generation Workflow
 
 1. Configure the Cloudflare Pages OpenAI proxy.
-2. Paste an initial bundle idea and fill the product brief with backend AI, or write the brief
+2. Paste an initial bundle idea and fill the product brief with Cloud AI, or write the brief
    manually.
 3. Edit the product brief, then add or adjust mask topics in the image step.
 4. Generate one topic image or generate all missing color masks.
-5. Review each color mask; approving it auto-generates the matching coloring page when the backend
+5. Review each color mask; approving it auto-generates the matching coloring page when the Cloud
    OpenAI proxy is ready.
 6. Add review notes or explicitly confirm reviewed images.
 
@@ -210,7 +210,7 @@ and Pages Functions from one origin.
 
 ## Limitations
 
-- Generated files persist after refresh when Cloud saves are configured and reachable.
+- Generated files persist after refresh when Cloud is configured and reachable.
 - OpenAI brief and image generation require a configured Cloudflare Pages OpenAI secret.
 - Backend features require a same-origin `/api/*` route. Cloudflare Pages provides this through
   Pages Functions on the free `*.pages.dev` URL.

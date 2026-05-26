@@ -81,7 +81,7 @@ export const useExportActions = ({
         addActivity(
           'project-imported',
           'warning',
-          'Imported project metadata. Restore a backend run or regenerate assets because JSON backups do not include files.',
+          'Imported project metadata. Restore a cloud run or regenerate assets because JSON backups do not include files.',
         );
       } catch (error) {
         if (isAbortError(error)) {

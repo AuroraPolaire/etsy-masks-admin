@@ -39,7 +39,7 @@ export const InitialPromptPanel = ({
             </p>
           </div>
           <Badge tone={aiReady ? 'success' : 'warning'}>
-            {aiReady ? 'Backend AI ready' : 'Backend required'}
+            {aiReady ? 'Cloud AI ready' : 'Cloud required'}
           </Badge>
         </div>
       </CardHeader>
@@ -81,7 +81,7 @@ export const InitialPromptPanel = ({
           onChange={(event) => setInitialPrompt(event.target.value)}
         />
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          {!aiReady ? <Button onClick={onOpenBackendSaves}>Open backend saves</Button> : <span />}
+          {!aiReady ? <Button onClick={onOpenBackendSaves}>Open Cloud</Button> : <span />}
           <AIButton
             disabled={disabled || !aiReady || initialPrompt.trim().length === 0}
             onClick={applyDraft}

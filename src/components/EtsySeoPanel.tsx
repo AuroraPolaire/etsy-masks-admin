@@ -52,7 +52,7 @@ export const EtsySeoPanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Etsy SEO</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Use backend AI to review title, tags, description, safety, and marketplace risk.
+              Use Cloud AI to review title, tags, description, safety, and marketplace risk.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 self-start">
@@ -94,8 +94,8 @@ export const EtsySeoPanel = ({
         </div>
         {!canAnalyzeWithAI ? (
           <Alert tone="warning">
-            Backend AI is not ready. Open Backend saves and refresh the connection before running
-            listing review.
+            Cloud AI is not ready. Open Cloud and refresh the connection before running listing
+            review.
           </Alert>
         ) : null}
         <dl className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">

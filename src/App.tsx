@@ -143,7 +143,7 @@ export const App = () => {
       signal?: AbortSignal,
     ): Promise<File> => {
       if (!backendCache.canUseOpenAIProxy) {
-        throw new Error('Backend OpenAI proxy is required before generating images.');
+        throw new Error('Cloud OpenAI proxy is required before generating images.');
       }
 
       return backendCache.generateImage(settings, prompt, signal);
@@ -158,7 +158,7 @@ export const App = () => {
       signal?: AbortSignal,
     ): Promise<File> => {
       if (!backendCache.canUseOpenAIProxy) {
-        throw new Error('Backend OpenAI proxy is required before generating coloring pages.');
+        throw new Error('Cloud OpenAI proxy is required before generating coloring pages.');
       }
 
       return backendCache.generateColoringPageImage(settings, prompt, sourceFile, signal);
@@ -200,7 +200,7 @@ export const App = () => {
     [activeStepId, files, hasAIProvider, project, qaResult],
   );
   const imageGenerationHint = !hasAIProvider
-    ? 'Configure the backend OpenAI proxy to generate images.'
+    ? 'Configure the Cloud OpenAI proxy to generate images.'
     : missingImagePrompts.length === 0
       ? missingColoringPagePrompts.length === 0
         ? 'All topics have approved color masks and coloring pages.'
@@ -254,7 +254,7 @@ export const App = () => {
         setProgress('Drafting product brief...');
 
         if (!backendCache.canUseOpenAIProxy) {
-          addActivity('error', 'error', 'Configure the backend OpenAI proxy before drafting.');
+          addActivity('error', 'error', 'Configure the Cloud OpenAI proxy before drafting.');
           return;
         }
 
@@ -265,7 +265,7 @@ export const App = () => {
           }
           await applyDraftToProject(
             draft,
-            `Drafted the brief through the backend proxy and added ${draft.subjects.length} topics.`,
+            `Drafted the brief through the Cloud proxy and added ${draft.subjects.length} topics.`,
           );
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
@@ -276,7 +276,7 @@ export const App = () => {
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'Could not draft the brief through the backend proxy.'),
+            getErrorMessage(error, 'Could not draft the brief through the Cloud proxy.'),
           );
         }
       });
@@ -289,7 +289,7 @@ export const App = () => {
       setProgress('Running AI listing review...');
 
       if (!backendCache.canUseOpenAIProxy) {
-        addActivity('error', 'error', 'Configure the backend OpenAI proxy before AI review.');
+        addActivity('error', 'error', 'Configure the Cloud OpenAI proxy before AI review.');
         return;
       }
 
@@ -310,7 +310,7 @@ export const App = () => {
         addActivity(
           'error',
           'error',
-          getErrorMessage(error, 'Could not run AI listing review through the backend proxy.'),
+          getErrorMessage(error, 'Could not run AI listing review through the Cloud proxy.'),
         );
       }
     });
@@ -543,7 +543,7 @@ export const App = () => {
       <AppSectionHeader
         eyebrow="Settings"
         title="Image generation settings"
-        description="Manage the model, API image size, final output resolution, quality, background, output format, and cost estimate used by backend AI generation."
+        description="Manage the model, API image size, quality, background, output format, and cost estimate used by Cloud AI generation."
       />
       {renderOpenAIImagePanel()}
     </AppMainLayout>
@@ -552,9 +552,9 @@ export const App = () => {
   const renderBackendView = () => (
     <AppMainLayout aside={renderAside()}>
       <AppSectionHeader
-        eyebrow="Backend saves"
-        title="Backend saves"
-        description="Review automatic backend drafts, search previous work by idea, restore a run, or delete runs you no longer need."
+        eyebrow="Cloud"
+        title="Cloud"
+        description="Review automatic cloud drafts, search previous work by idea, restore a run, or delete runs you no longer need."
       />
       <BackendDataPanel
         health={backendCache.health}

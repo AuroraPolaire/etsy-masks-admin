@@ -127,7 +127,7 @@ export const useBackendDraftAutoRestore = ({
 
         if (result.cancelled || result.failedFiles.length > 0) {
           const message = result.cancelled
-            ? 'Backend draft restore was cancelled. Autosave is paused to protect cloud files.'
+            ? 'Cloud draft restore was cancelled. Autosave is paused to protect cloud files.'
             : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
           markDraftRestoreFailed(message, initialDraftRunId);
           setRestoreStatus('failed');
@@ -142,7 +142,7 @@ export const useBackendDraftAutoRestore = ({
         markDraftRestored(nextSnapshot.project, result.files, restoredIdea, initialDraftRunId);
         completedRunIdRef.current = initialDraftRunId;
         setRestoreStatus('complete');
-        addActivity('cloud-synced', 'success', `Restored active backend draft "${restoredIdea}".`);
+        addActivity('cloud-synced', 'success', `Restored active cloud draft "${restoredIdea}".`);
       } catch (error) {
         if (isAbortError(error)) {
           return;
@@ -150,7 +150,7 @@ export const useBackendDraftAutoRestore = ({
 
         const message = getErrorMessage(
           error,
-          'Could not restore the active backend draft. Autosave is paused to protect cloud files.',
+          'Could not restore the active cloud draft. Autosave is paused to protect cloud files.',
         );
         markDraftRestoreFailed(message, initialDraftRunId);
         setRestoreStatus('failed');
@@ -250,7 +250,7 @@ export const useBackendDraftAutoRestore = ({
 
         if (result.cancelled || result.failedFiles.length > 0) {
           const message = result.cancelled
-            ? 'Backend draft restore was cancelled. Autosave is paused to protect cloud files.'
+            ? 'Cloud draft restore was cancelled. Autosave is paused to protect cloud files.'
             : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
           markDraftRestoreFailed(message, reusableRun.id);
           setRestoreStatus('failed');
@@ -264,7 +264,7 @@ export const useBackendDraftAutoRestore = ({
 
         markDraftRestored(nextSnapshot.project, result.files, restoredIdea, reusableRun.id);
         setRestoreStatus('complete');
-        addActivity('cloud-synced', 'success', `Restored backend draft "${restoredIdea}".`);
+        addActivity('cloud-synced', 'success', `Restored cloud draft "${restoredIdea}".`);
       } catch (error) {
         if (isAbortError(error)) {
           return;

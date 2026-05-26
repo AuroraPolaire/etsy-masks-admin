@@ -159,7 +159,7 @@ export const useBackendDraftAutosave = ({
           setAutosaveState((currentState) => ({
             ...currentState,
             status: 'error',
-            lastError: getErrorMessage(error, 'Backend draft autosave failed.'),
+            lastError: getErrorMessage(error, 'Cloud draft autosave failed.'),
           }));
         });
     }, 1800);

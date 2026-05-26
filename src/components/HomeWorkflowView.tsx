@@ -137,8 +137,8 @@ export const HomeWorkflowView = ({
                   tone="info"
                   className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <span>Configure the backend OpenAI proxy before generating mask images.</span>
-                  <Button onClick={onOpenCloudSaves}>Open backend saves</Button>
+                  <span>Configure the Cloud OpenAI proxy before generating mask images.</span>
+                  <Button onClick={onOpenCloudSaves}>Open Cloud</Button>
                 </Alert>
               ) : null}
               <PromptManager

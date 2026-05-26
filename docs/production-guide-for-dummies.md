@@ -348,10 +348,10 @@ https://etsy-masks-admin.pages.dev/
 Then test this exact flow:
 
 1. Open the app.
-2. Go to **Cloud saves**.
+2. Go to **Cloud**.
 3. Confirm it does not ask for Worker URL, token, or OpenAI key.
 4. Click **Refresh**.
-5. Confirm Cloud saves are reachable.
+5. Confirm Cloud is reachable.
 6. Go to **Home**.
 7. Fill a product idea.
 8. Generate a brief.
@@ -360,7 +360,7 @@ Then test this exact flow:
 11. Approve the color mask and confirm the coloring page appears beside it.
 12. Generate PDFs.
 13. Generate previews.
-14. Confirm the run appears in **Cloud saves**.
+14. Confirm the run appears in **Cloud**.
 15. Refresh the browser.
 16. Restore the saved run.
 17. Confirm the brief, topics, and files come back.
@@ -381,7 +381,7 @@ Do these before heavy use:
 
 ## Step 15: Keep A Manual Backup Habit
 
-Cloud saves are useful, but still export important work:
+Cloud is useful, but still export important work:
 
 1. Export project JSON after important edits.
 2. Export ZIP before deleting local files.

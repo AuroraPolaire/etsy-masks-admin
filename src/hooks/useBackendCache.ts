@@ -123,7 +123,7 @@ export const useBackendCache = ({
       .getHealth(controller.signal)
       .then(setHealth)
       .catch(() => {
-        // Full connection diagnostics run from the Backend saves screen.
+        // Full connection diagnostics run from the Cloud screen.
       });
 
     return () => controller.abort();
@@ -165,13 +165,13 @@ export const useBackendCache = ({
       setProgress?: (message: string | null) => void;
       forceUpload?: boolean;
     }): Promise<{ runId: string; snapshot: BackendProjectSnapshot }> => {
-      setProgress?.('Checking Cloudflare backend limits...');
+      setProgress?.('Checking cloud upload limits...');
       const nextHealth = healthRef.current ?? (await client.getHealth(signal));
       setHealth(nextHealth);
 
       const oversizedFiles = getOversizedFiles(filesOverride, nextHealth.maxFileBytes);
       if (oversizedFiles.length > 0) {
-        throw new Error(`${oversizedFiles.length} file(s) exceed the backend upload limit.`);
+        throw new Error(`${oversizedFiles.length} file(s) exceed the cloud upload limit.`);
       }
 
       const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
@@ -278,15 +278,11 @@ export const useBackendCache = ({
         addActivity('cloud-synced', 'success', 'Cloudflare Worker and run cache are reachable.');
       } catch (error) {
         if (isAbortError(error)) {
-          addActivity('cloud-synced', 'warning', 'Backend connection check was cancelled.');
+          addActivity('cloud-synced', 'warning', 'Cloud connection check was cancelled.');
           return;
         }
 
-        addActivity(
-          'error',
-          'error',
-          getErrorMessage(error, 'Could not connect to the Cloudflare backend.'),
-        );
+        addActivity('error', 'error', getErrorMessage(error, 'Could not connect to Cloudflare.'));
       }
     });
   }, [addActivity, loadRunCache, runBusyAction, selectedRunId]);
@@ -312,7 +308,7 @@ export const useBackendCache = ({
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'Could not load the selected backend run.'),
+            getErrorMessage(error, 'Could not load the selected cloud run.'),
           );
         }
       });
@@ -326,7 +322,7 @@ export const useBackendCache = ({
 
       void (async () => {
         if (!targetRunId) {
-          addActivity('cloud-synced', 'warning', 'Select a saved backend run first.');
+          addActivity('cloud-synced', 'warning', 'Select a saved cloud run first.');
           return;
         }
 
@@ -447,7 +443,7 @@ export const useBackendCache = ({
     (runId: string) => {
       void (async () => {
         if (!runId) {
-          addActivity('cloud-synced', 'warning', 'Choose a saved backend run first.');
+          addActivity('cloud-synced', 'warning', 'Choose a saved cloud run first.');
           return;
         }
 
@@ -532,7 +528,7 @@ export const useBackendCache = ({
           setSnapshot(null);
           setActiveDraftRun('', project.id);
           markCurrentStateDeleted(project, files, resolvedSaveIdea);
-          addActivity('cloud-synced', 'warning', 'Deleted all Cloudflare backend data.');
+          addActivity('cloud-synced', 'warning', 'Deleted all Cloudflare data.');
         } catch (error) {
           if (isAbortError(error)) {
             addActivity('cloud-synced', 'warning', 'Cloud deletion was cancelled.');
@@ -542,7 +538,7 @@ export const useBackendCache = ({
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'Could not delete Cloudflare backend data.'),
+            getErrorMessage(error, 'Could not delete Cloudflare data.'),
           );
         }
       });

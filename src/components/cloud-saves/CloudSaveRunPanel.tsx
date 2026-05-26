@@ -37,7 +37,7 @@ export const CloudSaveRunPanel = ({
 }: CloudSaveRunPanelProps) => {
   const statusTone: BadgeTone = backendReachable ? 'success' : health ? 'warning' : 'neutral';
   const statusLabel = backendReachable
-    ? 'Backend reachable'
+    ? 'Cloud reachable'
     : health
       ? 'Needs attention'
       : 'Not checked';
@@ -69,8 +69,8 @@ export const CloudSaveRunPanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Automatic draft save</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Each meaningful edit is saved to one backend draft for this project. There is no
-              manual save step.
+              Each meaningful edit is saved to one cloud draft for this project. There is no manual
+              save step.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -102,7 +102,7 @@ export const CloudSaveRunPanel = ({
         </div>
         {autosaveState.status === 'saved' && autosaveState.lastSavedAt ? (
           <p className="text-xs text-ink-muted">
-            Last backend draft save:{' '}
+            Last cloud draft save:{' '}
             {new Intl.DateTimeFormat(undefined, {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -110,14 +110,14 @@ export const CloudSaveRunPanel = ({
           </p>
         ) : null}
         {autosaveState.status === 'restoring' ? (
-          <Alert>Restoring the active backend draft before new edits are saved.</Alert>
+          <Alert>Restoring the active cloud draft before new edits are saved.</Alert>
         ) : null}
         {autosaveState.status === 'error' && autosaveState.lastError ? (
           <Alert tone="warning">{autosaveState.lastError}</Alert>
         ) : null}
         {!backendReachable && health ? (
           <Alert tone="warning">
-            Backend autosave is not ready. Check the Pages Function route, Cloudflare Access, and
+            Cloud autosave is not ready. Check the Pages Function route, Cloudflare Access, and
             D1/R2 bindings.
           </Alert>
         ) : null}

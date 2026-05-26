@@ -660,8 +660,8 @@ test.describe('production workflow', () => {
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
     await expect(page.getByText('Session OpenAI API key')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Backend saves' })).toBeVisible();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Cloud' })).toBeVisible();
     await expect(page.getByLabel('Search saved runs')).toBeVisible();
     await expect(page.getByText('Worker API URL')).toHaveCount(0);
     await expect(page.getByText('Admin token')).toHaveCount(0);
@@ -694,7 +694,7 @@ test.describe('production workflow', () => {
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
     await page.getByText('Danger zone').click();
     await page.getByRole('button', { name: 'Clear current tab files' }).click();
     const dialog = page.getByRole('dialog', { name: 'Clear session files?' });
@@ -726,7 +726,7 @@ test.describe('production workflow', () => {
   });
 });
 
-test.describe('backend saves workflow', () => {
+test.describe('cloud workflow', () => {
   test('refreshes saved runs only when Refresh is clicked', async ({ page }) => {
     const backend = await mockSavedRunsBackend(page);
 
@@ -738,8 +738,8 @@ test.describe('backend saves workflow', () => {
     await expect.poll(() => backend.getHealthRequestCount()).toBeGreaterThan(0);
     const listRunsBeforeOpen = backend.getListRunsRequestCount();
 
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
-    await expect(page.getByText('No backend runs saved yet.')).toBeVisible();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await expect(page.getByText('No cloud runs saved yet.')).toBeVisible();
     expect(backend.getListRunsRequestCount()).toBe(listRunsBeforeOpen);
 
     await page.getByRole('button', { name: 'Refresh' }).click();
@@ -749,7 +749,7 @@ test.describe('backend saves workflow', () => {
 
     await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
 
     expect(backend.getListRunsRequestCount()).toBe(listRunsAfterFirstOpen);
   });
@@ -787,7 +787,7 @@ test.describe('backend saves workflow', () => {
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Progressive masks').first()).toBeVisible();
 
@@ -839,7 +839,7 @@ test.describe('backend saves workflow', () => {
     await page.evaluate(() => window.localStorage.clear());
     await page.reload();
 
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     await expect(page.getByText('Preview', { exact: true })).toHaveCount(0);
@@ -872,13 +872,13 @@ test.describe('accessibility smoke checks', () => {
     await prepareCleanPage(page);
   });
 
-  test('home, backend saves, and settings have no obvious axe violations', async ({ page }) => {
+  test('home, cloud, and settings have no obvious axe violations', async ({ page }) => {
     await waitForUiToSettle(page);
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Backend saves' })).toBeVisible();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Cloud' })).toBeVisible();
     await waitForUiToSettle(page);
     results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
@@ -890,7 +890,7 @@ test.describe('accessibility smoke checks', () => {
   });
 
   test('destructive dialog has no obvious axe violations', async ({ page }) => {
-    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
     await page.getByText('Danger zone').click();
     await page.getByRole('button', { name: 'Clear current tab files' }).click();
     await waitForUiToSettle(page);

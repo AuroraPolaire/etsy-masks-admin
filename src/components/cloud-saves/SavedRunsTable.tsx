@@ -93,7 +93,7 @@ export const SavedRunsTable = ({
     <CardBody>
       {filteredRuns.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          {runs.length === 0 ? 'No backend runs saved yet.' : 'No backend runs match the search.'}
+          {runs.length === 0 ? 'No cloud runs saved yet.' : 'No cloud runs match the search.'}
         </p>
       ) : (
         <div className="overflow-x-auto">

@@ -159,7 +159,7 @@ export const createWorkflowState = ({
     : !topicsComplete
       ? 'Add mask topics, then generate their images.'
       : !hasAIProvider && !imagesComplete
-        ? 'Configure the backend OpenAI proxy before generating images.'
+        ? 'Configure the Cloud OpenAI proxy before generating images.'
         : canExportFinalFiles && !imagesComplete
           ? 'Export available files, or finish missing images and coloring pages.'
           : approvedImageCount !== subjectCount
