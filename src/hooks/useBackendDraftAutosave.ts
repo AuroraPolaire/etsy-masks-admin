@@ -16,6 +16,8 @@ type UseBackendDraftAutosaveParams = {
   files: ManagedFile[];
   resolvedSaveIdea: string;
   activeDraftRunId: string;
+  pauseAutosave: boolean;
+  isRestoringDraft: boolean;
   syncDraftRun: SyncDraftRun;
 };
 
@@ -24,6 +26,8 @@ export const useBackendDraftAutosave = ({
   files,
   resolvedSaveIdea,
   activeDraftRunId,
+  pauseAutosave,
+  isRestoringDraft,
   syncDraftRun,
 }: UseBackendDraftAutosaveParams) => {
   const [autosaveState, setAutosaveState] = useState<BackendAutosaveState>({
@@ -81,6 +85,16 @@ export const useBackendDraftAutosave = ({
     [],
   );
 
+  const markDraftRestoreFailed = useCallback((message: string, runId: string) => {
+    lastAutosavedKeyRef.current = '';
+    setAutosaveState((currentState) => ({
+      ...currentState,
+      activeRunId: runId || currentState.activeRunId,
+      status: 'error',
+      lastError: message,
+    }));
+  }, []);
+
   const clearAutosaveTracking = useCallback(() => {
     lastAutosavedKeyRef.current = '';
     lastFinalizedKeyRef.current = '';
@@ -98,6 +112,26 @@ export const useBackendDraftAutosave = ({
   }, [activeDraftRunId]);
 
   useEffect(() => {
+    if (!isRestoringDraft) {
+      return;
+    }
+
+    setAutosaveState((currentState) => {
+      const nextState = { ...currentState };
+      delete nextState.lastError;
+      return {
+        ...nextState,
+        activeRunId: activeDraftRunId,
+        status: 'restoring',
+      };
+    });
+  }, [activeDraftRunId, isRestoringDraft]);
+
+  useEffect(() => {
+    if (pauseAutosave) {
+      return;
+    }
+
     if (!shouldAutosaveBackendDraft(project, files)) {
       setAutosaveState((currentState) => {
         const nextState = { ...currentState };
@@ -157,13 +191,14 @@ export const useBackendDraftAutosave = ({
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [activeDraftRunId, files, project, resolvedSaveIdea, syncDraftRun]);
+  }, [activeDraftRunId, files, pauseAutosave, project, resolvedSaveIdea, syncDraftRun]);
 
   return {
     autosaveState,
     markFinalSaved,
     markDraftRestored,
     markFinalRestored,
+    markDraftRestoreFailed,
     clearAutosaveTracking,
   };
 };

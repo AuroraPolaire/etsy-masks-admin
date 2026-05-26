@@ -100,8 +100,8 @@ export const HomeWorkflowView = ({
     <BrowserSupportWarning result={browserSupport} />
     <PrivacyNotice />
     <Alert>
-      Listing copy is saved in this browser and autosaved to the backend when Cloudflare is
-      reachable. Restore the backend draft if you need to continue from another session.
+      Listing copy, settings, and files autosave to the backend when Cloudflare is reachable.
+      Reloading the app restores the active backend draft automatically.
     </Alert>
     <Stepper steps={workflow.stepperItems} />
     {workflow.steps.map((step, index) => (

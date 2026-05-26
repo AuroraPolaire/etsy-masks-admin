@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  getInitialBackendDraftRestoreStatus,
+  shouldPauseBackendDraftAutosave,
+  useBackendDraftAutoRestore,
+} from './useBackendDraftAutoRestore';
 import { useBackendDraftAutosave } from './useBackendDraftAutosave';
 import { BackendApiError, createBackendClient } from '../lib/backendClient';
 import {
@@ -65,18 +70,24 @@ export const useBackendCache = ({
   const [snapshot, setSnapshot] = useState<BackendProjectSnapshot | null>(null);
   const [saveIdea, setSaveIdea] = useState(suggestedIdea);
   const [lastSuggestedIdea, setLastSuggestedIdea] = useState(suggestedIdea);
-  const [activeDraftRunId, setActiveDraftRunId] = useState(() =>
-    loadActiveBackendDraftRunId(project.id),
+  const [initialActiveDraftRunId] = useState(() => loadActiveBackendDraftRunId(project.id));
+  const [activeDraftRunId, setActiveDraftRunId] = useState(initialActiveDraftRunId);
+  const [draftRestoreStatus, setDraftRestoreStatus] = useState(() =>
+    getInitialBackendDraftRestoreStatus(initialActiveDraftRunId),
   );
   const healthRef = useRef<BackendHealth | null>(null);
   const client = useMemo(() => createBackendClient(), []);
   const canUseOpenAIProxy = Boolean(health?.openaiProxyReady);
   const resolvedSaveIdea = saveIdea.trim() || suggestedIdea;
+  const shouldPauseDraftAutosave = shouldPauseBackendDraftAutosave(draftRestoreStatus);
 
   const setActiveDraftRun = useCallback(
     (runId: string, projectId = project.id) => {
       setActiveDraftRunId(runId);
       saveActiveBackendDraftRunId(projectId, runId);
+      if (!runId) {
+        setDraftRestoreStatus('complete');
+      }
     },
     [project.id],
   );
@@ -86,7 +97,11 @@ export const useBackendCache = ({
   }, [health]);
 
   useEffect(() => {
-    setActiveDraftRunId(loadActiveBackendDraftRunId(project.id));
+    const nextRunId = loadActiveBackendDraftRunId(project.id);
+    setActiveDraftRunId(nextRunId);
+    if (!nextRunId) {
+      setDraftRestoreStatus('complete');
+    }
   }, [project.id]);
 
   useEffect(() => {
@@ -212,13 +227,34 @@ export const useBackendCache = ({
     markFinalSaved,
     markDraftRestored,
     markFinalRestored,
+    markDraftRestoreFailed,
     clearAutosaveTracking,
   } = useBackendDraftAutosave({
     project,
     files,
     resolvedSaveIdea,
     activeDraftRunId,
+    pauseAutosave: shouldPauseDraftAutosave,
+    isRestoringDraft: draftRestoreStatus === 'restoring',
     syncDraftRun,
+  });
+
+  useBackendDraftAutoRestore({
+    client,
+    initialDraftRunId: initialActiveDraftRunId,
+    activeDraftRunId,
+    currentProjectId: project.id,
+    addActivity,
+    replaceProject,
+    replaceFiles,
+    setActiveDraftRun,
+    setSaveIdea,
+    setSelectedRunId,
+    setSnapshot,
+    markDraftRestored,
+    markDraftRestoreFailed,
+    clearAutosaveTracking,
+    setRestoreStatus: setDraftRestoreStatus,
   });
 
   const testConnection = useCallback(() => {

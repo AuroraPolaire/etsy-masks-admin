@@ -50,17 +50,21 @@ export const CloudSaveRunPanel = ({
       ? 'success'
       : autosaveState.status === 'error'
         ? 'warning'
-        : autosaveState.status === 'saving'
+        : autosaveState.status === 'restoring'
           ? 'neutral'
-          : 'neutral';
+          : autosaveState.status === 'saving'
+            ? 'neutral'
+            : 'neutral';
   const autosaveLabel =
     autosaveState.status === 'saved'
       ? 'Draft autosaved'
-      : autosaveState.status === 'saving'
-        ? 'Autosaving draft'
-        : autosaveState.status === 'error'
-          ? 'Autosave failed'
-          : 'Autosave idle';
+      : autosaveState.status === 'restoring'
+        ? 'Restoring draft'
+        : autosaveState.status === 'saving'
+          ? 'Autosaving draft'
+          : autosaveState.status === 'error'
+            ? 'Autosave failed'
+            : 'Autosave idle';
 
   return (
     <Card>
@@ -118,6 +122,9 @@ export const CloudSaveRunPanel = ({
               timeStyle: 'short',
             }).format(new Date(autosaveState.lastSavedAt))}
           </p>
+        ) : null}
+        {autosaveState.status === 'restoring' ? (
+          <Alert>Restoring the active backend draft before new edits are saved.</Alert>
         ) : null}
         {autosaveState.status === 'error' && autosaveState.lastError ? (
           <Alert tone="warning">{autosaveState.lastError}</Alert>

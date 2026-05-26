@@ -255,7 +255,7 @@ export type BackendHealth = {
 
 export type BackendRunStatus = 'draft' | 'final';
 
-export type BackendAutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type BackendAutosaveStatus = 'idle' | 'restoring' | 'saving' | 'saved' | 'error';
 
 export type BackendAutosaveState = {
   activeRunId: string;

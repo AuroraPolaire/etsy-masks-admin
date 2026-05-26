@@ -28,7 +28,7 @@ export const ProductBriefForm = ({ settings, lastSavedAt, onChange }: ProductBri
         <div>
           <h2 className="text-lg font-bold text-ink-strong">Listing brief</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Buyer-facing copy is saved in this browser. Uploaded files stay in memory only.
+            Buyer-facing copy is saved automatically as you work.
           </p>
           {lastSavedAt ? (
             <p className="mt-1 text-xs text-ink-muted">
