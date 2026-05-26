@@ -10,14 +10,23 @@ import {
   readRequiredString,
 } from './http';
 
-import type { BackendEventRow, Env, FileMetadataInput, FileRow, ProjectRunRow } from './types';
+import type {
+  BackendEventRow,
+  Env,
+  FileMetadataInput,
+  FileRow,
+  ProjectRunRow,
+  ProjectRunStatus,
+} from './types';
 
 type RunSummaryRow = {
   id: string;
   project_id: string;
   idea: string;
+  status: ProjectRunStatus;
   created_at: string;
   updated_at: string;
+  finalized_at: string | null;
   file_count: number;
   total_size_bytes: number;
 };
@@ -26,8 +35,10 @@ export type RunSummary = {
   id: string;
   projectId: string;
   idea: string;
+  status: ProjectRunStatus;
   createdAt: string;
   updatedAt: string;
+  finalizedAt?: string;
   fileCount: number;
   totalSizeBytes: number;
 };
@@ -35,8 +46,10 @@ export type RunSummary = {
 export type RunSnapshot = {
   runId: string;
   idea: string;
+  status: ProjectRunStatus;
   project: unknown;
   updatedAt: string;
+  finalizedAt?: string;
   files: Array<Record<string, unknown>>;
   events: Array<Record<string, string>>;
 };
@@ -44,7 +57,10 @@ export type RunSnapshot = {
 export type CreateRunInput = {
   idea: string;
   project: Record<string, unknown>;
+  status?: ProjectRunStatus;
 };
+
+export type UpdateRunInput = CreateRunInput;
 
 const sanitizeFileName = (fileName: string): string =>
   fileName.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'file';
@@ -53,8 +69,10 @@ const runSummaryFromRow = (row: RunSummaryRow): RunSummary => ({
   id: row.id,
   projectId: row.project_id,
   idea: row.idea,
+  status: row.status,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+  ...(row.finalized_at ? { finalizedAt: row.finalized_at } : {}),
   fileCount: row.file_count,
   totalSizeBytes: row.total_size_bytes,
 });
@@ -114,53 +132,158 @@ export const listRuns = async (env: Env): Promise<RunSummary[]> => {
        runs.id,
        runs.project_id,
        runs.idea,
+       runs.status,
        runs.created_at,
        runs.updated_at,
+       runs.finalized_at,
        COUNT(files.id) AS file_count,
        COALESCE(SUM(files.size), 0) AS total_size_bytes
      FROM project_runs runs
      LEFT JOIN file_backups files ON files.run_id = runs.id
-     GROUP BY runs.id, runs.project_id, runs.idea, runs.created_at, runs.updated_at
+     GROUP BY
+       runs.id,
+       runs.project_id,
+       runs.idea,
+       runs.status,
+       runs.created_at,
+       runs.updated_at,
+       runs.finalized_at
      ORDER BY runs.updated_at DESC`,
   ).all<RunSummaryRow>();
 
   return (rows.results ?? []).map(runSummaryFromRow);
 };
 
+const getRunSummary = async (env: Env, runId: string): Promise<RunSummary> => {
+  const row = await env.DB.prepare(
+    `SELECT
+       runs.id,
+       runs.project_id,
+       runs.idea,
+       runs.status,
+       runs.created_at,
+       runs.updated_at,
+       runs.finalized_at,
+       COUNT(files.id) AS file_count,
+       COALESCE(SUM(files.size), 0) AS total_size_bytes
+     FROM project_runs runs
+     LEFT JOIN file_backups files ON files.run_id = runs.id
+     WHERE runs.id = ?
+     GROUP BY
+       runs.id,
+       runs.project_id,
+       runs.idea,
+       runs.status,
+       runs.created_at,
+       runs.updated_at,
+       runs.finalized_at`,
+  )
+    .bind(runId)
+    .first<RunSummaryRow>();
+
+  if (!row) {
+    throw new ApiError(404, 'Run was not found.');
+  }
+
+  return runSummaryFromRow(row);
+};
+
 export const createRun = async (env: Env, input: CreateRunInput): Promise<RunSummary> => {
   const projectId = readRequiredString(input.project.id, 'project.id');
   const idea = input.idea.trim() || 'Untitled idea';
+  const status = input.status ?? 'draft';
   const timestamp = nowIso();
   const runId = crypto.randomUUID();
+  const finalizedAt = status === 'final' ? timestamp : null;
 
   await env.DB.prepare(
-    `INSERT INTO project_runs (id, project_id, idea, project_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO project_runs (
+       id, project_id, idea, project_json, status, created_at, updated_at, finalized_at
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(runId, projectId, idea, JSON.stringify(input.project), timestamp, timestamp)
+    .bind(
+      runId,
+      projectId,
+      idea,
+      JSON.stringify(input.project),
+      status,
+      timestamp,
+      timestamp,
+      finalizedAt,
+    )
     .run();
-  await insertEvent(env, 'run-created', `Saved run "${idea}" to D1.`);
+  await insertEvent(env, 'run-created', `Saved ${status} run "${idea}" to D1.`);
 
   return {
     id: runId,
     projectId,
     idea,
+    status,
     createdAt: timestamp,
     updatedAt: timestamp,
+    ...(finalizedAt ? { finalizedAt } : {}),
     fileCount: 0,
     totalSizeBytes: 0,
   };
 };
 
+export const updateRun = async (
+  env: Env,
+  runId: string,
+  input: UpdateRunInput,
+): Promise<RunSummary> => {
+  const existing = await env.DB.prepare('SELECT id, status FROM project_runs WHERE id = ?')
+    .bind(runId)
+    .first<Pick<ProjectRunRow, 'id' | 'status'>>();
+
+  if (!existing) {
+    throw new ApiError(404, 'Run was not found.');
+  }
+
+  const projectId = readRequiredString(input.project.id, 'project.id');
+  const idea = input.idea.trim() || 'Untitled idea';
+  const status = input.status ?? existing.status;
+  const timestamp = nowIso();
+  const finalizedAt = status === 'final' ? timestamp : null;
+
+  await env.DB.prepare(
+    `UPDATE project_runs
+     SET project_id = ?,
+         idea = ?,
+         project_json = ?,
+         status = ?,
+         updated_at = ?,
+         finalized_at = ?
+     WHERE id = ?`,
+  )
+    .bind(projectId, idea, JSON.stringify(input.project), status, timestamp, finalizedAt, runId)
+    .run();
+
+  await insertEvent(env, 'run-updated', `Updated ${status} run "${idea}".`);
+  return getRunSummary(env, runId);
+};
+
+export const finalizeRun = async (
+  env: Env,
+  runId: string,
+  input: Omit<UpdateRunInput, 'status'>,
+): Promise<RunSummary> => updateRun(env, runId, { ...input, status: 'final' });
+
 export const getRunSnapshot = async (env: Env, runId?: string): Promise<RunSnapshot | null> => {
   const run = runId
     ? await env.DB.prepare(
-        'SELECT id, project_id, idea, project_json, created_at, updated_at FROM project_runs WHERE id = ?',
+        `SELECT id, project_id, idea, project_json, status, created_at, updated_at, finalized_at
+         FROM project_runs
+         WHERE id = ?`,
       )
         .bind(runId)
         .first<ProjectRunRow>()
     : await env.DB.prepare(
-        'SELECT id, project_id, idea, project_json, created_at, updated_at FROM project_runs ORDER BY updated_at DESC LIMIT 1',
+        `SELECT id, project_id, idea, project_json, status, created_at, updated_at, finalized_at
+         FROM project_runs
+         ORDER BY updated_at DESC
+         LIMIT 1`,
       ).first<ProjectRunRow>();
 
   if (!run) {
@@ -179,8 +302,10 @@ export const getRunSnapshot = async (env: Env, runId?: string): Promise<RunSnaps
   return {
     runId: run.id,
     idea: run.idea,
+    status: run.status,
     project: JSON.parse(run.project_json) as unknown,
     updatedAt: run.updated_at,
+    ...(run.finalized_at ? { finalizedAt: run.finalized_at } : {}),
     files: (fileRows.results ?? []).map(fileRowToRecord),
     events: (eventRows.results ?? []).map(eventRowToRecord),
   };
@@ -334,6 +459,24 @@ export const getRunFile = async (
   }
 
   return { object, row };
+};
+
+export const deleteRunFile = async (env: Env, runId: string, fileId: string): Promise<void> => {
+  const row = await env.DB.prepare('SELECT r2_key FROM file_backups WHERE run_id = ? AND id = ?')
+    .bind(runId, fileId)
+    .first<Pick<FileRow, 'r2_key'>>();
+
+  if (!row) {
+    return;
+  }
+
+  await deleteR2Keys(env, [row.r2_key]);
+  await env.DB.prepare('DELETE FROM file_backups WHERE run_id = ? AND id = ?')
+    .bind(runId, fileId)
+    .run();
+  await env.DB.prepare('UPDATE project_runs SET updated_at = ? WHERE id = ?')
+    .bind(nowIso(), runId)
+    .run();
 };
 
 export const deleteRun = async (env: Env, runId: string): Promise<void> => {

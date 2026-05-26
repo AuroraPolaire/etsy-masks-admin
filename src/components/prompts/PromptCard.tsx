@@ -60,7 +60,7 @@ export const PromptCard = ({
 
   return (
     <Surface as="article" key={prompt.subjectId} variant="muted" className="p-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="grid gap-4 2xl:grid-cols-[minmax(28rem,1fr)_minmax(20rem,26rem)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -79,13 +79,19 @@ export const PromptCard = ({
           <div className="mt-4 space-y-3">
             <div>
               <p className="text-xs font-semibold uppercase text-ink-muted">Image prompt</p>
-              <Surface variant="default" className="mt-1 p-3 text-sm text-ink-base">
+              <Surface
+                variant="default"
+                className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-words p-3 text-sm leading-6 text-ink-base"
+              >
                 {prompt.prompt}
               </Surface>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase text-ink-muted">Avoid</p>
-              <Surface variant="default" className="mt-1 p-3 text-sm text-ink-base">
+              <Surface
+                variant="default"
+                className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words p-3 text-sm leading-6 text-ink-base"
+              >
                 {prompt.negativeRequirements}
               </Surface>
             </div>

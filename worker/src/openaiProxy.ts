@@ -53,6 +53,21 @@ const createStringSchema = (description: string) => ({
   description,
 });
 
+const seoCheckSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    id: createStringSchema('Stable kebab-case check id.'),
+    label: createStringSchema('Short SEO check label.'),
+    passed: {
+      type: 'boolean',
+      description: 'Whether the generated draft passes this check.',
+    },
+    details: createStringSchema('Concrete details about the SEO check.'),
+  },
+  required: ['id', 'label', 'passed', 'details'],
+};
+
 const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> => ({
   model: OPENAI_BRIEF_MODEL,
   input: [
@@ -73,6 +88,8 @@ const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> =
         '- Description must be structured with clear buyer benefits, included files, how to use, safety, digital download disclaimer, license, and refund policy.',
         '- Style should guide image generation for realistic/front-view printable masks unless the idea asks for another style.',
         '- Safety note must mention adult supervision and not intended for children under 3.',
+        '- Also return AI Etsy SEO analysis for the generated title, tags, and description.',
+        '- SEO suggestions must be directly usable: one improved title, exactly 13 tags with each tag 20 characters or fewer, and one improved description draft.',
       ].join('\n'),
     },
   ],
@@ -106,6 +123,47 @@ const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> =
             type: 'array',
             items: createStringSchema('One safe mask topic name.'),
           },
+          etsySeoAnalysis: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              titleWordCount: {
+                type: 'number',
+                description: 'Word count for the generated title.',
+              },
+              firstTitleSegment: createStringSchema(
+                'First buyer-visible title segment, about 60 characters.',
+              ),
+              tags: {
+                type: 'array',
+                items: createStringSchema('One generated Etsy tag.'),
+              },
+              repeatedTitleWords: {
+                type: 'array',
+                items: createStringSchema('A title word repeated too often, if any.'),
+              },
+              suggestedTitle: createStringSchema('Improved Etsy title suggestion.'),
+              suggestedTags: {
+                type: 'array',
+                items: createStringSchema('One improved Etsy tag, 20 characters or fewer.'),
+              },
+              suggestedDescription: createStringSchema('Improved Etsy description draft.'),
+              checks: {
+                type: 'array',
+                items: seoCheckSchema,
+              },
+            },
+            required: [
+              'titleWordCount',
+              'firstTitleSegment',
+              'tags',
+              'repeatedTitleWords',
+              'suggestedTitle',
+              'suggestedTags',
+              'suggestedDescription',
+              'checks',
+            ],
+          },
         },
         required: [
           'title',
@@ -120,6 +178,7 @@ const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> =
           'license',
           'refundPolicy',
           'subjects',
+          'etsySeoAnalysis',
         ],
       },
     },

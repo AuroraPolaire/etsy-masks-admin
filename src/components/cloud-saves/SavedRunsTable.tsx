@@ -2,6 +2,7 @@ import { Download } from 'lucide-react';
 
 import { formatCloudSaveDateTime } from './cloudSaveUtils';
 import { formatBytes } from '../../lib/files';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card, CardBody, CardHeader } from '../ui/Card';
 import { Input } from '../ui/Input';
@@ -58,10 +59,11 @@ export const SavedRunsTable = ({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-surface-divider text-xs uppercase text-ink-muted">
                 <th className="py-2 pr-3 font-semibold">Idea</th>
+                <th className="px-3 py-2 font-semibold">Status</th>
                 <th className="px-3 py-2 font-semibold">Updated</th>
                 <th className="px-3 py-2 text-right font-semibold">Files</th>
                 <th className="px-3 py-2 text-right font-semibold">Size</th>
@@ -84,6 +86,11 @@ export const SavedRunsTable = ({
                       <p className="mt-1 truncate text-xs text-ink-muted">
                         {run.projectId} / {run.id}
                       </p>
+                    </td>
+                    <td className="p-3">
+                      <Badge tone={run.status === 'final' ? 'success' : 'info'}>
+                        {run.status === 'final' ? 'Final' : 'Draft'}
+                      </Badge>
                     </td>
                     <td className="p-3 text-ink-base">{formatCloudSaveDateTime(run.updatedAt)}</td>
                     <td className="p-3 text-right text-ink-base">{run.fileCount}</td>

@@ -1,6 +1,8 @@
 import type {
   Marketplace,
   MaskScale,
+  EtsySeoAnalysis,
+  EtsySeoCheck,
   OpenAIImageBackground,
   OpenAIImageModel,
   OpenAIImageOutputFormat,
@@ -55,6 +57,7 @@ const optionalProjectDateFields = [
   'lastPreviewGeneratedAt',
   'lastImageApprovalAt',
   'lastBriefUpdatedAt',
+  'lastEtsySeoGeneratedAt',
 ] as const;
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -213,6 +216,61 @@ const readOpenAIImageSettings = (
   };
 };
 
+const readStringArray = (value: unknown, limit: number): string[] =>
+  Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, limit)
+    : [];
+
+const readSeoCheck = (value: unknown): EtsySeoCheck | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const id = readOptionalString(value.id);
+  const label = readOptionalString(value.label);
+  if (!id || !label || typeof value.passed !== 'boolean') {
+    return undefined;
+  }
+
+  return {
+    id,
+    label,
+    passed: value.passed,
+    details: readString(value.details, ''),
+  };
+};
+
+const readEtsySeoAnalysis = (value: unknown): EtsySeoAnalysis | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const suggestedTitle = readOptionalString(value.suggestedTitle);
+  const suggestedDescription = readOptionalString(value.suggestedDescription);
+  const checks = Array.isArray(value.checks)
+    ? value.checks.map(readSeoCheck).filter((check): check is EtsySeoCheck => Boolean(check))
+    : [];
+
+  if (!suggestedTitle || !suggestedDescription || checks.length === 0) {
+    return undefined;
+  }
+
+  return {
+    titleWordCount: readOptionalNonNegativeNumber(value.titleWordCount) ?? 0,
+    firstTitleSegment: readString(value.firstTitleSegment, ''),
+    tags: readStringArray(value.tags, 13),
+    repeatedTitleWords: readStringArray(value.repeatedTitleWords, 50),
+    suggestedTitle,
+    suggestedTags: readStringArray(value.suggestedTags, 13),
+    suggestedDescription,
+    checks,
+  };
+};
+
 const hasChangedSettings = (
   settings: ProjectSettings,
   fallbackSettings: ProjectSettings,
@@ -274,6 +332,7 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
   const nestedEtsyUploadZipSizeBytes = readOptionalNonNegativeNumber(
     projectLike.nestedEtsyUploadZipSizeBytes,
   );
+  const etsySeoAnalysis = readEtsySeoAnalysis(projectLike.etsySeoAnalysis);
 
   return {
     id: readRequiredString(projectLike.id, fallback.id),
@@ -284,6 +343,7 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
     createdAt: readRequiredString(projectLike.createdAt, fallback.createdAt),
     updatedAt: new Date().toISOString(),
     ...optionalDates,
+    ...(etsySeoAnalysis ? { etsySeoAnalysis } : {}),
     ...(nestedEtsyUploadZipSizeBytes !== undefined ? { nestedEtsyUploadZipSizeBytes } : {}),
   };
 };

@@ -1,6 +1,6 @@
 import { DRAFT_TEMPLATE_SETTINGS } from '../constants';
 
-import type { ProjectDraft } from '../types';
+import type { EtsySeoAnalysis, EtsySeoCheck, ProjectDraft } from '../types';
 
 export type OpenAIResponsesApiResponse = {
   output_text?: string;
@@ -26,6 +26,55 @@ const stringArrayField = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim())
     : [];
+
+const numberField = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+
+const normalizeSeoCheck = (value: unknown): EtsySeoCheck | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const id = stringField(value.id, '');
+  const label = stringField(value.label, '');
+  if (!id || !label || typeof value.passed !== 'boolean') {
+    return undefined;
+  }
+
+  return {
+    id,
+    label,
+    passed: value.passed,
+    details: stringField(value.details, ''),
+  };
+};
+
+const normalizeSeoAnalysis = (value: unknown): EtsySeoAnalysis | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const suggestedTitle = stringField(value.suggestedTitle, '');
+  const suggestedDescription = stringField(value.suggestedDescription, '');
+  const checks = Array.isArray(value.checks)
+    ? value.checks.map(normalizeSeoCheck).filter((check): check is EtsySeoCheck => Boolean(check))
+    : [];
+
+  if (!suggestedTitle || !suggestedDescription || checks.length === 0) {
+    return undefined;
+  }
+
+  return {
+    titleWordCount: numberField(value.titleWordCount, 0),
+    firstTitleSegment: stringField(value.firstTitleSegment, ''),
+    tags: stringArrayField(value.tags).filter(Boolean).slice(0, 13),
+    repeatedTitleWords: stringArrayField(value.repeatedTitleWords).filter(Boolean).slice(0, 50),
+    suggestedTitle,
+    suggestedTags: stringArrayField(value.suggestedTags).filter(Boolean).slice(0, 13),
+    suggestedDescription,
+    checks,
+  };
+};
 
 const getResponseText = (response: OpenAIResponsesApiResponse): string => {
   if (response.output_text) {
@@ -61,6 +110,8 @@ export const normalizeAiProjectDraft = (rawValue: unknown): ProjectDraft => {
     throw new Error('OpenAI project brief did not include any mask topics.');
   }
 
+  const etsySeoAnalysis = normalizeSeoAnalysis(rawValue.etsySeoAnalysis ?? rawValue.seoAnalysis);
+
   return {
     settings: {
       ...DRAFT_TEMPLATE_SETTINGS,
@@ -83,6 +134,7 @@ export const normalizeAiProjectDraft = (rawValue: unknown): ProjectDraft => {
       id: crypto.randomUUID(),
       name,
     })),
+    ...(etsySeoAnalysis ? { etsySeoAnalysis } : {}),
   };
 };
 

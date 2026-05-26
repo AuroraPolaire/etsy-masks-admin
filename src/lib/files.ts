@@ -181,7 +181,8 @@ const createMaskPrompt = (subjectName: string, settings?: Pick<ProjectSettings, 
     'Front view, centered composition, symmetrical design, child-friendly expression.',
     'Clearly cut human eye holes with enough space for a child to see through.',
     'Plain white background, no shadows, no scene, no props, no hands.',
-    'Clean cut outline, high-resolution printable craft asset, original artwork.',
+    'Clean mask edge shape without any black cutting outline, sticker border, contour line, crop marks, or dashed cut guide.',
+    'High-resolution printable craft asset, original artwork.',
     'No text, no watermark.',
   ].join(' ');
 

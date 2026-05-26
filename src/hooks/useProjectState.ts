@@ -6,6 +6,7 @@ import { loadProject, saveProject } from '../lib/storage';
 import type {
   OpenAIImageSettings,
   PdfSettings,
+  EtsySeoAnalysis,
   Project,
   ProjectSettings,
   SubjectItem,
@@ -14,6 +15,7 @@ import type {
 type InitialProjectDraft = {
   settings: ProjectSettings;
   subjects: SubjectItem[];
+  etsySeoAnalysis?: EtsySeoAnalysis;
 };
 
 export const useProjectState = () => {
@@ -65,6 +67,12 @@ export const useProjectState = () => {
         settings: draft.settings,
         subjects: draft.subjects,
         lastBriefUpdatedAt: nowIso(),
+        ...(draft.etsySeoAnalysis
+          ? {
+              etsySeoAnalysis: draft.etsySeoAnalysis,
+              lastEtsySeoGeneratedAt: nowIso(),
+            }
+          : {}),
       }));
     },
     [updateProject],

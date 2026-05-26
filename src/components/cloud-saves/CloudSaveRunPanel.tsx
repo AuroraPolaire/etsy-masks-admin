@@ -1,4 +1,4 @@
-import { RefreshCw, Upload } from 'lucide-react';
+import { CheckCircle2, RefreshCw, Save } from 'lucide-react';
 
 import { formatBytes } from '../../lib/files';
 import { Alert } from '../ui/Alert';
@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { Card, CardBody, CardHeader } from '../ui/Card';
 import { Input } from '../ui/Input';
 
-import type { BackendHealth, ManagedFile } from '../../types';
+import type { BackendAutosaveState, BackendHealth, ManagedFile } from '../../types';
 import type { BadgeTone } from '../ui/Badge';
 
 type CloudSaveRunPanelProps = {
@@ -16,11 +16,14 @@ type CloudSaveRunPanelProps = {
   suggestedIdea: string;
   backendBusy: boolean;
   backendReachable: boolean;
+  activeDraftRunId: string;
+  autosaveState: BackendAutosaveState;
   maxFileBytes: number;
   oversizedFiles: ManagedFile[];
   onSaveIdeaChange: (idea: string) => void;
   onTestConnection: () => void;
   onBackupToCloud: () => void;
+  onFinalizeRun: () => void;
 };
 
 export const CloudSaveRunPanel = ({
@@ -29,11 +32,14 @@ export const CloudSaveRunPanel = ({
   suggestedIdea,
   backendBusy,
   backendReachable,
+  activeDraftRunId,
+  autosaveState,
   maxFileBytes,
   oversizedFiles,
   onSaveIdeaChange,
   onTestConnection,
   onBackupToCloud,
+  onFinalizeRun,
 }: CloudSaveRunPanelProps) => {
   const statusTone: BadgeTone = backendReachable ? 'success' : health ? 'warning' : 'neutral';
   const statusLabel = backendReachable
@@ -41,20 +47,37 @@ export const CloudSaveRunPanel = ({
     : health
       ? 'Needs attention'
       : 'Not checked';
+  const autosaveTone: BadgeTone =
+    autosaveState.status === 'saved'
+      ? 'success'
+      : autosaveState.status === 'error'
+        ? 'warning'
+        : autosaveState.status === 'saving'
+          ? 'neutral'
+          : 'neutral';
+  const autosaveLabel =
+    autosaveState.status === 'saved'
+      ? 'Draft autosaved'
+      : autosaveState.status === 'saving'
+        ? 'Autosaving draft'
+        : autosaveState.status === 'error'
+          ? 'Autosave failed'
+          : 'Autosave idle';
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Save current run</h2>
+            <h2 className="text-lg font-bold text-ink-strong">Backend draft</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Store the current brief, topics, approved files, PDFs, and previews so this run can be
-              restored later.
+              Work in progress is saved as a draft. Exporting a clean ZIP marks the backend run as
+              final.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge tone={statusTone}>{statusLabel}</Badge>
+            <Badge tone={autosaveTone}>{autosaveLabel}</Badge>
             <Badge tone={health?.openaiProxyReady ? 'success' : 'warning'}>
               {health?.openaiProxyReady ? 'AI ready' : 'AI not ready'}
             </Badge>
@@ -82,11 +105,33 @@ export const CloudSaveRunPanel = ({
               disabled={!backendReachable || backendBusy || oversizedFiles.length > 0}
               onClick={onBackupToCloud}
             >
-              <Upload aria-hidden="true" className="mr-2" size={17} />
-              Save run
+              <Save aria-hidden="true" className="mr-2" size={17} />
+              Save draft now
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={
+                !backendReachable || backendBusy || oversizedFiles.length > 0 || !activeDraftRunId
+              }
+              onClick={onFinalizeRun}
+            >
+              <CheckCircle2 aria-hidden="true" className="mr-2" size={17} />
+              Mark final
             </Button>
           </div>
         </div>
+        {autosaveState.status === 'saved' && autosaveState.lastSavedAt ? (
+          <p className="text-xs text-ink-muted">
+            Last backend draft save:{' '}
+            {new Intl.DateTimeFormat(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }).format(new Date(autosaveState.lastSavedAt))}
+          </p>
+        ) : null}
+        {autosaveState.status === 'error' && autosaveState.lastError ? (
+          <Alert tone="warning">{autosaveState.lastError}</Alert>
+        ) : null}
         {!backendReachable && health ? (
           <Alert tone="warning">
             Cloud saves are not ready. Check the Worker route, Cloudflare Access, and D1/R2

@@ -20,7 +20,9 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [showDescriptionDraft, setShowDescriptionDraft] = useState(false);
   const detailsId = useId();
-  const analysis = analyzeEtsySeo(project);
+  const localAnalysis = analyzeEtsySeo(project);
+  const analysis = project.etsySeoAnalysis ?? localAnalysis;
+  const analysisSource = project.etsySeoAnalysis ? 'AI SEO' : 'Local SEO';
   const passedCount = analysis.checks.filter((check) => check.passed).length;
   const suggestedTags = analysis.suggestedTags.join(', ');
   const titleWordCount = analysis.titleWordCount;
@@ -45,13 +47,28 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
             </p>
           </div>
           <div className="self-start">
-            <Badge tone={passedCount === analysis.checks.length ? 'success' : 'warning'}>
-              {passedCount}/{analysis.checks.length}
-            </Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone={project.etsySeoAnalysis ? 'info' : 'neutral'}>{analysisSource}</Badge>
+              <Badge tone={passedCount === analysis.checks.length ? 'success' : 'warning'}>
+                {passedCount}/{analysis.checks.length}
+              </Badge>
+            </div>
           </div>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
+        <p className="text-sm text-ink-muted">
+          {project.etsySeoAnalysis
+            ? `AI SEO was generated when the brief was drafted${
+                project.lastEtsySeoGeneratedAt
+                  ? ` on ${new Intl.DateTimeFormat(undefined, {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }).format(new Date(project.lastEtsySeoGeneratedAt))}`
+                  : ''
+              }.`
+            : 'Draft the brief with AI to generate listing-specific SEO suggestions.'}
+        </p>
         <dl className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
           <StatCard label="Checks passed" value={`${passedCount}/${analysis.checks.length}`} />
           <StatCard label="Title words" value={titleWordCount} />

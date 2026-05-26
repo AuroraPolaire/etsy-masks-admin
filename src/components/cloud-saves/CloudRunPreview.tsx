@@ -2,6 +2,7 @@ import { Download } from 'lucide-react';
 
 import { formatCloudSaveDateTime, getSnapshotTitle } from './cloudSaveUtils';
 import { formatBytes } from '../../lib/files';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Surface } from '../ui/Surface';
 
@@ -32,6 +33,13 @@ export const CloudRunPreview = ({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="text-sm font-bold text-ink-strong">Previewed run</h3>
+          {snapshot?.status ? (
+            <div className="mt-2">
+              <Badge tone={snapshot.status === 'final' ? 'success' : 'info'}>
+                {snapshot.status === 'final' ? 'Final run' : 'Draft run'}
+              </Badge>
+            </div>
+          ) : null}
           <dl className="mt-3 grid gap-2 text-sm text-ink-base sm:grid-cols-2">
             <div>
               <dt className="text-xs uppercase text-ink-muted">Idea</dt>

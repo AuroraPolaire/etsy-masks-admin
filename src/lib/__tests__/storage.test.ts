@@ -227,4 +227,47 @@ describe('project storage', () => {
 
     expect(project.openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
   });
+
+  it('preserves normalized AI SEO analysis from imported project backups', () => {
+    const backup = {
+      appVersion: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      project: {
+        ...createDefaultProject(),
+        lastEtsySeoGeneratedAt: '2026-05-25T10:00:00.000Z',
+        etsySeoAnalysis: {
+          titleWordCount: 7,
+          firstTitleSegment: 'Garden Printable Masks',
+          tags: ['garden masks'],
+          repeatedTitleWords: [],
+          suggestedTitle: 'Garden Printable Masks, 3 Kids Paper Masks',
+          suggestedTags: ['garden masks', 'printable masks'],
+          suggestedDescription: 'Printable garden mask bundle for kids.',
+          checks: [
+            {
+              id: 'title-front-loaded',
+              label: 'Title starts with product',
+              passed: true,
+              details: 'Product appears first.',
+              extra: 'strip me',
+            },
+          ],
+          unexpected: 'strip me',
+        },
+      },
+    };
+
+    const project = parseProjectBackup(JSON.stringify(backup));
+
+    expect(project.lastEtsySeoGeneratedAt).toBe('2026-05-25T10:00:00.000Z');
+    expect(project.etsySeoAnalysis?.suggestedTags).toEqual(['garden masks', 'printable masks']);
+    expect(project.etsySeoAnalysis?.checks).toEqual([
+      {
+        id: 'title-front-loaded',
+        label: 'Title starts with product',
+        passed: true,
+        details: 'Product appears first.',
+      },
+    ]);
+  });
 });

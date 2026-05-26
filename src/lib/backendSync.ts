@@ -6,6 +6,7 @@ import type {
   BackendProjectSnapshot,
   BackendRunSummary,
   BusyActionContext,
+  BackendFileRecord,
   ManagedFile,
   Project,
 } from '../types';
@@ -53,6 +54,110 @@ export const loadBackendRunCache = async (
 export const getOversizedFiles = (files: ManagedFile[], maxFileBytes: number): ManagedFile[] =>
   files.filter((file) => file.size > maxFileBytes);
 
+const metadataSignature = (value: unknown): string => JSON.stringify(value);
+
+const managedFileSignature = (project: Project, file: ManagedFile): string =>
+  metadataSignature(managedFileToBackendMetadata(project, file));
+
+const backendFileSignature = (file: BackendFileRecord): string =>
+  metadataSignature({
+    id: file.id,
+    projectId: file.projectId,
+    name: file.name,
+    originalName: file.originalName,
+    size: file.size,
+    type: file.type,
+    kind: file.kind,
+    addedAt: file.addedAt,
+    reviewState: file.reviewState,
+    reviewNotes: file.reviewNotes,
+    ...(file.mappedSubjectId ? { mappedSubjectId: file.mappedSubjectId } : {}),
+    explicitlyConfirmed: file.explicitlyConfirmed,
+    ...(file.imageMetadata ? { imageMetadata: file.imageMetadata } : {}),
+  });
+
+export const createBackendAutosaveKey = (
+  project: Project,
+  files: ManagedFile[],
+  idea: string,
+): string =>
+  JSON.stringify({
+    idea,
+    project,
+    files: files.map((file) => ({
+      metadata: managedFileToBackendMetadata(project, file),
+      file: {
+        name: file.file.name,
+        size: file.file.size,
+        type: file.file.type,
+        lastModified: file.file.lastModified,
+      },
+    })),
+  });
+
+export const shouldAutosaveBackendDraft = (project: Project, files: ManagedFile[]): boolean =>
+  files.length > 0 ||
+  project.subjects.length > 0 ||
+  Object.values(project.settings).some((value) =>
+    typeof value === 'string' ? value.trim().length > 0 : false,
+  ) ||
+  Boolean(project.lastBriefUpdatedAt);
+
+export const syncBackendRunFiles = async (
+  client: BackendClient,
+  project: Project,
+  runId: string,
+  files: ManagedFile[],
+  {
+    signal,
+    setProgress,
+    forceUpload = false,
+  }: {
+    signal?: AbortSignal;
+    setProgress?: (message: string | null) => void;
+    forceUpload?: boolean;
+  } = {},
+): Promise<BackendProjectSnapshot> => {
+  const snapshot = await client.getRun(runId, signal);
+  const localFileIds = new Set(files.map((file) => file.id));
+  const remoteFilesById = new Map(snapshot.files.map((file) => [file.id, file]));
+
+  for (const remoteFile of snapshot.files) {
+    if (signal?.aborted) {
+      throw new DOMException('Backend file sync cancelled', 'AbortError');
+    }
+
+    if (!localFileIds.has(remoteFile.id)) {
+      setProgress?.(`Removing cloud file ${remoteFile.name}...`);
+      await client.deleteFile(runId, remoteFile.id, signal);
+    }
+  }
+
+  for (const [index, file] of files.entries()) {
+    if (signal?.aborted) {
+      throw new DOMException('Backend file sync cancelled', 'AbortError');
+    }
+
+    const remoteFile = remoteFilesById.get(file.id);
+    const needsUpload =
+      forceUpload ||
+      !remoteFile ||
+      managedFileSignature(project, file) !== backendFileSignature(remoteFile);
+
+    if (needsUpload) {
+      setProgress?.(`Uploading ${index + 1}/${files.length}: ${file.name}`);
+      await client.uploadFile(
+        runId,
+        managedFileToBackendMetadata(project, file),
+        file.file,
+        signal,
+      );
+    }
+  }
+
+  return client.getRun(runId, signal);
+};
+
 export const uploadBackendRunFiles = async (
   client: BackendClient,
   project: Project,
@@ -60,14 +165,11 @@ export const uploadBackendRunFiles = async (
   files: ManagedFile[],
   { signal, setProgress }: BusyActionContext,
 ): Promise<void> => {
-  for (const [index, file] of files.entries()) {
-    if (signal.aborted) {
-      throw new DOMException('Backend backup cancelled', 'AbortError');
-    }
-
-    setProgress(`Uploading ${index + 1}/${files.length}: ${file.name}`);
-    await client.uploadFile(runId, managedFileToBackendMetadata(project, file), file.file, signal);
-  }
+  await syncBackendRunFiles(client, project, runId, files, {
+    signal,
+    setProgress,
+    forceUpload: true,
+  });
 };
 
 export const downloadBackendRunFiles = async (

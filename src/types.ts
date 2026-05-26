@@ -102,12 +102,15 @@ export type Project = {
   lastPreviewGeneratedAt?: string;
   lastImageApprovalAt?: string;
   lastBriefUpdatedAt?: string;
+  lastEtsySeoGeneratedAt?: string;
+  etsySeoAnalysis?: EtsySeoAnalysis;
   nestedEtsyUploadZipSizeBytes?: number;
 };
 
 export type ProjectDraft = {
   settings: ProjectSettings;
   subjects: SubjectItem[];
+  etsySeoAnalysis?: EtsySeoAnalysis;
 };
 
 export type ManagedFile = {
@@ -250,6 +253,17 @@ export type BackendHealth = {
   maxFileBytes: number;
 };
 
+export type BackendRunStatus = 'draft' | 'final';
+
+export type BackendAutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+export type BackendAutosaveState = {
+  activeRunId: string;
+  status: BackendAutosaveStatus;
+  lastSavedAt?: string;
+  lastError?: string;
+};
+
 export type BackendFileRecord = {
   id: string;
   runId: string;
@@ -278,8 +292,10 @@ export type BackendEvent = {
 export type BackendProjectSnapshot = {
   runId?: string;
   idea?: string;
+  status?: BackendRunStatus;
   project: Project | null;
   updatedAt?: string;
+  finalizedAt?: string;
   files: BackendFileRecord[];
   events: BackendEvent[];
 };
@@ -288,8 +304,10 @@ export type BackendRunSummary = {
   id: string;
   projectId: string;
   idea: string;
+  status: BackendRunStatus;
   createdAt: string;
   updatedAt: string;
+  finalizedAt?: string;
   fileCount: number;
   totalSizeBytes: number;
 };

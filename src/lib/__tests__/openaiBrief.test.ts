@@ -17,11 +17,29 @@ describe('OpenAI brief generation helpers', () => {
       license: 'Personal and classroom use only.',
       refundPolicy: 'No refunds for digital downloads.',
       subjects: ['Astronaut', 'Rocket'],
+      etsySeoAnalysis: {
+        titleWordCount: 6,
+        firstTitleSegment: 'Space Printable Masks',
+        tags: ['space masks', 'printable masks'],
+        repeatedTitleWords: [],
+        suggestedTitle: 'Space Printable Masks, 2 Kids Paper Masks',
+        suggestedTags: ['space masks', 'printable masks'],
+        suggestedDescription: 'Printable space mask bundle for kids.',
+        checks: [
+          {
+            id: 'tags-count',
+            label: 'Uses tags',
+            passed: true,
+            details: 'Generated tag set is usable.',
+          },
+        ],
+      },
     });
 
     expect(draft.settings.theme).toBe('Space Masks');
     expect(draft.settings.tags).toBe('space masks, printable masks');
     expect(draft.subjects.map((subject) => subject.name)).toEqual(['Astronaut', 'Rocket']);
+    expect(draft.etsySeoAnalysis?.suggestedTitle).toContain('Space Printable Masks');
   });
 
   it('parses output_text from a Responses API response', () => {

@@ -116,7 +116,7 @@ export const PromptManager = ({
         {prompts.length === 0 ? (
           <EmptyState>Add topics before generating image prompts.</EmptyState>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 2xl:grid-cols-2">
             {prompts.map((prompt) => (
               <PromptCard
                 key={prompt.subjectId}

@@ -100,8 +100,8 @@ export const HomeWorkflowView = ({
     <BrowserSupportWarning result={browserSupport} />
     <PrivacyNotice />
     <Alert>
-      Listing copy is saved in this browser. Uploaded files clear on refresh, so export the ZIP or
-      re-upload files before continuing later.
+      Listing copy is saved in this browser and autosaved to the backend when Cloudflare is
+      reachable. Restore the backend draft if you need to continue from another session.
     </Alert>
     <Stepper steps={workflow.stepperItems} />
     {workflow.steps.map((step, index) => (

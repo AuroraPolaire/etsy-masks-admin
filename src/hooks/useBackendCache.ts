@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { createBackendClient } from '../lib/backendClient';
+import { useBackendDraftAutosave } from './useBackendDraftAutosave';
+import { BackendApiError, createBackendClient } from '../lib/backendClient';
+import {
+  loadActiveBackendDraftRunId,
+  saveActiveBackendDraftRunId,
+} from '../lib/backendDraftSession';
 import { getProjectIdeaLabel } from '../lib/backendIdea';
 import {
   downloadBackendRunFiles,
@@ -8,7 +13,7 @@ import {
   getOversizedFiles,
   isAbortError,
   loadBackendRunCache,
-  uploadBackendRunFiles,
+  syncBackendRunFiles,
 } from '../lib/backendSync';
 
 import type { BackendRunCacheState } from '../lib/backendSync';
@@ -60,8 +65,33 @@ export const useBackendCache = ({
   const [snapshot, setSnapshot] = useState<BackendProjectSnapshot | null>(null);
   const [saveIdea, setSaveIdea] = useState(suggestedIdea);
   const [lastSuggestedIdea, setLastSuggestedIdea] = useState(suggestedIdea);
+  const [activeDraftRunId, setActiveDraftRunId] = useState(loadActiveBackendDraftRunId);
+  const healthRef = useRef<BackendHealth | null>(null);
   const client = useMemo(() => createBackendClient(), []);
   const canUseOpenAIProxy = Boolean(health?.openaiProxyReady);
+  const resolvedSaveIdea = saveIdea.trim() || suggestedIdea;
+
+  const setActiveDraftRun = useCallback((runId: string) => {
+    setActiveDraftRunId(runId);
+    saveActiveBackendDraftRunId(runId);
+  }, []);
+
+  useEffect(() => {
+    healthRef.current = health;
+  }, [health]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void client
+      .getHealth(controller.signal)
+      .then(setHealth)
+      .catch(() => {
+        // Full connection diagnostics run from the Cloud saves screen.
+      });
+
+    return () => controller.abort();
+  }, [client]);
 
   useEffect(() => {
     setSaveIdea((currentIdea) =>
@@ -84,6 +114,104 @@ export const useBackendCache = ({
       applyRunCache(await loadBackendRunCache(client, preferredRunId, context)),
     [applyRunCache, client],
   );
+
+  const syncRunToBackend = useCallback(
+    async ({
+      targetStatus,
+      projectOverride = project,
+      filesOverride = files,
+      signal,
+      setProgress,
+      forceUpload = false,
+    }: {
+      targetStatus: 'draft' | 'final';
+      projectOverride?: Project;
+      filesOverride?: ManagedFile[];
+      signal?: AbortSignal;
+      setProgress?: (message: string | null) => void;
+      forceUpload?: boolean;
+    }): Promise<{ runId: string; snapshot: BackendProjectSnapshot }> => {
+      setProgress?.('Checking Cloudflare backend limits...');
+      const nextHealth = healthRef.current ?? (await client.getHealth(signal));
+      setHealth(nextHealth);
+
+      const oversizedFiles = getOversizedFiles(filesOverride, nextHealth.maxFileBytes);
+      if (oversizedFiles.length > 0) {
+        throw new Error(`${oversizedFiles.length} file(s) exceed the backend upload limit.`);
+      }
+
+      const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
+      let runId = activeDraftRunId;
+
+      if (runId) {
+        try {
+          setProgress?.(`Updating draft "${idea}" in D1...`);
+          await client.updateRun(runId, projectOverride, idea, 'draft', signal);
+        } catch (error) {
+          if (!(error instanceof BackendApiError) || error.status !== 404) {
+            throw error;
+          }
+
+          runId = '';
+        }
+      }
+
+      if (!runId) {
+        setProgress?.(`Creating draft run "${idea}" in D1...`);
+        const { run } = await client.createRun(projectOverride, idea, 'draft', signal);
+        runId = run.id;
+      }
+
+      let nextSnapshot = await syncBackendRunFiles(client, projectOverride, runId, filesOverride, {
+        ...(signal ? { signal } : {}),
+        ...(setProgress ? { setProgress } : {}),
+        forceUpload,
+      });
+      if (targetStatus === 'final') {
+        setProgress?.(`Marking "${idea}" as final...`);
+        await client.finalizeRun(runId, projectOverride, idea, signal);
+        nextSnapshot = await client.getRun(runId, signal);
+      }
+
+      const { runs: nextRuns } = await client.listRuns(signal);
+      setRuns(nextRuns);
+      setSelectedRunId(runId);
+      setSnapshot(nextSnapshot);
+
+      if (targetStatus === 'draft') {
+        setActiveDraftRun(runId);
+      } else {
+        setActiveDraftRun('');
+      }
+
+      return { runId, snapshot: nextSnapshot };
+    },
+    [activeDraftRunId, client, files, project, saveIdea, setActiveDraftRun],
+  );
+
+  const syncDraftRun = useCallback(
+    (signal: AbortSignal) =>
+      syncRunToBackend({
+        targetStatus: 'draft',
+        signal,
+      }),
+    [syncRunToBackend],
+  );
+
+  const {
+    autosaveState,
+    markDraftSaved,
+    markFinalSaved,
+    markDraftRestored,
+    markFinalRestored,
+    clearAutosaveTracking,
+  } = useBackendDraftAutosave({
+    project,
+    files,
+    resolvedSaveIdea,
+    activeDraftRunId,
+    syncDraftRun,
+  });
 
   const testConnection = useCallback(() => {
     void runBusyAction('backend-sync', async (context) => {
@@ -137,30 +265,18 @@ export const useBackendCache = ({
   const backupToCloud = useCallback(() => {
     void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
       try {
-        setProgress('Checking Cloudflare backend limits...');
-        const nextHealth = health ?? (await client.getHealth(signal));
-        setHealth(nextHealth);
-        const oversizedFiles = getOversizedFiles(files, nextHealth.maxFileBytes);
-
-        if (oversizedFiles.length > 0) {
-          addActivity(
-            'cloud-synced',
-            'warning',
-            `${oversizedFiles.length} file(s) exceed the backend upload limit.`,
-          );
-          return;
-        }
-
-        const idea = saveIdea.trim() || suggestedIdea;
-        setProgress(`Saving "${idea}" metadata to D1...`);
-        const { run } = await client.createRun(project, idea, signal);
-
-        await uploadBackendRunFiles(client, project, run.id, files, { signal, setProgress });
-        await loadRunCache(run.id, { signal, setProgress });
+        const { runId } = await syncRunToBackend({
+          targetStatus: 'draft',
+          signal,
+          setProgress,
+          forceUpload: true,
+        });
+        await loadRunCache(runId, { signal, setProgress });
+        markDraftSaved(project, files, resolvedSaveIdea, runId);
         addActivity(
           'cloud-synced',
           'success',
-          `Saved "${idea}" with ${files.length} file(s) to Cloudflare.`,
+          `Saved draft "${resolvedSaveIdea}" with ${files.length} file(s) to Cloudflare.`,
         );
       } catch (error) {
         if (isAbortError(error)) {
@@ -177,14 +293,13 @@ export const useBackendCache = ({
     });
   }, [
     addActivity,
-    client,
     files,
-    health,
     loadRunCache,
+    markDraftSaved,
     project,
+    resolvedSaveIdea,
     runBusyAction,
-    saveIdea,
-    suggestedIdea,
+    syncRunToBackend,
   ]);
 
   const restoreRun = useCallback(
@@ -232,6 +347,14 @@ export const useBackendCache = ({
               restoredFiles,
               `Restored ${restoredFiles.length} file(s) from Cloudflare.`,
             );
+            const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
+            if (nextSnapshot.status === 'draft') {
+              setActiveDraftRun(targetRunId);
+              markDraftRestored(nextSnapshot.project, restoredFiles, restoredIdea, targetRunId);
+            } else {
+              setActiveDraftRun('');
+              markFinalRestored(nextSnapshot.project, restoredFiles, restoredIdea);
+            }
             addActivity(
               'cloud-synced',
               'success',
@@ -256,11 +379,14 @@ export const useBackendCache = ({
       addActivity,
       client,
       confirmAction,
+      markDraftRestored,
+      markFinalRestored,
       replaceFiles,
       replaceProject,
       runBusyAction,
       runs,
       selectedRunId,
+      setActiveDraftRun,
     ],
   );
 
@@ -291,6 +417,10 @@ export const useBackendCache = ({
         try {
           context.setProgress('Deleting selected Cloudflare run...');
           await client.deleteRun(selectedRunId, context.signal);
+          if (selectedRunId === activeDraftRunId) {
+            setActiveDraftRun('');
+            clearAutosaveTracking();
+          }
           await loadRunCache(undefined, context);
           addActivity('cloud-synced', 'warning', 'Deleted the selected Cloudflare run.');
         } catch (error) {
@@ -307,7 +437,18 @@ export const useBackendCache = ({
         }
       });
     })();
-  }, [addActivity, client, confirmAction, loadRunCache, runBusyAction, runs, selectedRunId]);
+  }, [
+    activeDraftRunId,
+    addActivity,
+    client,
+    confirmAction,
+    clearAutosaveTracking,
+    loadRunCache,
+    runBusyAction,
+    runs,
+    selectedRunId,
+    setActiveDraftRun,
+  ]);
 
   const deleteAllCloudData = useCallback(() => {
     void (async () => {
@@ -330,6 +471,8 @@ export const useBackendCache = ({
           setRuns([]);
           setSelectedRunId('');
           setSnapshot(null);
+          setActiveDraftRun('');
+          clearAutosaveTracking();
           addActivity('cloud-synced', 'warning', 'Deleted all Cloudflare backend data.');
         } catch (error) {
           if (isAbortError(error)) {
@@ -345,7 +488,30 @@ export const useBackendCache = ({
         }
       });
     })();
-  }, [addActivity, client, confirmAction, runBusyAction]);
+  }, [addActivity, clearAutosaveTracking, client, confirmAction, runBusyAction, setActiveDraftRun]);
+
+  const finalizeCurrentRun = useCallback(
+    async (projectOverride?: Project, context?: BusyActionContext): Promise<void> => {
+      const finalProject = projectOverride ?? project;
+      const finalIdea = saveIdea.trim() || getProjectIdeaLabel(finalProject);
+      const { signal, setProgress } = context ?? {};
+
+      const { runId } = await syncRunToBackend({
+        targetStatus: 'final',
+        projectOverride: finalProject,
+        ...(signal ? { signal } : {}),
+        ...(setProgress ? { setProgress } : {}),
+        forceUpload: true,
+      });
+      markFinalSaved(finalProject, files, finalIdea);
+      addActivity('cloud-synced', 'success', `Marked "${finalIdea}" as a final cloud run.`);
+      await loadRunCache(runId, {
+        signal: signal ?? new AbortController().signal,
+        setProgress: setProgress ?? (() => undefined),
+      });
+    },
+    [addActivity, files, loadRunCache, markFinalSaved, project, saveIdea, syncRunToBackend],
+  );
 
   const generateProjectDraft = useCallback(
     (initialPrompt: string, signal?: AbortSignal): Promise<ProjectDraft> =>
@@ -364,6 +530,8 @@ export const useBackendCache = ({
     runs,
     selectedRunId,
     snapshot,
+    activeDraftRunId,
+    autosaveState,
     saveIdea,
     suggestedIdea,
     canUseOpenAIProxy,
@@ -375,6 +543,7 @@ export const useBackendCache = ({
     deleteSelectedRun,
     deleteAllCloudData,
     restoreRun,
+    finalizeCurrentRun,
     generateProjectDraft,
     generateImage,
   };

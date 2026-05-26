@@ -18,6 +18,7 @@ type UseExportActionsParams = {
   clearFiles: () => void;
   addActivity: AddActivity;
   runBusyAction: RunBusyAction;
+  onArchiveExported?: (project: Project, context: BusyActionContext) => Promise<void> | void;
   confirmAction: (options: {
     title: string;
     description: string;
@@ -44,6 +45,7 @@ export const useExportActions = ({
   clearFiles,
   addActivity,
   runBusyAction,
+  onArchiveExported,
   confirmAction,
 }: UseExportActionsParams) => {
   const generatePdfs = () =>
@@ -197,13 +199,15 @@ export const useExportActions = ({
         const { exportArchive: createArchive } = await import('../lib/zipExport');
         const result = await createArchive(project, files);
         const exportedAt = nowIso();
-        throwIfAborted(signal);
-
-        updateProject((currentProject) => ({
-          ...currentProject,
+        const exportedProject = {
+          ...project,
           lastArchiveExportAt: exportedAt,
           nestedEtsyUploadZipSizeBytes: result.nestedEtsyUploadZipSizeBytes,
-        }));
+          updatedAt: exportedAt,
+        };
+        throwIfAborted(signal);
+
+        replaceProject(exportedProject);
 
         setProgress('Checking QA blockers before download...');
         if (result.needsReview) {
@@ -226,6 +230,10 @@ export const useExportActions = ({
         throwIfAborted(signal);
         setProgress('Starting ZIP download...');
         downloadBlob(result.blob, result.fileName);
+        if (!result.needsReview && onArchiveExported) {
+          setProgress('Saving final backend run...');
+          await onArchiveExported(exportedProject, { setProgress, signal });
+        }
         addActivity(
           'archive-exported',
           result.needsReview ? 'warning' : 'success',

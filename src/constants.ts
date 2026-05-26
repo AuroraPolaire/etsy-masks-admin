@@ -7,7 +7,7 @@ export const STORAGE_KEY = 'etsy-masks-admin/project-v1';
 export const DEFAULT_THEME = 'Printable Party Masks';
 
 export const DEFAULT_MASK_PROMPT_STYLE =
-  'Realistic printable mask for kids with eye holes and white background, front view, no shadows';
+  'Realistic printable mask for kids with eye holes and white background, front view, no shadows, no black cut outline';
 
 export const DEFAULT_SETTINGS: ProjectSettings = {
   title: '',
@@ -60,7 +60,7 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
 };
 
 export const PROMPT_NEGATIVE_REQUIREMENTS =
-  'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes';
+  'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
 
 export const BLOCKED_IP_TERMS = [
   'disney',
