@@ -163,7 +163,7 @@ export const HomeWorkflowView = ({
                   Configure the backend OpenAI proxy for AI generation, or upload files manually for
                   each topic.
                 </span>
-                <Button onClick={onOpenCloudSaves}>Open Cloud saves</Button>
+                <Button onClick={onOpenCloudSaves}>Open backend saves</Button>
               </Alert>
             ) : null}
             <PromptManager

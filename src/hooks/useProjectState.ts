@@ -62,15 +62,20 @@ export const useProjectState = () => {
 
   const applyInitialDraft = useCallback(
     (draft: InitialProjectDraft) => {
+      const timestamp = nowIso();
       updateProject((currentProject) => ({
-        ...currentProject,
+        id: crypto.randomUUID(),
         settings: draft.settings,
         subjects: draft.subjects,
-        lastBriefUpdatedAt: nowIso(),
+        pdfSettings: currentProject.pdfSettings,
+        openAIImageSettings: currentProject.openAIImageSettings,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        lastBriefUpdatedAt: timestamp,
         ...(draft.etsySeoAnalysis
           ? {
               etsySeoAnalysis: draft.etsySeoAnalysis,
-              lastEtsySeoGeneratedAt: nowIso(),
+              lastEtsySeoGeneratedAt: timestamp,
             }
           : {}),
       }));

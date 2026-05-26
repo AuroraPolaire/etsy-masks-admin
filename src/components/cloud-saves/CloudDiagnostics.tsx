@@ -37,7 +37,7 @@ export const CloudDiagnostics = ({
               <h3 className="text-sm font-bold text-ink-strong">Cloud status</h3>
               <dl className="mt-3 grid gap-2 text-sm text-ink-base">
                 <div className="flex justify-between gap-4">
-                  <dt>Saved runs</dt>
+                  <dt>Backend runs</dt>
                   <dd className="font-semibold">{runs.length}</dd>
                 </div>
                 <div className="flex justify-between gap-4">

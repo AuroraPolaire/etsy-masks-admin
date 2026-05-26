@@ -1,4 +1,4 @@
-import { CheckCircle2, RefreshCw, Save } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 
 import { formatBytes } from '../../lib/files';
 import { Alert } from '../ui/Alert';
@@ -22,7 +22,6 @@ type CloudSaveRunPanelProps = {
   oversizedFiles: ManagedFile[];
   onSaveIdeaChange: (idea: string) => void;
   onTestConnection: () => void;
-  onBackupToCloud: () => void;
   onFinalizeRun: () => void;
 };
 
@@ -38,12 +37,11 @@ export const CloudSaveRunPanel = ({
   oversizedFiles,
   onSaveIdeaChange,
   onTestConnection,
-  onBackupToCloud,
   onFinalizeRun,
 }: CloudSaveRunPanelProps) => {
   const statusTone: BadgeTone = backendReachable ? 'success' : health ? 'warning' : 'neutral';
   const statusLabel = backendReachable
-    ? 'Cloud saves reachable'
+    ? 'Backend reachable'
     : health
       ? 'Needs attention'
       : 'Not checked';
@@ -69,10 +67,10 @@ export const CloudSaveRunPanel = ({
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Backend draft</h2>
+            <h2 className="text-lg font-bold text-ink-strong">Automatic draft save</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Work in progress is saved as a draft. Exporting a clean ZIP marks the backend run as
-              final.
+              Each meaningful edit is saved to one backend draft for this project. Exporting a clean
+              ZIP marks that draft as final.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -102,14 +100,6 @@ export const CloudSaveRunPanel = ({
             </Button>
             <Button
               variant="primary"
-              disabled={!backendReachable || backendBusy || oversizedFiles.length > 0}
-              onClick={onBackupToCloud}
-            >
-              <Save aria-hidden="true" className="mr-2" size={17} />
-              Save draft now
-            </Button>
-            <Button
-              variant="secondary"
               disabled={
                 !backendReachable || backendBusy || oversizedFiles.length > 0 || !activeDraftRunId
               }
@@ -134,8 +124,8 @@ export const CloudSaveRunPanel = ({
         ) : null}
         {!backendReachable && health ? (
           <Alert tone="warning">
-            Cloud saves are not ready. Check the Worker route, Cloudflare Access, and D1/R2
-            bindings.
+            Backend autosave is not ready. Check the Pages Function route, Cloudflare Access, and
+            D1/R2 bindings.
           </Alert>
         ) : null}
         {oversizedFiles.length > 0 ? (

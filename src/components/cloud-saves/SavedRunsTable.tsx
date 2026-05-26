@@ -34,9 +34,9 @@ export const SavedRunsTable = ({
     <CardHeader>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-base font-bold text-ink-strong">Saved runs</h2>
+          <h2 className="text-base font-bold text-ink-strong">Previous drafts and finals</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Search by idea, check the high-level details, then restore the run you want.
+            Search by idea or status, check the high-level details, then restore the run you want.
           </p>
         </div>
         <div className="w-full lg:max-w-sm">
@@ -45,7 +45,7 @@ export const SavedRunsTable = ({
             name="backendRunSearch"
             type="search"
             value={runSearchQuery}
-            placeholder="Idea, project id, or run id"
+            placeholder="Idea, status, project id, or run id"
             helperText={`${filteredRuns.length}/${runs.length} runs shown`}
             onChange={(event) => onRunSearchChange(event.target.value)}
           />
@@ -55,7 +55,9 @@ export const SavedRunsTable = ({
     <CardBody>
       {filteredRuns.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          {runs.length === 0 ? 'No saved cloud runs yet.' : 'No saved runs match the search.'}
+          {runs.length === 0
+            ? 'No backend drafts or finals yet.'
+            : 'No backend runs match the search.'}
         </p>
       ) : (
         <div className="overflow-x-auto">

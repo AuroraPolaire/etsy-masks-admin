@@ -431,9 +431,9 @@ export const App = () => {
   const renderBackendView = () => (
     <AppMainLayout aside={renderAside()}>
       <AppSectionHeader
-        eyebrow="Cloud saves"
-        title="Cloud saves"
-        description="Autosave the current draft, search previous runs by idea, restore older work, and mark completed bundles as final."
+        eyebrow="Backend saves"
+        title="Backend saves"
+        description="Review automatic drafts and final bundles, search previous work by idea, and restore any run when you need it."
       />
       <BackendDataPanel
         health={backendCache.health}
@@ -450,7 +450,6 @@ export const App = () => {
         onRunSelected={backendCache.selectRun}
         onRestoreRun={backendCache.restoreRun}
         onTestConnection={backendCache.testConnection}
-        onBackupToCloud={backendCache.backupToCloud}
         onFinalizeRun={() => {
           void backendCache.finalizeCurrentRun();
         }}

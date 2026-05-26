@@ -31,7 +31,6 @@ type BackendDataPanelProps = {
   onRunSelected: (runId: string) => void;
   onRestoreRun: (runId: string) => void;
   onTestConnection: () => void;
-  onBackupToCloud: () => void;
   onFinalizeRun: () => void;
   onDeleteSelectedRun: () => void;
   onDeleteAllCloudData: () => void;
@@ -52,7 +51,6 @@ export const BackendDataPanel = ({
   onRunSelected,
   onRestoreRun,
   onTestConnection,
-  onBackupToCloud,
   onFinalizeRun,
   onDeleteSelectedRun,
   onDeleteAllCloudData,
@@ -81,7 +79,6 @@ export const BackendDataPanel = ({
         oversizedFiles={oversizedFiles}
         onSaveIdeaChange={onSaveIdeaChange}
         onTestConnection={onTestConnection}
-        onBackupToCloud={onBackupToCloud}
         onFinalizeRun={onFinalizeRun}
       />
       <SavedRunsTable
