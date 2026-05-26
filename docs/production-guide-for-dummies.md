@@ -236,7 +236,7 @@ Set these variables:
 ```jsonc
 "CLOUDFLARE_ACCESS_TEAM_DOMAIN": "your-team.cloudflareaccess.com",
 "CLOUDFLARE_ACCESS_AUD": "your-access-application-aud",
-"CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "you@example.com"
+"CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "you@example.com,helper@example.com"
 ```
 
 Keep this production value:
@@ -375,7 +375,7 @@ OpenAI is the easiest place to accidentally spend money.
 Do these before heavy use:
 
 1. Set an OpenAI monthly budget or usage alert.
-2. Keep Cloudflare Access allowlist limited to your email.
+2. Keep Cloudflare Access and Worker allowlists limited to trusted admin emails.
 3. Do not share the production URL publicly unless intended.
 4. Watch Cloudflare R2 usage if saved runs include many large files.
 
@@ -442,6 +442,7 @@ Check:
 
 - You are logged in with the allowed email.
 - Access policy includes your email.
+- `CLOUDFLARE_ACCESS_ALLOWED_EMAILS` in `wrangler.jsonc` also includes your email.
 - Pages Function receives `Cf-Access-Jwt-Assertion`.
 
 ### `/api/health` returns 503

@@ -10,7 +10,7 @@
     "AUTH_MODE": "access",
     "CLOUDFLARE_ACCESS_TEAM_DOMAIN": "etsy-masks-admin-pages.cloudflareaccess.com",
     "CLOUDFLARE_ACCESS_AUD": "17e0063d4c31429f7ddc73f8c856a21164685fcb955932d84a7b2ab937cffc7f",
-    "CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "blamelessoleguch@gmail.com",
+    "CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "blamelessoleguch@gmail.com,sea.forest.mountains@gmail.com",
   },
   "d1_databases": [
     {

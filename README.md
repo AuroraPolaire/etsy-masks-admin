@@ -145,7 +145,7 @@ Configure Cloudflare Access for the Pages backend in production:
 1. Create a Cloudflare Access application that protects the Pages app or `/api/*`.
 2. Keep `AUTH_MODE=access` in the root `wrangler.jsonc`.
 3. Set `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD` in root `wrangler.jsonc`.
-4. Optionally set `CLOUDFLARE_ACCESS_ALLOWED_EMAILS` to a comma-separated allowlist.
+4. Set `CLOUDFLARE_ACCESS_ALLOWED_EMAILS` to the same comma-separated admin email allowlist you use in Cloudflare Access.
 
 The Pages Function verifies the `Cf-Access-Jwt-Assertion` JWT. There is no browser-managed backend
 token.
