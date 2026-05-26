@@ -80,8 +80,8 @@ test.describe('production workflow', () => {
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
     await expect(page.getByText('Session OpenAI API key')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Cloud saves', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Cloud saves' })).toBeVisible();
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Backend saves' })).toBeVisible();
     await expect(page.getByLabel('Search saved runs')).toBeVisible();
     await expect(page.getByText('Worker API URL')).toHaveCount(0);
     await expect(page.getByText('Admin token')).toHaveCount(0);
@@ -108,15 +108,15 @@ test.describe('accessibility smoke checks', () => {
     await prepareCleanPage(page);
   });
 
-  test('home, cloud saves, insights, and settings have no obvious axe violations', async ({
+  test('home, backend saves, insights, and settings have no obvious axe violations', async ({
     page,
   }) => {
     await waitForUiToSettle(page);
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
-    await page.getByRole('button', { name: 'Cloud saves', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Cloud saves' })).toBeVisible();
+    await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Backend saves' })).toBeVisible();
     await waitForUiToSettle(page);
     results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
