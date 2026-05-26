@@ -8,9 +8,9 @@
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:8788,https://etsy-masks-admin.pages.dev",
     "MAX_FILE_BYTES": "52428800",
     "AUTH_MODE": "access",
-    "CLOUDFLARE_ACCESS_TEAM_DOMAIN": "",
-    "CLOUDFLARE_ACCESS_AUD": "",
-    "CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "",
+    "CLOUDFLARE_ACCESS_TEAM_DOMAIN": "etsy-masks-admin-pages.cloudflareaccess.com",
+    "CLOUDFLARE_ACCESS_AUD": "17e0063d4c31429f7ddc73f8c856a21164685fcb955932d84a7b2ab937cffc7f",
+    "CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "blamelessoleguch@gmail.com",
   },
   "d1_databases": [
     {
