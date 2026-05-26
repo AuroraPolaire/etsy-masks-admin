@@ -1,38 +1,40 @@
 # Production Setup Guide For Beginners
 
-This guide explains how to publish Etsy Masks Admin with the Cloudflare backend enabled.
+This guide explains how to publish Etsy Masks Admin on Cloudflare Pages without buying a custom
+domain.
 
 The short version:
 
-- The website stays on GitHub Pages.
-- The backend runs on Cloudflare Worker.
+- Cloudflare Pages hosts the React website.
+- Cloudflare Pages gives you a free URL like `https://etsy-masks-admin.pages.dev/`.
+- Pages Functions handle `/api/*` on the same free domain.
 - Saved runs use Cloudflare D1 for metadata and Cloudflare R2 for files.
 - OpenAI keys live only in Cloudflare, never in the browser.
-- The frontend talks to the backend through same-origin `/api/*` URLs.
 
 ## Is It Free?
 
 Mostly, but not completely.
 
-| Item                           | Free?                                | Notes                                                                                                   |
-| ------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| GitHub repository              | Yes, if public                       | GitHub Pages is available for public repos on GitHub Free. Private repo Pages needs a paid GitHub plan. |
-| GitHub Pages hosting           | Yes, if public repo                  | Good for the static frontend.                                                                           |
-| GitHub Actions deploy workflow | Usually yes for this public-repo use | Keep an eye on GitHub account limits if the repo is private or heavily used.                            |
-| Cloudflare account             | Yes                                  | The Free plan is enough for this project to start.                                                      |
-| Cloudflare DNS and SSL         | Yes                                  | Requires using a domain on Cloudflare.                                                                  |
-| Cloudflare Worker              | Yes within Free limits               | Cloudflare lists Free Workers requests and CPU limits. This personal admin tool should fit.             |
-| Cloudflare D1                  | Yes within Free limits               | Free D1 quotas are enough for normal saved-run metadata.                                                |
-| Cloudflare R2                  | Yes within Free limits               | Free Standard R2 includes storage and operation quotas. Very large saved files can exceed free usage.   |
-| Cloudflare Access              | Yes for small teams                  | Cloudflare Zero Trust Free is listed for teams under 50 users.                                          |
-| Custom domain                  | No, unless you already own one       | You need a real domain for same-origin `/api/*` routing. A new domain usually costs money every year.   |
-| OpenAI API                     | No                                   | Image and brief generation cost money. Manual uploads are free.                                         |
+| Item                           | Free?                                | Notes                                                                        |
+| ------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------- |
+| GitHub repository              | Yes, if public                       | Private repos may need a paid GitHub plan depending on your GitHub usage.    |
+| GitHub Actions deploy workflow | Usually yes for this public-repo use | Keep an eye on GitHub account limits if the repo is private or heavily used. |
+| Cloudflare account             | Yes                                  | The Free plan is enough for this project to start.                           |
+| Cloudflare Pages hosting       | Yes within Free limits               | The app can live at `*.pages.dev`, so no paid domain is required.            |
+| Cloudflare Pages Functions     | Yes within Free limits               | Used for `/api/*`. Normal personal/admin usage should fit.                   |
+| Cloudflare D1                  | Yes within Free limits               | Stores saved-run metadata.                                                   |
+| Cloudflare R2                  | Yes within Free limits               | Stores saved-run files. Very large backups can exceed free usage.            |
+| Cloudflare Access              | Yes for small teams                  | Cloudflare Zero Trust Free is listed for teams under 50 users.               |
+| Custom domain                  | Not required                         | You can add one later for branding, but the backend works on `*.pages.dev`.  |
+| OpenAI API                     | No                                   | Brief and image generation cost money. Manual uploads are free.              |
 
 Official references checked on 2026-05-26:
 
-- GitHub Pages availability: https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages
+- Cloudflare Pages Functions setup and routing: https://developers.cloudflare.com/pages/functions/get-started/
+- Cloudflare Pages Functions configuration and bindings: https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+- Cloudflare Pages direct upload with Wrangler: https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/
+- Cloudflare Pages routing and `_routes.json`: https://developers.cloudflare.com/pages/functions/routing/
 - Cloudflare pricing and Free plan limits: https://www.cloudflare.com/plans/
-- Cloudflare Workers pricing: https://developers.cloudflare.com/workers/platform/pricing/
 - Cloudflare R2 pricing and free tier: https://developers.cloudflare.com/r2/pricing/
 - OpenAI API pricing: https://platform.openai.com/docs/pricing
 
@@ -44,130 +46,24 @@ You need accounts for:
 2. Cloudflare
 3. OpenAI platform
 
-For the recommended GitHub Pages production setup, you also need one domain name, for example:
+You do not need to buy a domain for this setup.
+
+## Production Shape
+
+The production app uses one free Cloudflare Pages origin:
 
 ```text
-yourdomain.com
+https://etsy-masks-admin.pages.dev/       -> React app
+https://etsy-masks-admin.pages.dev/api/*  -> Pages Function backend
 ```
 
-You can use a subdomain for the app:
+This matters because the frontend intentionally does not store:
 
-```text
-masks-admin.yourdomain.com
-```
+- Worker URL
+- admin token
+- OpenAI API key
 
-If you do not already own a domain, this is the main non-free infrastructure requirement.
-
-## Can I Avoid Paying For A Custom Domain?
-
-Yes, but there is a tradeoff.
-
-### Option A: Keep GitHub Pages As The Public Website
-
-If the public app URL is:
-
-```text
-https://aurorapolaire.github.io/etsy-masks-admin/
-```
-
-then backend features cannot be production-ready with the current same-origin architecture.
-
-Reason: GitHub Pages cannot route:
-
-```text
-https://aurorapolaire.github.io/api/*
-```
-
-to a Cloudflare Worker.
-
-You can still use the GitHub Pages URL for the browser-only/manual workflow:
-
-- manually fill listing copy
-- manually upload images
-- generate PDFs/previews in the browser
-- export ZIP
-
-But these backend features will not work there:
-
-- backend brief generation
-- backend image generation
-- Cloud saves
-- saved-run restore from R2
-
-### Option B: Use The Free `workers.dev` URL
-
-Cloudflare gives Workers a free `workers.dev` URL, like:
-
-```text
-https://etsy-masks-admin-api.your-subdomain.workers.dev/
-```
-
-This can avoid buying a custom domain.
-
-To make this production-usable, we would change the Worker so it serves both:
-
-```text
-/       -> static frontend
-/api/*  -> backend API
-```
-
-That keeps the same-origin rule without a paid domain.
-
-Tradeoffs:
-
-- The app URL is a Cloudflare `workers.dev` URL, not a branded domain.
-- GitHub Pages is no longer the public user-facing host. It can still be the static build source or
-  backup host.
-- Cloudflare documents `workers.dev` as intended for personal or hobby projects and recommends a
-  route or custom domain for production Workers.
-- This needs extra implementation in the Worker because the current Worker only handles `/api/*`.
-
-This is the best zero-domain-cost path for personal/admin usage.
-
-### Option C: Move Static Hosting To Cloudflare Pages
-
-Cloudflare Pages gives a free `*.pages.dev` URL, like:
-
-```text
-https://etsy-masks-admin.pages.dev/
-```
-
-This can also avoid buying a custom domain, but it stops using GitHub Pages as the frontend host.
-
-This is probably cleaner than proxying GitHub Pages through a Worker, but it changes the deployment
-architecture more.
-
-### Recommendation
-
-Use this decision:
-
-| Goal                                                     | Best choice                                        |
-| -------------------------------------------------------- | -------------------------------------------------- |
-| Keep GitHub Pages as public host and use backend         | Buy/use a custom domain                            |
-| Pay nothing for a domain and keep backend                | Use `workers.dev` and let the Worker serve the app |
-| Pay nothing for a domain and simplify Cloudflare hosting | Move frontend to Cloudflare Pages                  |
-| Pay nothing and keep GitHub Pages only                   | Use browser-only/manual workflow, no backend       |
-
-## Important Concept
-
-The app must use the same domain for the frontend and backend.
-
-Good production shape:
-
-```text
-https://masks-admin.yourdomain.com/       -> GitHub Pages static app
-https://masks-admin.yourdomain.com/api/*  -> Cloudflare Worker backend
-```
-
-Bad production shape:
-
-```text
-https://aurorapolaire.github.io/etsy-masks-admin/
-https://some-worker-name.workers.dev/api/*
-```
-
-The bad shape is not supported by this app because the frontend intentionally does not store a
-Worker URL or token. The backend is the single source of truth.
+The backend is the single source of truth.
 
 ## Step 1: Merge The Backend PR
 
@@ -179,7 +75,7 @@ Current PR:
 https://github.com/AuroraPolaire/etsy-masks-admin/pull/5
 ```
 
-After merging, pull the latest `main` locally:
+After merging, pull latest `main` locally:
 
 ```bash
 git checkout main
@@ -199,98 +95,58 @@ npm run build
 
 Expected result: all commands pass.
 
-## Step 2: Put Your Domain On Cloudflare
+## Step 2: Log In To Cloudflare From Terminal
 
-In Cloudflare:
-
-1. Open the Cloudflare dashboard.
-2. Add your domain.
-3. Follow Cloudflare's instructions to change your domain nameservers at your domain registrar.
-4. Wait until Cloudflare says the domain is active.
-
-This can take minutes or a few hours.
-
-## Step 3: Choose The Production URL
-
-Pick the final app URL.
-
-Recommended:
-
-```text
-masks-admin.yourdomain.com
-```
-
-This guide uses that example. Replace it with your real domain.
-
-## Step 4: Configure GitHub Pages
-
-In GitHub:
-
-1. Open the repository.
-2. Go to **Settings**.
-3. Go to **Pages**.
-4. Set **Build and deployment** source to **GitHub Actions**.
-5. Set the custom domain to:
-
-```text
-masks-admin.yourdomain.com
-```
-
-GitHub may ask you to verify the domain. Follow the prompt if it appears.
-
-## Step 5: Update The Frontend Base Path
-
-For a custom domain at the root path, the Vite base path must be `/`.
-
-Open:
-
-```text
-.github/workflows/deploy.yml
-```
-
-Find:
-
-```yaml
-VITE_BASE_PATH: '/etsy-masks-admin/'
-```
-
-Change it to:
-
-```yaml
-VITE_BASE_PATH: '/'
-```
-
-Commit and push:
-
-```bash
-git add .github/workflows/deploy.yml
-git commit -m "Configure production custom domain base path"
-git push origin main
-```
-
-## Step 6: Create Cloudflare D1 Database
-
-From the repo root, run:
+Run:
 
 ```bash
 npx wrangler login
+```
+
+Your browser opens. Log in to Cloudflare and approve Wrangler.
+
+## Step 3: Create The Cloudflare Pages Project
+
+Run:
+
+```bash
+npm run pages:project:create
+```
+
+This creates a Pages project named:
+
+```text
+etsy-masks-admin
+```
+
+The future production URL will be similar to:
+
+```text
+https://etsy-masks-admin.pages.dev/
+```
+
+## Step 4: Create The D1 Database
+
+Run:
+
+```bash
 npx wrangler d1 create etsy_masks_admin
 ```
 
-Wrangler prints output that includes a `database_id`.
+Wrangler prints output with a `database_id`.
 
 Copy that ID.
 
 Open:
 
 ```text
-worker/wrangler.toml
+wrangler.jsonc
 ```
 
 Find:
 
-```toml
-database_id = "replace-with-d1-database-id"
+```jsonc
+"database_id": "replace-with-d1-database-id"
 ```
 
 Replace it with your real D1 database ID.
@@ -298,12 +154,12 @@ Replace it with your real D1 database ID.
 Commit and push:
 
 ```bash
-git add worker/wrangler.toml
-git commit -m "Configure production D1 database"
+git add wrangler.jsonc
+git commit -m "Configure Cloudflare Pages D1 database"
 git push origin main
 ```
 
-## Step 7: Create Cloudflare R2 Bucket
+## Step 5: Create The R2 Bucket
 
 Run:
 
@@ -311,22 +167,22 @@ Run:
 npx wrangler r2 bucket create etsy-masks-admin-backups
 ```
 
-The repo already expects this bucket name in:
+The root `wrangler.jsonc` already expects this bucket name:
 
-```text
-worker/wrangler.toml
+```jsonc
+"bucket_name": "etsy-masks-admin-backups"
 ```
 
-If you choose a different bucket name, update `bucket_name` in `worker/wrangler.toml`.
+If you choose a different bucket name, update `wrangler.jsonc`.
 
-## Step 8: Set The OpenAI Secret In Cloudflare
+## Step 6: Set The OpenAI Secret
 
 Create an OpenAI API key in the OpenAI platform dashboard.
 
 Then run:
 
 ```bash
-npx wrangler secret put OPENAI_API_KEY --config worker/wrangler.toml
+npm run pages:secret:openai
 ```
 
 Paste the OpenAI API key when prompted.
@@ -335,15 +191,15 @@ Do not put the OpenAI key in:
 
 - `.env`
 - React code
-- GitHub Pages settings
+- GitHub settings
 - localStorage
 - browser fields
 
-Only Cloudflare Worker should have it.
+Only Cloudflare Pages should have it.
 
-## Step 9: Configure Cloudflare Access
+## Step 7: Configure Cloudflare Access
 
-Cloudflare Access protects the admin backend.
+Cloudflare Access protects the admin app.
 
 In Cloudflare Zero Trust:
 
@@ -353,7 +209,7 @@ In Cloudflare Zero Trust:
 4. Use this application domain:
 
 ```text
-masks-admin.yourdomain.com
+etsy-masks-admin.pages.dev
 ```
 
 5. Add a policy that allows only your email address.
@@ -367,39 +223,43 @@ Also note your Cloudflare team domain. It usually looks like:
 your-team.cloudflareaccess.com
 ```
 
-## Step 10: Set Worker Access Variables
+## Step 8: Set Access Variables
 
-Set these Cloudflare Worker variables:
+Open:
 
 ```text
-CLOUDFLARE_ACCESS_TEAM_DOMAIN
-CLOUDFLARE_ACCESS_AUD
-CLOUDFLARE_ACCESS_ALLOWED_EMAILS
+wrangler.jsonc
 ```
 
-You can set them in the Cloudflare dashboard or in `worker/wrangler.toml`.
+Set these variables:
 
-For one-user production use, values look like:
-
-```toml
-CLOUDFLARE_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
-CLOUDFLARE_ACCESS_AUD = "your-access-application-aud"
-CLOUDFLARE_ACCESS_ALLOWED_EMAILS = "you@example.com"
+```jsonc
+"CLOUDFLARE_ACCESS_TEAM_DOMAIN": "your-team.cloudflareaccess.com",
+"CLOUDFLARE_ACCESS_AUD": "your-access-application-aud",
+"CLOUDFLARE_ACCESS_ALLOWED_EMAILS": "you@example.com"
 ```
 
-Keep this production setting:
+Keep this production value:
 
-```toml
-AUTH_MODE = "access"
+```jsonc
+"AUTH_MODE": "access"
 ```
 
 Do not use this in production:
 
-```toml
-AUTH_MODE = "none"
+```jsonc
+"AUTH_MODE": "none"
 ```
 
-## Step 11: Add GitHub Secrets For Worker Deployment
+Commit and push:
+
+```bash
+git add wrangler.jsonc
+git commit -m "Configure Cloudflare Access for Pages"
+git push origin main
+```
+
+## Step 9: Add GitHub Secrets For Deployment
 
 In GitHub:
 
@@ -414,87 +274,54 @@ CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 ```
 
-The API token must be allowed to deploy Workers and apply D1 migrations.
+The token must be allowed to deploy Cloudflare Pages and apply D1 migrations.
 
-## Step 12: Deploy The Worker
+The GitHub workflow always runs code checks on `main`. It runs the Cloudflare deployment steps only
+after these secrets exist and `wrangler.jsonc` contains your real D1 `database_id`. If you run the
+workflow manually before that setup is done, it fails early with a clear message.
+
+## Step 10: Run Remote D1 Migrations
+
+Run locally once:
+
+```bash
+npm run pages:migrate:remote
+```
+
+Expected result: migrations apply successfully.
+
+The GitHub workflow also runs this before deployment.
+
+## Step 11: Deploy To Cloudflare Pages
 
 Option A: GitHub Actions
 
 1. Open GitHub **Actions**.
-2. Run **Deploy Cloudflare Worker** manually.
+2. Run **Deploy to Cloudflare Pages** manually.
+3. Confirm the workflow did not stop at the Cloudflare deploy config check.
 
 Option B: local terminal
 
 ```bash
-npm run worker:migrate:remote
-npm run worker:deploy
-```
-
-Expected result:
-
-- D1 migrations apply successfully.
-- Worker deploy succeeds.
-
-## Step 13: Route `/api/*` To The Worker
-
-In Cloudflare:
-
-1. Open your domain.
-2. Go to **Workers Routes**.
-3. Add a route:
-
-```text
-masks-admin.yourdomain.com/api/*
-```
-
-4. Select the Worker:
-
-```text
-etsy-masks-admin-api
-```
-
-This is the key step that makes same-origin backend calls work.
-
-## Step 14: Route The Website To GitHub Pages
-
-In Cloudflare DNS, create a CNAME record:
-
-```text
-Name: masks-admin
-Target: aurorapolaire.github.io
-Proxy status: Proxied
-```
-
-In GitHub Pages, confirm the custom domain is:
-
-```text
-masks-admin.yourdomain.com
-```
-
-Wait until HTTPS is active.
-
-## Step 15: Deploy The Frontend
-
-Push to `main`, or manually run the GitHub Pages workflow:
-
-```text
-Deploy to GitHub Pages
+npm run build
+npm run pages:functions:build
+npm run pages:deploy
 ```
 
 Expected result:
 
 ```text
-https://masks-admin.yourdomain.com/
+https://etsy-masks-admin.pages.dev/
 ```
 
 loads the app.
 
-## Step 16: Test The Backend Health Endpoint
+## Step 12: Test The Backend Health Endpoint
 
 Open:
 
 ```text
-https://masks-admin.yourdomain.com/api/health
+https://etsy-masks-admin.pages.dev/api/health
 ```
 
 If Cloudflare Access is enabled, you may be asked to log in.
@@ -508,14 +335,14 @@ Expected JSON includes:
 }
 ```
 
-If `openaiProxyReady` is false, the Worker does not have `OPENAI_API_KEY`.
+If `openaiProxyReady` is false, Cloudflare Pages does not have `OPENAI_API_KEY`.
 
-## Step 17: Production Smoke Test
+## Step 13: Production Smoke Test
 
-Open the app:
+Open:
 
 ```text
-https://masks-admin.yourdomain.com/
+https://etsy-masks-admin.pages.dev/
 ```
 
 Then test this exact flow:
@@ -541,7 +368,7 @@ Then test this exact flow:
 
 If all of that works, the app is production-ready for personal/admin use.
 
-## Step 18: Add Cost Safety
+## Step 14: Add Cost Safety
 
 OpenAI is the easiest place to accidentally spend money.
 
@@ -552,7 +379,7 @@ Do these before heavy use:
 3. Do not share the production URL publicly unless intended.
 4. Watch Cloudflare R2 usage if saved runs include many large files.
 
-## Step 19: Keep A Manual Backup Habit
+## Step 15: Keep A Manual Backup Habit
 
 Cloud saves are useful, but still export important work:
 
@@ -560,7 +387,7 @@ Cloud saves are useful, but still export important work:
 2. Export final ZIP before deleting local files.
 3. Keep final Etsy upload ZIPs somewhere outside the app.
 
-## Step 20: What Not To Change
+## Step 16: What Not To Change
 
 Do not add these back to the frontend:
 
@@ -571,13 +398,37 @@ Do not add these back to the frontend:
 
 The backend is responsible for secrets, OpenAI calls, authentication, and saved runs.
 
+## Local Full-Stack Test
+
+For local frontend-only development:
+
+```bash
+npm run dev
+```
+
+For local Cloudflare Pages full-stack testing:
+
+```bash
+npm run pages:migrate:local
+npm run pages:dev
+```
+
+Open the local URL printed by Wrangler. The Pages dev server serves both:
+
+```text
+/       -> built React app
+/api/*  -> Pages Function backend
+```
+
+Local `pages:dev` uses `AUTH_MODE=none` so you do not need Cloudflare Access locally.
+
 ## If Something Fails
 
 ### Blank page
 
-Most likely cause: wrong `VITE_BASE_PATH`.
+Most likely cause: wrong Vite base path.
 
-For custom domain root:
+Cloudflare Pages should use:
 
 ```yaml
 VITE_BASE_PATH: '/'
@@ -591,11 +442,11 @@ Check:
 
 - You are logged in with the allowed email.
 - Access policy includes your email.
-- Worker receives `Cf-Access-Jwt-Assertion`.
+- Pages Function receives `Cf-Access-Jwt-Assertion`.
 
 ### `/api/health` returns 503
 
-Usually missing Worker config.
+Usually missing Pages config.
 
 Check:
 
@@ -615,13 +466,13 @@ Default limit:
 50 MB per file
 ```
 
-Reduce file size or raise `MAX_FILE_BYTES` only if you understand the Worker/R2 impact.
+Reduce file size or raise `MAX_FILE_BYTES` only if you understand the Pages Function/R2 impact.
 
 ### OpenAI generation works locally but not production
 
 Check:
 
-- Production Worker has `OPENAI_API_KEY`.
+- Cloudflare Pages has `OPENAI_API_KEY`.
 - OpenAI account has billing enabled.
 - Selected model is available to the account.
 - Cloudflare Access is not rejecting the request.
@@ -631,21 +482,17 @@ Check:
 Use this as the final launch checklist:
 
 - [ ] PR #5 merged into `main`.
-- [ ] Custom domain active in Cloudflare.
-- [ ] GitHub Pages custom domain configured.
-- [ ] `VITE_BASE_PATH` set to `/` for custom domain root.
+- [ ] Cloudflare Pages project created.
 - [ ] D1 database created.
-- [ ] D1 `database_id` committed in `worker/wrangler.toml`.
+- [ ] D1 `database_id` committed in root `wrangler.jsonc`.
 - [ ] R2 bucket created.
-- [ ] `OPENAI_API_KEY` stored as Worker secret.
-- [ ] Cloudflare Access app created.
+- [ ] `OPENAI_API_KEY` stored as Cloudflare Pages secret.
+- [ ] Cloudflare Access app created for `etsy-masks-admin.pages.dev`.
 - [ ] Access policy allows only trusted email addresses.
-- [ ] `AUTH_MODE = "access"` in production.
-- [ ] GitHub secrets added for Worker deploy.
+- [ ] `"AUTH_MODE": "access"` in production.
+- [ ] GitHub secrets added for Cloudflare deployment.
 - [ ] D1 migrations applied remotely.
-- [ ] Worker deployed.
-- [ ] Cloudflare route sends `/api/*` to Worker.
-- [ ] Frontend deployed to GitHub Pages.
+- [ ] Cloudflare Pages deployed.
 - [ ] `/api/health` returns `ok: true`.
 - [ ] `/api/health` returns `openaiProxyReady: true`.
 - [ ] Full smoke test passes.

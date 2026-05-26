@@ -1,8 +1,8 @@
 # Etsy Masks Admin
 
-Static React admin panel for preparing printable paper mask bundles for Etsy. The primary app runs
-from GitHub Pages, with an optional Cloudflare Worker backend for D1/R2 backups and server-side
-OpenAI proxying.
+Static React admin panel for preparing printable paper mask bundles for Etsy. The production app
+runs on Cloudflare Pages so the free `*.pages.dev` domain can serve both the React app and the
+same-origin `/api/*` backend.
 
 ## Features
 
@@ -13,7 +13,7 @@ OpenAI proxying.
 - Mask topic list and copyable AI image prompts with expected filenames.
 - Default prompts target realistic, front-view printable masks with clear eye holes, a white
   background, and no shadows.
-- OpenAI Images API generation through the Cloudflare Worker. The frontend never stores OpenAI
+- OpenAI Images API generation through Cloudflare Pages Functions. The frontend never stores OpenAI
   keys, Worker URLs, or backend tokens.
 - Approximate OpenAI image cost estimates for one mask, missing images, and the full bundle.
 - Drag-and-drop multi-file upload for PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON.
@@ -24,7 +24,7 @@ OpenAI proxying.
 - JSZip export for a full review archive plus nested Etsy upload ZIP.
 - localStorage persistence for project metadata.
 - Project JSON export/import for metadata backup.
-- Optional Cloudflare Worker backend with D1 project metadata, R2 file backups, and a Cloud saves
+- Cloudflare Pages Functions backend with D1 project metadata, R2 file backups, and a Cloud saves
   sidebar page for saved-run restore.
 
 ## Privacy
@@ -32,7 +32,7 @@ OpenAI proxying.
 Most processing happens in your browser. Uploaded files are not sent anywhere unless you explicitly
 back up to Cloudflare, generate through the backend OpenAI proxy, or export files from the browser.
 
-OpenAI credentials and backend access policy live only in Cloudflare Worker configuration. The
+OpenAI credentials and backend access policy live only in Cloudflare Pages configuration. The
 frontend calls same-origin `/api/*` endpoints and does not contain browser-entered API keys, Worker
 URLs, or admin tokens.
 
@@ -68,41 +68,41 @@ npm run test
 npm run test:e2e
 ```
 
-## GitHub Pages Deployment
+## Cloudflare Pages Deployment
 
-The repository includes `.github/workflows/deploy.yml` using GitHub Actions Pages deployment.
+The repository includes `.github/workflows/deploy.yml` for deploying the full app to Cloudflare
+Pages. This is the recommended production target because it works on the free `*.pages.dev` domain
+without buying a custom domain.
 
-For a beginner-friendly production checklist with Cloudflare, custom domain, cost notes, and smoke
+For a beginner-friendly production checklist with Cloudflare Pages, cost notes, and smoke
 tests, read [Production Setup Guide For Beginners](docs/production-guide-for-dummies.md).
 
-1. Push this repo to GitHub.
-2. In repository settings, open **Pages**.
-3. Set **Build and deployment** source to **GitHub Actions**.
-4. Confirm the workflow `VITE_BASE_PATH` matches your repository name.
-
-For a project page hosted at:
+Production URL shape:
 
 ```text
-https://<USERNAME>.github.io/<REPO>/
+https://etsy-masks-admin.pages.dev/       -> React app
+https://etsy-masks-admin.pages.dev/api/*  -> Pages Function backend
 ```
 
-set:
+Create the Cloudflare Pages project once:
 
-```yaml
-VITE_BASE_PATH: '/<REPO>/'
+```bash
+npm run pages:project:create
 ```
 
-The workflow currently uses:
+Then configure D1/R2, set the OpenAI Pages secret, and deploy:
 
-```yaml
-VITE_BASE_PATH: '/etsy-masks-admin/'
+```bash
+npm run pages:migrate:remote
+npm run pages:deploy
 ```
 
-Change that value if you deploy the app from a differently named repository.
+GitHub Pages can still host a browser-only/static fallback, but backend features require
+Cloudflare Pages or another same-origin `/api/*` host.
 
-## Optional Cloudflare Backend
+## Cloudflare Pages Backend
 
-The Cloudflare backend is optional and keeps GitHub Pages as the frontend host. It provides:
+The Cloudflare Pages backend provides:
 
 - `GET /api/health` for Worker capability checks.
 - `GET /api/runs` and `POST /api/runs` for selectable saved run history by idea.
@@ -130,41 +130,47 @@ npx wrangler d1 create etsy_masks_admin
 npx wrangler r2 bucket create etsy-masks-admin-backups
 ```
 
-Copy the returned D1 `database_id` into `worker/wrangler.toml`.
+Copy the returned D1 `database_id` into the root `wrangler.jsonc`. The older standalone Worker
+config in `worker/wrangler.toml` is kept only for direct Worker development.
 
-Create the Worker OpenAI secret:
+Create the Cloudflare Pages project and OpenAI secret:
 
 ```bash
-npx wrangler secret put OPENAI_API_KEY --config worker/wrangler.toml
+npm run pages:project:create
+npm run pages:secret:openai
 ```
 
-Configure Cloudflare Access for the Worker in production:
+Configure Cloudflare Access for the Pages backend in production:
 
-1. Create a Cloudflare Access application that protects the Worker route.
-2. Set `AUTH_MODE=access` in `worker/wrangler.toml`.
-3. Set `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD` as Worker vars.
+1. Create a Cloudflare Access application that protects the Pages app or `/api/*`.
+2. Keep `AUTH_MODE=access` in the root `wrangler.jsonc`.
+3. Set `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD` in root `wrangler.jsonc`.
 4. Optionally set `CLOUDFLARE_ACCESS_ALLOWED_EMAILS` to a comma-separated allowlist.
 
-The Worker verifies the `Cf-Access-Jwt-Assertion` JWT. There is no browser-managed backend token.
+The Pages Function verifies the `Cf-Access-Jwt-Assertion` JWT. There is no browser-managed backend
+token.
 
-For local Worker development, copy `worker/.dev.vars.example` to `worker/.dev.vars` and keep
-`AUTH_MODE=none`. Do not use `AUTH_MODE=none` in production.
+For local Pages development, build the app and start Pages dev:
 
-Run migrations and start the Worker locally:
+```bash
+npm run pages:migrate:local
+npm run pages:dev
+```
+
+The Pages dev server serves the built app and Pages Function backend from the same local origin.
+
+Standalone Worker development is still available for backend-only debugging:
 
 ```bash
 npm run worker:migrate:local
 npm run worker:dev
 ```
 
-In another terminal, run `npm run dev`. Vite proxies `/api/*` to `http://127.0.0.1:8787` for local
-development.
-
 Deploy manually when ready:
 
 ```bash
-npm run worker:migrate:remote
-npm run worker:deploy
+npm run pages:migrate:remote
+npm run pages:deploy
 ```
 
 For GitHub Actions deployment, add repository secrets:
@@ -172,26 +178,20 @@ For GitHub Actions deployment, add repository secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-Then run the `Deploy Cloudflare Worker` workflow manually.
+The workflow validates every `main` push. Cloudflare deployment steps run only after those secrets
+exist and the root `wrangler.jsonc` has a real D1 `database_id`. Manual workflow runs fail fast if
+that setup is incomplete.
 
 ### Frontend backend connection
 
 The frontend always calls same-origin `/api/*` routes. It does not accept a Worker URL or token.
 
-For production, use a Cloudflare-managed custom domain:
-
-1. Serve the GitHub Pages site from that domain using a Pages custom domain and Cloudflare DNS.
-2. Add a Worker route for `https://<your-domain>/api/*`.
-3. Keep the static app on GitHub Pages for all non-API paths.
-4. If the app is served from the domain root, set `VITE_BASE_PATH: '/'` in the GitHub Pages workflow.
-
-The default `https://<user>.github.io/<repo>/` URL cannot route same-origin `/api/*` requests to a
-Worker because GitHub Pages does not proxy those paths. Use it for static/manual workflows or add the
-custom domain for backend features.
+Cloudflare Pages satisfies this requirement for free because `*.pages.dev` serves both the static app
+and Pages Functions from one origin.
 
 ## Image Generation Workflow
 
-1. Configure the Cloudflare Worker OpenAI proxy.
+1. Configure the Cloudflare Pages OpenAI proxy.
 2. Paste an initial bundle idea and fill the product brief with backend AI, or write the brief
    manually.
 3. Edit the product brief and mask topic list.
@@ -214,11 +214,11 @@ You can still upload externally generated files manually and map them to topics.
 ## Limitations
 
 - Uploaded files do not persist after refresh unless you explicitly back them up to Cloudflare.
-- OpenAI brief and image generation require a configured Worker OpenAI secret.
-- Backend features require a same-origin `/api/*` Worker route. A plain `github.io` project URL
-  cannot provide that route without a Cloudflare-managed custom domain.
-- Cloudflare direct backup uploads are capped by the Worker `MAX_FILE_BYTES` setting, defaulting to
-  50 MB per file.
+- OpenAI brief and image generation require a configured Cloudflare Pages OpenAI secret.
+- Backend features require a same-origin `/api/*` route. Cloudflare Pages provides this through
+  Pages Functions on the free `*.pages.dev` URL.
+- Cloudflare direct backup uploads are capped by the Pages `MAX_FILE_BYTES` setting, defaulting to 50
+  MB per file.
 - Large browser ZIP/PDF generation can be slow or fail if source files are very large.
 - Etsy upload ZIPs over 20MB are marked as a blocking QA issue and may need manual splitting or
   smaller source images.
@@ -235,8 +235,8 @@ You can still upload externally generated files manually and map them to topics.
 
 ## Troubleshooting
 
-- Blank page on GitHub Pages usually means the Vite `base` path is wrong. Set `VITE_BASE_PATH` to
-  `"/<REPO>/"`.
+- Blank page after deployment usually means the Vite `base` path is wrong. Cloudflare Pages should
+  use `VITE_BASE_PATH="/"`.
 - Files disappear after refresh because binary files are not persisted.
 - Cloud backup fails with 401 when Cloudflare Access does not provide a valid Access JWT.
 - Cloud backup fails with 503 when `AUTH_MODE=access` is enabled but Access vars are missing.

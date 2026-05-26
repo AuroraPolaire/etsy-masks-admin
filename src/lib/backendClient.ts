@@ -24,7 +24,7 @@ export class BackendApiError extends Error {
 
 const readErrorMessage = async (response: Response): Promise<string> => {
   try {
-    const parsed = (await response.json()) as unknown;
+    const parsed = await response.json();
     if (
       typeof parsed === 'object' &&
       parsed !== null &&
@@ -65,7 +65,7 @@ const requestJson = async <Result>(
     throw new BackendApiError(response.status, await readErrorMessage(response));
   }
 
-  return (await response.json()) as Result;
+  return response.json();
 };
 
 const requestBlob = async (path: string, signal?: AbortSignal): Promise<Blob> => {

@@ -45,7 +45,8 @@ module.exports = {
     'import/resolver': {
       typescript: {
         alwaysTryTypes: true,
-        project: ['./tsconfig.eslint.json'],
+        noWarnOnMultipleProjects: true,
+        project: ['./tsconfig.eslint.json', './worker/tsconfig.json', './tsconfig.pages.json'],
       },
       node: true,
     },

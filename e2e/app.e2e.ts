@@ -14,7 +14,18 @@ const waitForUiToSettle = async (page: Page) => {
   });
 };
 
+const mockUnavailableBackend = async (page: Page) => {
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'Backend unavailable in E2E smoke tests' }),
+    });
+  });
+};
+
 const prepareCleanPage = async (page: Page) => {
+  await mockUnavailableBackend(page);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
