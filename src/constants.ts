@@ -62,24 +62,6 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
 export const PROMPT_NEGATIVE_REQUIREMENTS =
   'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
 
-export const BLOCKED_IP_TERMS = [
-  'disney',
-  'pixar',
-  'paw patrol',
-  'bluey',
-  'pokemon',
-  'marvel',
-  'spider-man',
-  'batman',
-  'barbie',
-  'harry potter',
-  'taylor swift',
-  'celebrity',
-  'peppa pig',
-  'minecraft',
-  'minions',
-];
-
 export const ACCEPTED_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'pdf', 'zip', 'txt', 'json'];
 
 export const MAX_TOTAL_SOURCE_BYTES = 150 * 1024 * 1024;

@@ -76,6 +76,7 @@ export const App = () => {
     updateSettings,
     updateOpenAIImageSettings,
     applyInitialDraft,
+    applyEtsySeoAnalysis,
     addSubject,
     removeSubject,
     markImageApproved,
@@ -296,6 +297,38 @@ export const App = () => {
     [addActivity, applyDraftToProject, backendCache, runBusyAction],
   );
 
+  const handleAnalyzeListingWithAI = useCallback(() => {
+    void runBusyAction('ai-analysis', async ({ setProgress, signal }) => {
+      setProgress('Running AI listing review...');
+
+      if (!backendCache.canUseOpenAIProxy) {
+        addActivity('error', 'error', 'Configure the backend OpenAI proxy before AI review.');
+        return;
+      }
+
+      try {
+        const analysis = await backendCache.generateEtsySeoAnalysis(project, files, signal);
+        if (signal.aborted) {
+          return;
+        }
+
+        applyEtsySeoAnalysis(analysis);
+        addActivity('project-imported', 'success', 'AI reviewed the Etsy SEO and QA copy.');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          addActivity('project-imported', 'warning', 'AI listing review was cancelled.');
+          return;
+        }
+
+        addActivity(
+          'error',
+          'error',
+          getErrorMessage(error, 'Could not run AI listing review through the backend proxy.'),
+        );
+      }
+    });
+  }, [addActivity, applyEtsySeoAnalysis, backendCache, files, project, runBusyAction]);
+
   const handleAddSubject = useCallback(
     (name: string) => {
       addSubject(name);
@@ -442,6 +475,7 @@ export const App = () => {
         onStepSelected={setActiveStepId}
         onOpenCloudSaves={() => setActiveSectionId('backend')}
         onFillProductBrief={handleFillProductBrief}
+        onAnalyzeListingWithAI={handleAnalyzeListingWithAI}
         onUpdateSettings={updateSettings}
         onAddSubject={handleAddSubject}
         onRemoveSubject={handleRemoveSubject}

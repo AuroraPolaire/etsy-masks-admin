@@ -10,7 +10,12 @@ import {
   requireAuth,
   withCors,
 } from './http';
-import { proxyOpenAIBrief, proxyOpenAIColoringPageImage, proxyOpenAIImage } from './openaiProxy';
+import {
+  proxyOpenAIBrief,
+  proxyOpenAIColoringPageImage,
+  proxyOpenAIEtsySeoReview,
+  proxyOpenAIImage,
+} from './openaiProxy';
 import {
   createRun,
   deleteAllRuns,
@@ -175,6 +180,10 @@ const routeAuthenticatedRequest = async (
 
   if (parts[1] === 'openai' && parts[2] === 'brief' && request.method === 'POST') {
     return withCors(await proxyOpenAIBrief(request, env), request, env);
+  }
+
+  if (parts[1] === 'openai' && parts[2] === 'etsy-seo' && request.method === 'POST') {
+    return withCors(await proxyOpenAIEtsySeoReview(request, env), request, env);
   }
 
   if (

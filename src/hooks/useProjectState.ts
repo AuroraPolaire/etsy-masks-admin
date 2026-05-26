@@ -18,6 +18,13 @@ type InitialProjectDraft = {
   etsySeoAnalysis?: EtsySeoAnalysis;
 };
 
+const clearAiListingReview = (project: Project): Project => {
+  const projectWithoutAiReview = { ...project };
+  delete projectWithoutAiReview.etsySeoAnalysis;
+  delete projectWithoutAiReview.lastEtsySeoGeneratedAt;
+  return projectWithoutAiReview;
+};
+
 export const useProjectState = () => {
   const [project, setProject] = useState<Project>(() => loadProject());
 
@@ -37,11 +44,15 @@ export const useProjectState = () => {
 
   const updateSettings = useCallback(
     (settings: ProjectSettings) => {
-      updateProject((currentProject) => ({
-        ...currentProject,
-        settings,
-        lastBriefUpdatedAt: nowIso(),
-      }));
+      updateProject((currentProject) => {
+        const nextProject = clearAiListingReview(currentProject);
+
+        return {
+          ...nextProject,
+          settings,
+          lastBriefUpdatedAt: nowIso(),
+        };
+      });
     },
     [updateProject],
   );
@@ -85,19 +96,39 @@ export const useProjectState = () => {
 
   const addSubject = useCallback(
     (name: string) => {
-      updateProject((currentProject) => ({
-        ...currentProject,
-        subjects: [...currentProject.subjects, { id: crypto.randomUUID(), name }],
-      }));
+      updateProject((currentProject) => {
+        const nextProject = clearAiListingReview(currentProject);
+
+        return {
+          ...nextProject,
+          subjects: [...nextProject.subjects, { id: crypto.randomUUID(), name }],
+        };
+      });
     },
     [updateProject],
   );
 
   const removeSubject = useCallback(
     (subjectId: string) => {
+      updateProject((currentProject) => {
+        const nextProject = clearAiListingReview(currentProject);
+
+        return {
+          ...nextProject,
+          subjects: nextProject.subjects.filter((subject) => subject.id !== subjectId),
+        };
+      });
+    },
+    [updateProject],
+  );
+
+  const applyEtsySeoAnalysis = useCallback(
+    (etsySeoAnalysis: EtsySeoAnalysis) => {
+      const timestamp = nowIso();
       updateProject((currentProject) => ({
         ...currentProject,
-        subjects: currentProject.subjects.filter((subject) => subject.id !== subjectId),
+        etsySeoAnalysis,
+        lastEtsySeoGeneratedAt: timestamp,
       }));
     },
     [updateProject],
@@ -122,6 +153,7 @@ export const useProjectState = () => {
     updatePdfSettings,
     updateOpenAIImageSettings,
     applyInitialDraft,
+    applyEtsySeoAnalysis,
     addSubject,
     removeSubject,
     markImageApproved,

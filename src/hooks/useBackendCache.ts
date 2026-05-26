@@ -28,6 +28,7 @@ import type {
   BackendProjectSnapshot,
   BackendRunSummary,
   BusyActionContext,
+  EtsySeoAnalysis,
   ManagedFile,
   OpenAIImageSettings,
   Project,
@@ -508,6 +509,16 @@ export const useBackendCache = ({
     [client],
   );
 
+  const generateEtsySeoAnalysis = useCallback(
+    (
+      projectOverride: Project,
+      filesOverride: ManagedFile[],
+      signal?: AbortSignal,
+    ): Promise<EtsySeoAnalysis> =>
+      client.generateEtsySeoAnalysis(projectOverride, filesOverride, signal),
+    [client],
+  );
+
   const generateImage = useCallback(
     (settings: OpenAIImageSettings, prompt: PromptItem, signal?: AbortSignal): Promise<File> =>
       client.generateImage(settings, prompt, signal),
@@ -542,6 +553,7 @@ export const useBackendCache = ({
     deleteAllCloudData,
     restoreRun,
     generateProjectDraft,
+    generateEtsySeoAnalysis,
     generateImage,
     generateColoringPageImage,
   };

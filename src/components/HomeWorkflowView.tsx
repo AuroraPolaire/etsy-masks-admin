@@ -41,6 +41,7 @@ type HomeWorkflowViewProps = {
   onStepSelected: (stepId: WorkflowStepId) => void;
   onOpenCloudSaves: () => void;
   onFillProductBrief: (initialPrompt: string) => void;
+  onAnalyzeListingWithAI: () => void;
   onUpdateSettings: (settings: ProjectSettings) => void;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
@@ -77,6 +78,7 @@ export const HomeWorkflowView = ({
   onStepSelected,
   onOpenCloudSaves,
   onFillProductBrief,
+  onAnalyzeListingWithAI,
   onUpdateSettings,
   onAddSubject,
   onRemoveSubject,
@@ -127,7 +129,13 @@ export const HomeWorkflowView = ({
               lastSavedAt={project.updatedAt}
               onChange={onUpdateSettings}
             />
-            <EtsySeoPanel project={project} onChange={onUpdateSettings} />
+            <EtsySeoPanel
+              project={project}
+              canAnalyzeWithAI={hasAIProvider}
+              isAnalyzing={busyAction === 'ai-analysis'}
+              onAnalyzeWithAI={onAnalyzeListingWithAI}
+              onChange={onUpdateSettings}
+            />
             <StepAdvanceButton
               disabled={!workflow.briefComplete}
               onClick={() => onStepSelected('topics')}
@@ -200,7 +208,12 @@ export const HomeWorkflowView = ({
         ) : null}
         {step.id === 'export' ? (
           <div className="space-y-6">
-            <QAPanel result={qaResult} />
+            <QAPanel
+              result={qaResult}
+              canAnalyzeWithAI={hasAIProvider}
+              isAnalyzing={busyAction === 'ai-analysis'}
+              onAnalyzeWithAI={onAnalyzeListingWithAI}
+            />
             <ArchiveActions
               qaResult={qaResult}
               busyAction={busyAction}

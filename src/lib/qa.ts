@@ -1,5 +1,4 @@
-import { BLOCKED_IP_TERMS, MAX_ETSY_FILE_BYTES, MAX_TOTAL_SOURCE_BYTES } from '../constants';
-import { analyzeEtsySeo } from './etsySeo';
+import { MAX_ETSY_FILE_BYTES, MAX_TOTAL_SOURCE_BYTES } from '../constants';
 import {
   getExpectedFilename,
   getFileForSubject,
@@ -9,22 +8,7 @@ import {
 } from './files';
 import { slugify } from './slugify';
 
-import type { ManagedFile, Project, QACheck, QAGroup, QAResult } from '../types';
-
-const hasText = (value: string): boolean => value.trim().length > 0;
-
-const includesPhrase = (value: string, phrase: string): boolean =>
-  value.toLowerCase().includes(phrase.toLowerCase());
-
-const extractMaskCountFromTitle = (title: string): number | undefined => {
-  const match = /\b(\d+)\s*(png|printable|paper)?\s*mask/i.exec(title);
-  return match?.[1] ? Number(match[1]) : undefined;
-};
-
-export const detectBlockedTerms = (values: string[]): string[] => {
-  const searchable = values.join(' ').toLowerCase();
-  return BLOCKED_IP_TERMS.filter((term) => searchable.includes(term));
-};
+import type { EtsySeoCheck, ManagedFile, Project, QACheck, QAGroup, QAResult } from '../types';
 
 const createCheck = (
   id: string,
@@ -48,16 +32,32 @@ const createInfoCheck = (id: string, passed: boolean, label: string, details: st
   details,
 });
 
+const createAiListingReviewCheck = (project: Project): QACheck => ({
+  id: 'ai-listing-review',
+  group: 'critical',
+  label: 'AI listing review is current',
+  status: project.etsySeoAnalysis ? 'pass' : 'fail',
+  details: project.etsySeoAnalysis
+    ? `AI reviewed the current listing copy${
+        project.lastEtsySeoGeneratedAt ? ` on ${project.lastEtsySeoGeneratedAt}` : ''
+      }.`
+    : 'Run AI listing review after editing title, tags, description, safety, license, refund, or topics.',
+});
+
+const qaCheckFromAiSeoCheck = (check: EtsySeoCheck): QACheck => {
+  const group = check.group ?? 'warning';
+
+  return {
+    id: `ai-${check.id}`,
+    group,
+    label: check.label,
+    status: check.passed ? 'pass' : group === 'informational' ? 'info' : 'fail',
+    details: check.details,
+  };
+};
+
 export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
   const maskCount = project.subjects.length;
-  const titleMaskCount = extractMaskCountFromTitle(project.settings.title);
-  const blockedTerms = detectBlockedTerms([
-    project.settings.title,
-    project.settings.description,
-    project.settings.tags,
-    project.settings.license,
-  ]);
-  const etsySeo = analyzeEtsySeo(project);
   const sourceFiles = getSourceFiles(files);
   const sourceTotalSize = sourceFiles.reduce((total, file) => total + file.size, 0);
   const groups = groupFilesForExport(files, project.subjects);
@@ -97,73 +97,11 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
   );
   const noSingleLargeSource = sourceFiles.every((file) => file.size <= MAX_ETSY_FILE_BYTES);
   const finalZipSize = project.nestedEtsyUploadZipSizeBytes;
-  const getEtsyCheck = (id: string) => etsySeo.checks.find((check) => check.id === id);
-  const etsyTitleWordCount = getEtsyCheck('title-word-count');
-  const etsyTitleFrontLoaded = getEtsyCheck('title-front-loaded');
-  const etsyTitleReadable = getEtsyCheck('title-readable');
-  const etsyTagsCount = getEtsyCheck('tags-count');
-  const etsyTagsLength = getEtsyCheck('tags-length');
-  const etsyTagsDiverse = getEtsyCheck('tags-diverse');
-  const etsyDescriptionLead = getEtsyCheck('description-lead');
-  const etsyDescriptionDepth = getEtsyCheck('description-depth');
-  const etsyDescriptionStructure = getEtsyCheck('description-structure');
-  const etsyDescriptionKeywords = getEtsyCheck('description-keywords');
-  const etsyTagsValid = Boolean(etsyTagsLength?.passed && etsyTagsDiverse?.passed);
-  const etsyDescriptionUseful = Boolean(
-    etsyDescriptionDepth?.passed &&
-    etsyDescriptionStructure?.passed &&
-    etsyDescriptionKeywords?.passed,
-  );
+  const aiListingChecks = project.etsySeoAnalysis?.checks.map(qaCheckFromAiSeoCheck) ?? [];
 
   const checks: QACheck[] = [
-    createCheck(
-      'title-count',
-      'critical',
-      maskCount > 0 && titleMaskCount === maskCount,
-      'Title includes the correct mask count',
-      maskCount === 0
-        ? 'Add mask topics before finalizing the listing title count.'
-        : titleMaskCount
-          ? `Title says ${titleMaskCount}; topic list has ${maskCount}.`
-          : `Title should include the mask count: ${maskCount}.`,
-    ),
-    createCheck(
-      'description-digital-download',
-      'critical',
-      includesPhrase(project.settings.description, 'digital download'),
-      'Description says digital download',
-      'Buyers need to know this is a digital product.',
-    ),
-    createCheck(
-      'description-no-physical',
-      'critical',
-      includesPhrase(project.settings.description, 'no physical item will be shipped'),
-      'Description says no physical item ships',
-      'This disclaimer prevents physical-delivery confusion.',
-    ),
-    createCheck(
-      'safety-adult-supervision',
-      'critical',
-      includesPhrase(project.settings.safetyNote, 'adult supervision'),
-      'Safety note mentions adult supervision',
-      'Required for printing, cutting, and use.',
-    ),
-    createCheck(
-      'safety-under-three',
-      'critical',
-      includesPhrase(project.settings.safetyNote, 'under 3'),
-      'Safety note mentions under-3 warning',
-      'Required for young-child safety.',
-    ),
-    createCheck(
-      'blocked-ip',
-      'critical',
-      blockedTerms.length === 0,
-      'No obvious blocked IP terms',
-      blockedTerms.length
-        ? `Review these terms: ${blockedTerms.join(', ')}.`
-        : 'No blocked terms found.',
-    ),
+    createAiListingReviewCheck(project),
+    ...aiListingChecks,
     createCheck(
       'subject-count',
       'critical',
@@ -217,68 +155,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       duplicateApprovedMappings || hasInvalidApprovedMapping
         ? 'Fix duplicate or missing topic assignments.'
         : 'Each approved image is assigned to one topic.',
-    ),
-    createCheck(
-      'license-refund',
-      'warning',
-      hasText(project.settings.license) && hasText(project.settings.refundPolicy),
-      'License and refund policy are present',
-      'Both fields should be included in the exported listing copy.',
-    ),
-    createCheck(
-      'etsy-title-concise',
-      'warning',
-      etsyTitleWordCount?.passed ?? false,
-      'Etsy title is concise and readable',
-      etsyTitleWordCount?.details ?? 'Check title length.',
-    ),
-    createCheck(
-      'etsy-title-front-loaded',
-      'warning',
-      etsyTitleFrontLoaded?.passed ?? false,
-      'Etsy title front-loads the product',
-      etsyTitleFrontLoaded?.details ?? 'Put the product phrase first.',
-    ),
-    createCheck(
-      'etsy-title-readable',
-      'warning',
-      etsyTitleReadable?.passed ?? false,
-      'Etsy title avoids keyword stuffing',
-      etsyTitleReadable?.details ?? 'Avoid repeated keyword chains.',
-    ),
-    createCheck(
-      'etsy-tags-count',
-      'warning',
-      etsyTagsCount?.passed ?? false,
-      'Listing uses all 13 Etsy tags',
-      etsyTagsCount?.details ?? 'Use all available tag slots.',
-    ),
-    createCheck(
-      'etsy-tags-valid',
-      'warning',
-      etsyTagsValid,
-      'Etsy tags are valid and diverse',
-      [etsyTagsLength?.details, etsyTagsDiverse?.details].filter(Boolean).join(' '),
-    ),
-    createCheck(
-      'etsy-description-lead',
-      'warning',
-      etsyDescriptionLead?.passed ?? false,
-      'Description opens with clear product copy',
-      etsyDescriptionLead?.details ?? 'Make the first sentence describe the product.',
-    ),
-    createCheck(
-      'etsy-description-useful',
-      'warning',
-      etsyDescriptionUseful,
-      'Description is detailed and organized',
-      [
-        etsyDescriptionDepth?.details,
-        etsyDescriptionStructure?.details,
-        etsyDescriptionKeywords?.details,
-      ]
-        .filter(Boolean)
-        .join(' '),
     ),
     createCheck(
       'image-min-size',

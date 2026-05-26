@@ -166,9 +166,36 @@ describe('EtsySeoPanel', () => {
       openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
       createdAt: '2026-05-25T10:00:00.000Z',
       updatedAt: '2026-05-25T10:00:00.000Z',
+      lastEtsySeoGeneratedAt: '2026-05-25T10:00:00.000Z',
+      etsySeoAnalysis: {
+        titleWordCount: 8,
+        firstTitleSegment: 'Lion Printable Mask',
+        tags: ['lion mask'],
+        repeatedTitleWords: [],
+        suggestedTitle: 'Lion Printable Mask, 1 Kids Paper Mask',
+        suggestedTags: ['lion mask', 'kids mask'],
+        suggestedDescription: 'Buyer-ready AI description.',
+        checks: [
+          {
+            id: 'title-readable',
+            group: 'warning',
+            label: 'Title reads naturally',
+            passed: true,
+            details: 'The title is buyer-readable.',
+          },
+        ],
+      },
     };
 
-    render(<EtsySeoPanel project={project} onChange={vi.fn()} />);
+    render(
+      <EtsySeoPanel
+        project={project}
+        canAnalyzeWithAI
+        isAnalyzing={false}
+        onAnalyzeWithAI={vi.fn()}
+        onChange={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText('Checks passed')).toBeInTheDocument();
     expect(screen.getByText('Title words')).toBeInTheDocument();

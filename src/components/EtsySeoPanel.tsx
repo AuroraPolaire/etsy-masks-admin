@@ -1,7 +1,7 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { useId, useState } from 'react';
 
-import { analyzeEtsySeo } from '../lib/etsySeo';
+import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -13,21 +13,30 @@ import type { Project, ProjectSettings } from '../types';
 
 type EtsySeoPanelProps = {
   project: Project;
+  canAnalyzeWithAI: boolean;
+  isAnalyzing: boolean;
+  onAnalyzeWithAI: () => void;
   onChange: (settings: ProjectSettings) => void;
 };
 
-export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
+export const EtsySeoPanel = ({
+  project,
+  canAnalyzeWithAI,
+  isAnalyzing,
+  onAnalyzeWithAI,
+  onChange,
+}: EtsySeoPanelProps) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [showDescriptionDraft, setShowDescriptionDraft] = useState(false);
   const detailsId = useId();
-  const localAnalysis = analyzeEtsySeo(project);
-  const analysis = project.etsySeoAnalysis ?? localAnalysis;
-  const analysisSource = project.etsySeoAnalysis ? 'AI SEO' : 'Local SEO';
-  const passedCount = analysis.checks.filter((check) => check.passed).length;
-  const suggestedTags = analysis.suggestedTags.join(', ');
-  const titleWordCount = analysis.titleWordCount;
-  const tagCount = analysis.tags.length;
-  const repeatedWordCount = analysis.repeatedTitleWords.length;
+  const analysis = project.etsySeoAnalysis;
+  const passedCount = analysis?.checks.filter((check) => check.passed).length ?? 0;
+  const checkCount = analysis?.checks.length ?? 0;
+  const checkCountLabel = analysis ? `${passedCount}/${checkCount}` : 'Not reviewed';
+  const suggestedTags = analysis?.suggestedTags.join(', ') ?? '';
+  const titleWordCount = analysis?.titleWordCount ?? 'AI required';
+  const tagCount = analysis?.tags.length ?? 'AI required';
+  const repeatedWordCount = analysis?.repeatedTitleWords.length ?? 'AI required';
 
   const updateSettings = (patch: Partial<ProjectSettings>) => {
     onChange({
@@ -43,23 +52,23 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Etsy SEO</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Check title, tags, and description for buyer-ready Etsy copy.
+              Use backend AI to review title, tags, description, safety, and marketplace risk.
             </p>
           </div>
-          <div className="self-start">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone={project.etsySeoAnalysis ? 'info' : 'neutral'}>{analysisSource}</Badge>
-              <Badge tone={passedCount === analysis.checks.length ? 'success' : 'warning'}>
-                {passedCount}/{analysis.checks.length}
-              </Badge>
-            </div>
+          <div className="flex flex-wrap gap-2 self-start">
+            <Badge tone={analysis ? 'info' : 'warning'}>
+              {analysis ? 'AI review' : 'AI review needed'}
+            </Badge>
+            <Badge tone={analysis && passedCount === checkCount ? 'success' : 'warning'}>
+              {checkCountLabel}
+            </Badge>
           </div>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
         <p className="text-sm text-ink-muted">
-          {project.etsySeoAnalysis
-            ? `AI SEO was generated when the brief was drafted${
+          {analysis
+            ? `AI reviewed this listing${
                 project.lastEtsySeoGeneratedAt
                   ? ` on ${new Intl.DateTimeFormat(undefined, {
                       dateStyle: 'medium',
@@ -67,10 +76,30 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
                     }).format(new Date(project.lastEtsySeoGeneratedAt))}`
                   : ''
               }.`
-            : 'Draft the brief with AI to generate listing-specific SEO suggestions.'}
+            : 'Run AI review after drafting or editing the brief. Scripted SEO heuristics are not used for buyer-facing judgment.'}
         </p>
+        <div>
+          <Button
+            disabled={!canAnalyzeWithAI || isAnalyzing}
+            variant={analysis ? 'secondary' : 'primary'}
+            onClick={onAnalyzeWithAI}
+          >
+            <Sparkles aria-hidden="true" className="mr-2" size={17} />
+            {isAnalyzing
+              ? 'Reviewing listing...'
+              : analysis
+                ? 'Refresh AI review'
+                : 'Run AI review'}
+          </Button>
+        </div>
+        {!canAnalyzeWithAI ? (
+          <Alert tone="warning">
+            Backend AI is not ready. Open Backend saves and refresh the connection before running
+            listing review.
+          </Alert>
+        ) : null}
         <dl className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
-          <StatCard label="Checks passed" value={`${passedCount}/${analysis.checks.length}`} />
+          <StatCard label="Checks passed" value={checkCountLabel} />
           <StatCard label="Title words" value={titleWordCount} />
           <StatCard label="Tag count" value={tagCount} />
           <StatCard label="Repeated title words" value={repeatedWordCount} />
@@ -80,6 +109,7 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
           variant="ghost"
           aria-expanded={detailsOpen}
           aria-controls={detailsId}
+          disabled={!analysis}
           onClick={() => setDetailsOpen((isOpen) => !isOpen)}
         >
           {detailsOpen ? 'Hide SEO suggestions' : 'Show SEO suggestions'}
@@ -90,7 +120,7 @@ export const EtsySeoPanel = ({ project, onChange }: EtsySeoPanelProps) => {
           />
         </Button>
 
-        {detailsOpen ? (
+        {detailsOpen && analysis ? (
           <div id={detailsId} className="space-y-4">
             <Surface variant="muted" className="p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

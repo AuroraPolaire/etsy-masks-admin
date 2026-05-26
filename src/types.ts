@@ -35,6 +35,7 @@ export type AddActivity = (type: ActivityType, level: ActivityLevel, message: st
 export type BusyAction =
   | 'uploading'
   | 'brief-generation'
+  | 'ai-analysis'
   | 'image-generation'
   | 'archive'
   | 'backend-sync'
@@ -157,6 +158,7 @@ export type QAResult = {
 
 export type EtsySeoCheck = {
   id: string;
+  group?: QAGroup;
   label: string;
   passed: boolean;
   details: string;

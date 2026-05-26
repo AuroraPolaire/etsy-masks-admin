@@ -6,6 +6,8 @@ import type {
   BackendImageResponse,
   BackendProjectSnapshot,
   BackendRunSummary,
+  EtsySeoAnalysis,
+  ManagedFile,
   OpenAIImageSettings,
   Project,
   ProjectDraft,
@@ -105,6 +107,19 @@ const normalizeBackendSnapshot = (
   ...snapshot,
   project: snapshot.project ? normalizeProject(snapshot.project, createDefaultProject()) : null,
 });
+
+const summarizeFilesForAiReview = (files: ManagedFile[]) =>
+  files.map((file) => ({
+    name: file.name,
+    kind: file.kind,
+    size: file.size,
+    type: file.type,
+    reviewState: file.reviewState,
+    mappedSubjectId: file.mappedSubjectId ?? null,
+    assetVariant: file.assetVariant,
+    hasImageMetadata: Boolean(file.imageMetadata),
+    explicitlyConfirmed: file.explicitlyConfirmed,
+  }));
 
 export const createBackendClient = () => ({
   getHealth: (signal?: AbortSignal) => requestJson<BackendHealth>('/api/health', { signal }),
@@ -207,6 +222,24 @@ export const createBackendClient = () => ({
     });
 
     return parseOpenAIProjectBriefResponse(response);
+  },
+
+  generateEtsySeoAnalysis: async (
+    project: Project,
+    files: ManagedFile[],
+    signal?: AbortSignal,
+  ): Promise<EtsySeoAnalysis> => {
+    const { parseOpenAIEtsySeoResponse } = await import('./openaiBrief');
+    const response = await requestJson<OpenAIResponsesApiResponse>('/api/openai/etsy-seo', {
+      method: 'POST',
+      body: {
+        project,
+        files: summarizeFilesForAiReview(files),
+      },
+      signal,
+    });
+
+    return parseOpenAIEtsySeoResponse(response);
   },
 
   generateImage: async (

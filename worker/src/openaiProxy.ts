@@ -72,6 +72,11 @@ const seoCheckSchema = {
   additionalProperties: false,
   properties: {
     id: createStringSchema('Stable kebab-case check id.'),
+    group: {
+      type: 'string',
+      enum: ['critical', 'warning', 'informational'],
+      description: 'QA severity group for this AI semantic check.',
+    },
     label: createStringSchema('Short SEO check label.'),
     passed: {
       type: 'boolean',
@@ -79,7 +84,49 @@ const seoCheckSchema = {
     },
     details: createStringSchema('Concrete details about the SEO check.'),
   },
-  required: ['id', 'label', 'passed', 'details'],
+  required: ['id', 'group', 'label', 'passed', 'details'],
+};
+
+const etsySeoAnalysisSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    titleWordCount: {
+      type: 'number',
+      description: 'Word count for the reviewed title.',
+    },
+    firstTitleSegment: createStringSchema(
+      'First buyer-visible title segment, about 60 characters.',
+    ),
+    tags: {
+      type: 'array',
+      items: createStringSchema('One reviewed Etsy tag.'),
+    },
+    repeatedTitleWords: {
+      type: 'array',
+      items: createStringSchema('A title word repeated too often, if any.'),
+    },
+    suggestedTitle: createStringSchema('Improved Etsy title suggestion.'),
+    suggestedTags: {
+      type: 'array',
+      items: createStringSchema('One improved Etsy tag, 20 characters or fewer.'),
+    },
+    suggestedDescription: createStringSchema('Improved Etsy description draft.'),
+    checks: {
+      type: 'array',
+      items: seoCheckSchema,
+    },
+  },
+  required: [
+    'titleWordCount',
+    'firstTitleSegment',
+    'tags',
+    'repeatedTitleWords',
+    'suggestedTitle',
+    'suggestedTags',
+    'suggestedDescription',
+    'checks',
+  ],
 };
 
 const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> => ({
@@ -137,47 +184,7 @@ const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> =
             type: 'array',
             items: createStringSchema('One safe mask topic name.'),
           },
-          etsySeoAnalysis: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              titleWordCount: {
-                type: 'number',
-                description: 'Word count for the generated title.',
-              },
-              firstTitleSegment: createStringSchema(
-                'First buyer-visible title segment, about 60 characters.',
-              ),
-              tags: {
-                type: 'array',
-                items: createStringSchema('One generated Etsy tag.'),
-              },
-              repeatedTitleWords: {
-                type: 'array',
-                items: createStringSchema('A title word repeated too often, if any.'),
-              },
-              suggestedTitle: createStringSchema('Improved Etsy title suggestion.'),
-              suggestedTags: {
-                type: 'array',
-                items: createStringSchema('One improved Etsy tag, 20 characters or fewer.'),
-              },
-              suggestedDescription: createStringSchema('Improved Etsy description draft.'),
-              checks: {
-                type: 'array',
-                items: seoCheckSchema,
-              },
-            },
-            required: [
-              'titleWordCount',
-              'firstTitleSegment',
-              'tags',
-              'repeatedTitleWords',
-              'suggestedTitle',
-              'suggestedTags',
-              'suggestedDescription',
-              'checks',
-            ],
-          },
+          etsySeoAnalysis: etsySeoAnalysisSchema,
         },
         required: [
           'title',
@@ -195,6 +202,53 @@ const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> =
           'etsySeoAnalysis',
         ],
       },
+    },
+  },
+});
+
+const buildEtsySeoReviewRequestBody = (
+  project: Record<string, unknown>,
+  fileSummaries: unknown,
+): Record<string, unknown> => ({
+  model: OPENAI_BRIEF_MODEL,
+  input: [
+    {
+      role: 'developer',
+      content: [
+        'You are an Etsy listing strategist and compliance-minded QA reviewer for printable kids paper mask bundles.',
+        'Return only schema-valid JSON.',
+        'Use human semantic judgment for listing quality, buyer clarity, marketplace risk, safety copy, and Etsy SEO.',
+        'Do not judge objective browser facts like whether files exist, image dimensions, ZIP size, or export count. The app checks those separately.',
+        'Avoid trademarked, copyrighted, celebrity, and branded topics. Prefer generic, buyer-readable language.',
+      ].join(' '),
+    },
+    {
+      role: 'user',
+      content: [
+        'Review the current Etsy listing draft and return AI SEO suggestions plus semantic QA checks.',
+        '',
+        'Project JSON:',
+        JSON.stringify(project),
+        '',
+        'Current file summary JSON, for context only. Do not create pass/fail checks for file existence, image dimensions, or ZIP size:',
+        JSON.stringify(fileSummaries ?? []),
+        '',
+        'Required checks:',
+        '- Include critical checks for title/topic count fit, digital-download clarity, no-physical-item clarity, kids safety clarity, under-3 warning, license/refund clarity, and trademark/IP risk.',
+        '- Include warning checks for title readability, title front-loading, keyword stuffing, tag quality, tag limits, tag diversity, description buyer clarity, description structure, and natural keyword use.',
+        '- Include concrete details that explain the issue or why it passes.',
+        '- Suggested title must be production-ready for Etsy, product-first, and include mask count.',
+        '- Suggested tags must contain exactly 13 Etsy tags, each 20 characters or fewer.',
+        '- Suggested description must be buyer-ready and include contents, use cases, instructions, safety, digital download/no physical item, license, and refund copy.',
+      ].join('\n'),
+    },
+  ],
+  text: {
+    format: {
+      type: 'json_schema',
+      name: 'etsy_listing_ai_review',
+      strict: true,
+      schema: etsySeoAnalysisSchema,
     },
   },
 });
@@ -409,6 +463,30 @@ export const proxyOpenAIBrief = async (request: Request, env: Env): Promise<Resp
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(buildBriefRequestBody(initialPrompt)),
+  });
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      'Content-Type': response.headers.get('Content-Type') ?? 'application/json',
+    },
+  });
+};
+
+export const proxyOpenAIEtsySeoReview = async (request: Request, env: Env): Promise<Response> => {
+  const payload = await readJsonObject(request);
+  const project = payload.project;
+  if (!isRecord(project)) {
+    throw new ApiError(400, 'project is required.');
+  }
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getOpenAIKey(env)}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(buildEtsySeoReviewRequestBody(project, payload.files)),
   });
 
   return new Response(response.body, {

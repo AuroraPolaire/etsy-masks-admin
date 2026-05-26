@@ -232,12 +232,17 @@ const readSeoCheck = (value: unknown): EtsySeoCheck | undefined => {
 
   const id = readOptionalString(value.id);
   const label = readOptionalString(value.label);
+  const group =
+    value.group === 'critical' || value.group === 'warning' || value.group === 'informational'
+      ? value.group
+      : undefined;
   if (!id || !label || typeof value.passed !== 'boolean') {
     return undefined;
   }
 
   return {
     id,
+    ...(group ? { group } : {}),
     label,
     passed: value.passed,
     details: readString(value.details, ''),

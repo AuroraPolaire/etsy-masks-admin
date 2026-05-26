@@ -1,6 +1,6 @@
 import { DRAFT_TEMPLATE_SETTINGS } from '../constants';
 
-import type { EtsySeoAnalysis, EtsySeoCheck, ProjectDraft } from '../types';
+import type { EtsySeoAnalysis, EtsySeoCheck, ProjectDraft, QAGroup } from '../types';
 
 export type OpenAIResponsesApiResponse = {
   output_text?: string;
@@ -30,6 +30,9 @@ const stringArrayField = (value: unknown): string[] =>
 const numberField = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
 
+const qaGroupField = (value: unknown): QAGroup | undefined =>
+  value === 'critical' || value === 'warning' || value === 'informational' ? value : undefined;
+
 const normalizeSeoCheck = (value: unknown): EtsySeoCheck | undefined => {
   if (!isRecord(value)) {
     return undefined;
@@ -37,19 +40,21 @@ const normalizeSeoCheck = (value: unknown): EtsySeoCheck | undefined => {
 
   const id = stringField(value.id, '');
   const label = stringField(value.label, '');
+  const group = qaGroupField(value.group);
   if (!id || !label || typeof value.passed !== 'boolean') {
     return undefined;
   }
 
   return {
     id,
+    ...(group ? { group } : {}),
     label,
     passed: value.passed,
     details: stringField(value.details, ''),
   };
 };
 
-const normalizeSeoAnalysis = (value: unknown): EtsySeoAnalysis | undefined => {
+export const normalizeAiEtsySeoAnalysis = (value: unknown): EtsySeoAnalysis | undefined => {
   if (!isRecord(value)) {
     return undefined;
   }
@@ -110,7 +115,9 @@ export const normalizeAiProjectDraft = (rawValue: unknown): ProjectDraft => {
     throw new Error('OpenAI project brief did not include any mask topics.');
   }
 
-  const etsySeoAnalysis = normalizeSeoAnalysis(rawValue.etsySeoAnalysis ?? rawValue.seoAnalysis);
+  const etsySeoAnalysis = normalizeAiEtsySeoAnalysis(
+    rawValue.etsySeoAnalysis ?? rawValue.seoAnalysis,
+  );
 
   return {
     settings: {
@@ -143,4 +150,20 @@ export const parseOpenAIProjectBriefResponse = (
 ): ProjectDraft => {
   const responseText = getResponseText(response);
   return normalizeAiProjectDraft(JSON.parse(responseText) as unknown);
+};
+
+export const parseOpenAIEtsySeoResponse = (
+  response: OpenAIResponsesApiResponse,
+): EtsySeoAnalysis => {
+  const responseText = getResponseText(response);
+  const parsed = JSON.parse(responseText) as unknown;
+  const analysis = isRecord(parsed)
+    ? normalizeAiEtsySeoAnalysis(parsed.etsySeoAnalysis ?? parsed)
+    : undefined;
+
+  if (!analysis) {
+    throw new Error('OpenAI listing review did not include usable SEO analysis.');
+  }
+
+  return analysis;
 };

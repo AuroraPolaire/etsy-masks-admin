@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createDefaultProject } from '../../constants';
-import { detectBlockedTerms, runQA } from '../qa';
+import { runQA } from '../qa';
 
 import type { ManagedFile } from '../../types';
 
@@ -32,10 +32,6 @@ const makeFile = (
 };
 
 describe('QA checks', () => {
-  it('detects blocked marketplace IP terms', () => {
-    expect(detectBlockedTerms(['Cute Disney style mask', 'safe listing'])).toEqual(['disney']);
-  });
-
   it('fails critical checks when approved mapped images are missing', () => {
     const project = createDefaultProject();
     const result = runQA(project, []);

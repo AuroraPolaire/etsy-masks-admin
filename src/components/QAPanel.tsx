@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { useId, useState } from 'react';
 
 import { Badge } from './ui/Badge';
@@ -11,6 +11,9 @@ import type { QAGroup, QAResult } from '../types';
 
 type QAPanelProps = {
   result: QAResult;
+  canAnalyzeWithAI?: boolean;
+  isAnalyzing?: boolean;
+  onAnalyzeWithAI?: () => void;
 };
 
 const groupLabels: Record<QAGroup, string> = {
@@ -25,7 +28,12 @@ const statusTone = {
   info: 'info',
 } as const;
 
-export const QAPanel = ({ result }: QAPanelProps) => {
+export const QAPanel = ({
+  result,
+  canAnalyzeWithAI = false,
+  isAnalyzing = false,
+  onAnalyzeWithAI,
+}: QAPanelProps) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsId = useId();
   const criticalIssues = result.checks.filter(
@@ -39,16 +47,24 @@ export const QAPanel = ({ result }: QAPanelProps) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-ink-strong">QA readiness</h2>
             <p className="mt-1 text-sm text-ink-muted">
               {result.criticalPassed ? 'Critical checks pass.' : 'Critical checks need fixes.'}
             </p>
           </div>
-          <Badge tone={result.status === 'etsy-ready' ? 'success' : 'warning'}>
-            {result.status}
-          </Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone={result.status === 'etsy-ready' ? 'success' : 'warning'}>
+              {result.status}
+            </Badge>
+            {onAnalyzeWithAI ? (
+              <Button disabled={!canAnalyzeWithAI || isAnalyzing} onClick={onAnalyzeWithAI}>
+                <Sparkles aria-hidden="true" className="mr-2" size={17} />
+                {isAnalyzing ? 'Reviewing...' : 'Run AI review'}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
