@@ -12,14 +12,14 @@ const createQaResult = (): QAResult => ({
   criticalPassed: false,
 });
 
-const createProjectWithBrief = (): Project => ({
+const createProjectWithBrief = (subjects = [{ id: 'moon', name: 'Moon' }]): Project => ({
   ...createDefaultProject(),
   settings: {
     ...DRAFT_TEMPLATE_SETTINGS,
     title: 'Moon Printable Masks, 1 Kids Paper Mask, Party Craft',
   },
   lastBriefUpdatedAt: '2026-05-25T10:00:00.000Z',
-  subjects: [{ id: 'moon', name: 'Moon' }],
+  subjects,
 });
 
 const createApprovedImage = (
@@ -88,7 +88,29 @@ describe('workflow state', () => {
     expect(workflow.getStepState('export')).toBe('active');
   });
 
-  it('keeps export locked when the coloring page belongs to an older color mask', () => {
+  it('unlocks export for a partial approved image set', () => {
+    const project = createProjectWithBrief([
+      { id: 'moon', name: 'Moon' },
+      { id: 'sun', name: 'Sun' },
+    ]);
+    const workflow = createWorkflowState({
+      project,
+      files: [createApprovedImage('moon', 'moon.png')],
+      qaResult: createQaResult(),
+      hasAIProvider: true,
+      activeStepId: 'export',
+    });
+
+    expect(workflow.imagesComplete).toBe(false);
+    expect(workflow.canExportFinalFiles).toBe(true);
+    expect(workflow.visibleActiveStepId).toBe('export');
+    expect(workflow.getStepState('export')).toBe('active');
+    expect(workflow.nextAction).toBe(
+      'Export available files, or finish missing images and coloring pages.',
+    );
+  });
+
+  it('keeps partial export available when the coloring page belongs to an older color mask', () => {
     const project = createProjectWithBrief();
     const workflow = createWorkflowState({
       project,
@@ -103,6 +125,7 @@ describe('workflow state', () => {
 
     expect(workflow.approvedColoringPageCount).toBe(0);
     expect(workflow.imagesComplete).toBe(false);
-    expect(workflow.visibleActiveStepId).toBe('images');
+    expect(workflow.canExportFinalFiles).toBe(true);
+    expect(workflow.visibleActiveStepId).toBe('export');
   });
 });

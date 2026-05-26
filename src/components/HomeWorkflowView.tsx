@@ -169,10 +169,10 @@ export const HomeWorkflowView = ({
                 onCopy={onCopyPrompt}
               />
               <StepAdvanceButton
-                disabled={!workflow.imagesComplete}
+                disabled={!workflow.canExportFinalFiles}
                 onClick={() => onStepSelected('export')}
               >
-                Next: QA and export
+                {workflow.imagesComplete ? 'Next: QA and export' : 'Review partial export'}
               </StepAdvanceButton>
             </div>
           ) : null}
