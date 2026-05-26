@@ -84,6 +84,7 @@ export const App = () => {
     appendFiles,
     uploadFiles,
     approveFile,
+    approveFiles,
     rejectFile,
     deleteFile,
     updateNotes,
@@ -152,7 +153,7 @@ export const App = () => {
   const {
     openAISettings,
     setOpenAISettings,
-    generatingSubjectId,
+    generatingSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
   } = useOpenAIImageGeneration({
@@ -389,7 +390,7 @@ export const App = () => {
         qaResult={qaResult}
         hasAIProvider={hasAIProvider}
         busyAction={busyAction}
-        generatingSubjectId={generatingSubjectId}
+        generatingSubjectIds={generatingSubjectIds}
         missingImageCount={missingImagePrompts.length}
         imageGenerationHint={imageGenerationHint}
         onStepSelected={setActiveStepId}
@@ -401,6 +402,7 @@ export const App = () => {
         onRemoveSubject={handleRemoveSubject}
         onGenerateImage={handleGenerateSubjectImage}
         onGenerateMissingImages={handleGenerateMissingSubjectImages}
+        onApproveAllFiles={approveFiles}
         onApproveFile={approveFile}
         onRejectFile={rejectFile}
         onDeleteFile={handleDeleteFile}

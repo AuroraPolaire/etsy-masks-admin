@@ -26,9 +26,9 @@ export const revokeObjectUrl = (file: ManagedFile): void => {
   }
 };
 
-export const makeUniqueFile = (file: File, existingFiles: ManagedFile[]): File => {
-  const existingNames = new Set(existingFiles.map((managedFile) => managedFile.name.toLowerCase()));
-  if (!existingNames.has(file.name.toLowerCase())) {
+export const makeUniqueFileWithReservedNames = (file: File, reservedNames: Set<string>): File => {
+  if (!reservedNames.has(file.name.toLowerCase())) {
+    reservedNames.add(file.name.toLowerCase());
     return file;
   }
 
@@ -38,10 +38,17 @@ export const makeUniqueFile = (file: File, existingFiles: ManagedFile[]): File =
   let counter = 2;
   let nextName = `${baseName}-${counter}.${extension}`;
 
-  while (existingNames.has(nextName.toLowerCase())) {
+  while (reservedNames.has(nextName.toLowerCase())) {
     counter += 1;
     nextName = `${baseName}-${counter}.${extension}`;
   }
 
+  reservedNames.add(nextName.toLowerCase());
   return new File([file], nextName, { type: file.type || 'image/png' });
 };
+
+export const makeUniqueFile = (file: File, existingFiles: ManagedFile[]): File =>
+  makeUniqueFileWithReservedNames(
+    file,
+    new Set(existingFiles.map((managedFile) => managedFile.name.toLowerCase())),
+  );

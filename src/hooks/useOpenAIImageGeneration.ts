@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { makeUniqueFile } from '../lib/fileLifecycle';
+import { makeUniqueFile, makeUniqueFileWithReservedNames } from '../lib/fileLifecycle';
 import { createManagedFile, getExpectedFilename } from '../lib/files';
 
 import type {
@@ -12,6 +12,8 @@ import type {
   SubjectItem,
 } from '../types';
 import type { MutableRefObject } from 'react';
+
+const MAX_PARALLEL_IMAGE_GENERATIONS = 3;
 
 type UseOpenAIImageGenerationParams = {
   subjects: SubjectItem[];
@@ -58,7 +60,17 @@ export const useOpenAIImageGeneration = ({
   onSettingsChange,
   generateImageFile,
 }: UseOpenAIImageGenerationParams) => {
-  const [generatingSubjectId, setGeneratingSubjectId] = useState<string | null>(null);
+  const [generatingSubjectIds, setGeneratingSubjectIds] = useState<string[]>([]);
+
+  const startGeneratingSubject = useCallback((subjectId: string) => {
+    setGeneratingSubjectIds((currentIds) =>
+      currentIds.includes(subjectId) ? currentIds : [...currentIds, subjectId],
+    );
+  }, []);
+
+  const finishGeneratingSubject = useCallback((subjectId: string) => {
+    setGeneratingSubjectIds((currentIds) => currentIds.filter((id) => id !== subjectId));
+  }, []);
 
   const generateSubjectImage = useCallback(
     async (subjectId: string, context?: BusyActionContext) => {
@@ -67,7 +79,7 @@ export const useOpenAIImageGeneration = ({
         return;
       }
 
-      setGeneratingSubjectId(subjectId);
+      startGeneratingSubject(subjectId);
       context?.setProgress(`Generating ${prompt.subjectName}...`);
 
       try {
@@ -96,10 +108,20 @@ export const useOpenAIImageGeneration = ({
           error instanceof Error ? error.message : `Could not generate ${prompt.subjectName}.`,
         );
       } finally {
-        setGeneratingSubjectId(null);
+        finishGeneratingSubject(subjectId);
       }
     },
-    [addActivity, appendFiles, filesRef, generateImageFile, prompts, settings, subjects],
+    [
+      addActivity,
+      appendFiles,
+      filesRef,
+      finishGeneratingSubject,
+      generateImageFile,
+      prompts,
+      settings,
+      startGeneratingSubject,
+      subjects,
+    ],
   );
 
   const generateMissingSubjectImages = useCallback(
@@ -109,45 +131,80 @@ export const useOpenAIImageGeneration = ({
       }
 
       try {
-        const generatedManagedFiles: ManagedFile[] = [];
-        let workingFiles = filesRef.current;
+        const reservedNames = new Set(filesRef.current.map((file) => file.name.toLowerCase()));
+        let nextPromptIndex = 0;
+        let completedCount = 0;
+        let failedCount = 0;
+        let cancelled = false;
+        const concurrency = Math.min(MAX_PARALLEL_IMAGE_GENERATIONS, missingImagePrompts.length);
 
-        for (const prompt of missingImagePrompts) {
+        const generatePrompt = async (prompt: PromptItem, promptIndex: number) => {
           if (context?.signal.aborted) {
-            break;
+            cancelled = true;
+            return;
           }
 
-          setGeneratingSubjectId(prompt.subjectId);
+          startGeneratingSubject(prompt.subjectId);
           context?.setProgress(
-            `Generating ${generatedManagedFiles.length + 1}/${missingImagePrompts.length}: ${
+            `Generating ${promptIndex + 1}/${missingImagePrompts.length}: ${
               prompt.subjectName
-            }...`,
+            } (${concurrency} at a time)...`,
           );
-          const generatedFile = await generateImageFile(settings, prompt, context?.signal);
-          if (context?.signal.aborted) {
-            break;
+
+          try {
+            const generatedFile = await generateImageFile(settings, prompt, context?.signal);
+            if (context?.signal.aborted) {
+              cancelled = true;
+              return;
+            }
+
+            const uniqueFile = makeUniqueFileWithReservedNames(generatedFile, reservedNames);
+            const mappedFile = await createGeneratedManagedFile(
+              uniqueFile,
+              prompt,
+              settings,
+              subjects,
+            );
+
+            appendFiles([mappedFile]);
+            completedCount += 1;
+            addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
+            context?.setProgress(
+              `Generated ${completedCount}/${missingImagePrompts.length} image${
+                completedCount === 1 ? '' : 's'
+              }${failedCount > 0 ? `, ${failedCount} failed` : ''}.`,
+            );
+          } catch (error) {
+            if (isAbortError(error)) {
+              cancelled = true;
+              return;
+            }
+
+            failedCount += 1;
+            addActivity(
+              'error',
+              'error',
+              error instanceof Error ? error.message : `Could not generate ${prompt.subjectName}.`,
+            );
+          } finally {
+            finishGeneratingSubject(prompt.subjectId);
           }
-          const uniqueFile = makeUniqueFile(generatedFile, [
-            ...workingFiles,
-            ...generatedManagedFiles,
-          ]);
-          const mappedFile = await createGeneratedManagedFile(
-            uniqueFile,
-            prompt,
-            settings,
-            subjects,
-          );
+        };
 
-          generatedManagedFiles.push(mappedFile);
-          workingFiles = [...workingFiles, mappedFile];
-          addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
-        }
+        const worker = async () => {
+          while (nextPromptIndex < missingImagePrompts.length && !context?.signal.aborted) {
+            const promptIndex = nextPromptIndex;
+            nextPromptIndex += 1;
+            const prompt = missingImagePrompts[promptIndex];
+            if (prompt) {
+              await generatePrompt(prompt, promptIndex);
+            }
+          }
+        };
 
-        if (generatedManagedFiles.length > 0) {
-          appendFiles(generatedManagedFiles);
-        }
+        await Promise.all(Array.from({ length: concurrency }, worker));
 
-        if (context?.signal.aborted) {
+        if (cancelled || context?.signal.aborted) {
           addActivity('image-generated', 'warning', 'Image generation was cancelled.');
         }
       } catch (error) {
@@ -161,17 +218,17 @@ export const useOpenAIImageGeneration = ({
           'error',
           error instanceof Error ? error.message : 'Could not generate images.',
         );
-      } finally {
-        setGeneratingSubjectId(null);
       }
     },
     [
       addActivity,
       appendFiles,
       filesRef,
+      finishGeneratingSubject,
       generateImageFile,
       missingImagePrompts,
       settings,
+      startGeneratingSubject,
       subjects,
     ],
   );
@@ -179,7 +236,7 @@ export const useOpenAIImageGeneration = ({
   return {
     openAISettings: settings,
     setOpenAISettings: onSettingsChange,
-    generatingSubjectId,
+    generatingSubjectIds,
     generateSubjectImage,
     generateMissingSubjectImages,
   };

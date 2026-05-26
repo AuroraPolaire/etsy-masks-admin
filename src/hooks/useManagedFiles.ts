@@ -87,6 +87,35 @@ export const useManagedFiles = ({
     [addActivity, onImageApproved, updateFile],
   );
 
+  const approveFiles = useCallback(
+    (fileIds: string[]) => {
+      const targetIds = new Set(fileIds);
+      const targetCount = filesRef.current.filter((file) => targetIds.has(file.id)).length;
+      if (targetCount === 0) {
+        return;
+      }
+
+      setFiles((currentFiles) =>
+        currentFiles.map((file) =>
+          targetIds.has(file.id)
+            ? {
+                ...file,
+                reviewState: 'approved',
+                explicitlyConfirmed: true,
+              }
+            : file,
+        ),
+      );
+      onImageApproved();
+      addActivity(
+        'image-approved',
+        'success',
+        `Approved ${targetCount} image${targetCount === 1 ? '' : 's'}.`,
+      );
+    },
+    [addActivity, onImageApproved],
+  );
+
   const rejectFile = useCallback(
     (fileId: string) => {
       updateFile(fileId, (file) => ({
@@ -197,6 +226,7 @@ export const useManagedFiles = ({
     appendFiles,
     uploadFiles,
     approveFile,
+    approveFiles,
     rejectFile,
     deleteFile,
     mapFile,

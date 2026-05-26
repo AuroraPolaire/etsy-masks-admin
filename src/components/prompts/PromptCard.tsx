@@ -16,7 +16,7 @@ type PromptCardProps = {
   subjects: SubjectItem[];
   files: ManagedFile[];
   canGenerateImages: boolean;
-  generatingSubjectId: string | null;
+  generatingSubjectIds: string[];
   allowTopicEditing: boolean;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
@@ -33,7 +33,7 @@ export const PromptCard = ({
   subjects,
   files,
   canGenerateImages,
-  generatingSubjectId,
+  generatingSubjectIds,
   allowTopicEditing,
   onRemoveSubject,
   onGenerateImage,
@@ -56,7 +56,8 @@ export const PromptCard = ({
   );
   const previewFile = mappedFile ?? pendingFile ?? rejectedFile ?? subjectFiles[0];
   const subject = subjects.find((item) => item.id === prompt.subjectId);
-  const isGenerating = generatingSubjectId === prompt.subjectId;
+  const isGenerating = generatingSubjectIds.includes(prompt.subjectId);
+  const isAnyImageGenerating = generatingSubjectIds.length > 0;
 
   return (
     <Surface as="article" key={prompt.subjectId} variant="muted" className="p-4">
@@ -98,7 +99,7 @@ export const PromptCard = ({
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <AIButton
-              disabled={!canGenerateImages || generatingSubjectId !== null}
+              disabled={!canGenerateImages || isAnyImageGenerating}
               onClick={() => onGenerateImage(prompt.subjectId)}
             >
               {isGenerating ? 'Generating' : previewFile ? 'Regenerate' : 'Generate image'}

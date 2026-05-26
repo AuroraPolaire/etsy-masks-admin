@@ -1,6 +1,8 @@
+import { CheckCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import { PromptCard } from './prompts/PromptCard';
+import { getFileForSubject } from '../lib/files';
 import { AIButton } from './ui/AIButton';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
@@ -14,7 +16,7 @@ type PromptManagerProps = {
   prompts: PromptItem[];
   files: ManagedFile[];
   canGenerateImages: boolean;
-  generatingSubjectId: string | null;
+  generatingSubjectIds: string[];
   missingImageCount?: number;
   imageGenerationHint?: string;
   allowTopicEditing?: boolean;
@@ -22,6 +24,7 @@ type PromptManagerProps = {
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
   onGenerateMissingImages?: () => void;
+  onApproveAll: (fileIds: string[]) => void;
   onApprove: (fileId: string) => void;
   onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
@@ -35,7 +38,7 @@ export const PromptManager = ({
   prompts,
   files,
   canGenerateImages,
-  generatingSubjectId,
+  generatingSubjectIds,
   missingImageCount = 0,
   imageGenerationHint,
   allowTopicEditing = true,
@@ -43,6 +46,7 @@ export const PromptManager = ({
   onRemoveSubject,
   onGenerateImage,
   onGenerateMissingImages,
+  onApproveAll,
   onApprove,
   onReject,
   onDelete,
@@ -51,6 +55,15 @@ export const PromptManager = ({
   onCopy,
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
+  const filesReadyForApproval = prompts
+    .map(
+      (prompt) =>
+        getFileForSubject(files, prompt.subjectId, 'pending') ??
+        getFileForSubject(files, prompt.subjectId, 'rejected'),
+    )
+    .filter((file): file is ManagedFile => Boolean(file));
+  const fileIdsReadyForApproval = [...new Set(filesReadyForApproval.map((file) => file.id))];
+  const isGeneratingImages = generatingSubjectIds.length > 0;
 
   const addSubject = () => {
     const trimmedName = subjectName.trim();
@@ -74,17 +87,28 @@ export const PromptManager = ({
           </div>
           {!allowTopicEditing && prompts.length > 0 ? (
             <div className="flex flex-col items-start gap-2 md:items-end">
-              <AIButton
-                disabled={
-                  !onGenerateMissingImages ||
-                  !canGenerateImages ||
-                  missingImageCount === 0 ||
-                  generatingSubjectId !== null
-                }
-                onClick={onGenerateMissingImages}
-              >
-                Generate missing images
-              </AIButton>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <AIButton
+                  disabled={
+                    !onGenerateMissingImages ||
+                    !canGenerateImages ||
+                    missingImageCount === 0 ||
+                    isGeneratingImages
+                  }
+                  onClick={onGenerateMissingImages}
+                >
+                  {isGeneratingImages
+                    ? `Generating ${generatingSubjectIds.length}`
+                    : 'Generate missing images'}
+                </AIButton>
+                <Button
+                  disabled={fileIdsReadyForApproval.length === 0}
+                  onClick={() => onApproveAll(fileIdsReadyForApproval)}
+                >
+                  <CheckCheck aria-hidden="true" className="mr-2" size={17} />
+                  Approve all
+                </Button>
+              </div>
               <p className="max-w-sm text-sm text-ink-muted md:text-right">
                 {imageGenerationHint ??
                   `${missingImageCount} topic${missingImageCount === 1 ? '' : 's'} still need an approved image.`}
@@ -124,7 +148,7 @@ export const PromptManager = ({
                 subjects={subjects}
                 files={files}
                 canGenerateImages={canGenerateImages}
-                generatingSubjectId={generatingSubjectId}
+                generatingSubjectIds={generatingSubjectIds}
                 allowTopicEditing={allowTopicEditing}
                 onRemoveSubject={onRemoveSubject}
                 onGenerateImage={onGenerateImage}

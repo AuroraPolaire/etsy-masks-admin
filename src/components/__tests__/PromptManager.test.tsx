@@ -12,7 +12,7 @@ import { QAPanel } from '../QAPanel';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { FileInputButton } from '../ui/FileInputButton';
 
-import type { Project, SubjectItem, ProjectSettings, QAResult } from '../../types';
+import type { ManagedFile, Project, SubjectItem, ProjectSettings, QAResult } from '../../types';
 
 const subjects: SubjectItem[] = [{ id: 'lion', name: 'Lion' }];
 
@@ -24,10 +24,11 @@ describe('PromptManager', () => {
         prompts={createPromptItems(subjects)}
         files={[]}
         canGenerateImages={false}
-        generatingSubjectId={null}
+        generatingSubjectIds={[]}
         onAddSubject={vi.fn()}
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
+        onApproveAll={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
         onDelete={vi.fn()}
@@ -48,11 +49,12 @@ describe('PromptManager', () => {
         prompts={createPromptItems(subjects)}
         files={[]}
         canGenerateImages={false}
-        generatingSubjectId={null}
+        generatingSubjectIds={[]}
         allowTopicEditing={false}
         onAddSubject={vi.fn()}
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
+        onApproveAll={vi.fn()}
         onApprove={vi.fn()}
         onReject={vi.fn()}
         onDelete={vi.fn()}
@@ -64,6 +66,49 @@ describe('PromptManager', () => {
 
     expect(screen.queryByLabelText('Add topic')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Remove Lion')).not.toBeInTheDocument();
+  });
+
+  it('approves all review-ready prompt images', () => {
+    const onApproveAll = vi.fn();
+    const pendingImage: ManagedFile = {
+      id: 'lion-file',
+      file: new File(['image'], 'lion.png', { type: 'image/png' }),
+      name: 'lion.png',
+      originalName: 'lion.png',
+      size: 5,
+      type: 'image/png',
+      addedAt: '2026-05-26T08:00:00.000Z',
+      kind: 'uploaded',
+      reviewState: 'pending',
+      reviewNotes: '',
+      mappedSubjectId: 'lion',
+      explicitlyConfirmed: false,
+    };
+
+    render(
+      <PromptManager
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
+        files={[pendingImage]}
+        canGenerateImages={false}
+        generatingSubjectIds={[]}
+        allowTopicEditing={false}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
+        onGenerateImage={vi.fn()}
+        onApproveAll={onApproveAll}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onDelete={vi.fn()}
+        onNotesChange={vi.fn()}
+        onConfirmReview={vi.fn()}
+        onCopy={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /approve all/i }));
+
+    expect(onApproveAll).toHaveBeenCalledWith(['lion-file']);
   });
 });
 

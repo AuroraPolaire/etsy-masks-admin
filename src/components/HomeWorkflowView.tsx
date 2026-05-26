@@ -36,7 +36,7 @@ type HomeWorkflowViewProps = {
   qaResult: QAResult;
   hasAIProvider: boolean;
   busyAction: BusyAction;
-  generatingSubjectId: string | null;
+  generatingSubjectIds: string[];
   missingImageCount: number;
   imageGenerationHint: string;
   onStepSelected: (stepId: WorkflowStepId) => void;
@@ -48,6 +48,7 @@ type HomeWorkflowViewProps = {
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string) => void;
   onGenerateMissingImages: () => void;
+  onApproveAllFiles: (fileIds: string[]) => void;
   onApproveFile: (fileId: string) => void;
   onRejectFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -71,7 +72,7 @@ export const HomeWorkflowView = ({
   qaResult,
   hasAIProvider,
   busyAction,
-  generatingSubjectId,
+  generatingSubjectIds,
   missingImageCount,
   imageGenerationHint,
   onStepSelected,
@@ -83,6 +84,7 @@ export const HomeWorkflowView = ({
   onRemoveSubject,
   onGenerateImage,
   onGenerateMissingImages,
+  onApproveAllFiles,
   onApproveFile,
   onRejectFile,
   onDeleteFile,
@@ -171,7 +173,7 @@ export const HomeWorkflowView = ({
               prompts={prompts}
               files={files}
               canGenerateImages={hasAIProvider && busyAction === null}
-              generatingSubjectId={generatingSubjectId}
+              generatingSubjectIds={generatingSubjectIds}
               missingImageCount={missingImageCount}
               imageGenerationHint={imageGenerationHint}
               allowTopicEditing={false}
@@ -179,6 +181,7 @@ export const HomeWorkflowView = ({
               onRemoveSubject={onRemoveSubject}
               onGenerateImage={onGenerateImage}
               onGenerateMissingImages={onGenerateMissingImages}
+              onApproveAll={onApproveAllFiles}
               onApprove={onApproveFile}
               onReject={onRejectFile}
               onDelete={onDeleteFile}
