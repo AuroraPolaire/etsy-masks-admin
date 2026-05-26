@@ -30,9 +30,25 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [currentToast, setCurrentToast] = useState<ToastItem | null>(null);
 
-  const showToast = useCallback((toast: ToastInput) => {
-    setQueue((items) => [...items, { ...toast, id: crypto.randomUUID() }]);
-  }, []);
+  const showToast = useCallback(
+    (toast: ToastInput) => {
+      setQueue((items) => {
+        const isDuplicate =
+          (currentToast?.tone === toast.tone &&
+            currentToast.title === toast.title &&
+            currentToast.message === toast.message) ||
+          items.some(
+            (item) =>
+              item.tone === toast.tone &&
+              item.title === toast.title &&
+              item.message === toast.message,
+          );
+
+        return isDuplicate ? items : [...items, { ...toast, id: crypto.randomUUID() }];
+      });
+    },
+    [currentToast],
+  );
 
   const dismissToast = useCallback(() => {
     setCurrentToast(null);

@@ -51,9 +51,7 @@ const getSnapshotMetric = (
   }
 
   const settings = snapshot.project.openAIImageSettings;
-  return `${settings.quality} / ${settings.size} / ${
-    settings.finalResolution ?? 'native'
-  } / ${settings.outputFormat}`;
+  return `${settings.quality} / ${settings.size} / ${settings.outputFormat}`;
 };
 
 export const SavedRunsTable = ({

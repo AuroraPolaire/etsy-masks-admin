@@ -76,17 +76,6 @@ export const useManagedFiles = ({
     [addActivity, onImageApproved],
   );
 
-  const rejectFile = useCallback(
-    (fileId: string) => {
-      updateFile(fileId, (file) => ({
-        ...file,
-        reviewState: 'rejected',
-      }));
-      addActivity('image-rejected', 'warning', 'Image rejected.');
-    },
-    [addActivity, updateFile],
-  );
-
   const deleteFile = useCallback(
     (fileId: string) => {
       const file = filesRef.current.find((item) => item.id === fileId);
@@ -108,27 +97,6 @@ export const useManagedFiles = ({
       addActivity('image-mapped', 'info', `Assigned image to ${subjectName}.`);
     },
     [addActivity, subjects, updateFile],
-  );
-
-  const updateNotes = useCallback(
-    (fileId: string, notes: string) => {
-      updateFile(fileId, (file) => ({
-        ...file,
-        reviewNotes: notes,
-      }));
-    },
-    [updateFile],
-  );
-
-  const confirmReview = useCallback(
-    (fileId: string) => {
-      updateFile(fileId, (file) => ({
-        ...file,
-        explicitlyConfirmed: true,
-      }));
-      addActivity('notes-updated', 'success', 'Image marked reviewed.');
-    },
-    [addActivity, updateFile],
   );
 
   const clearAllMappings = useCallback(() => {
@@ -173,11 +141,8 @@ export const useManagedFiles = ({
     appendFiles,
     approveFile,
     approveFiles,
-    rejectFile,
     deleteFile,
     mapFile,
-    updateNotes,
-    confirmReview,
     clearAllMappings,
     clearSubjectMapping,
     clearFiles,

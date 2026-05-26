@@ -33,16 +33,14 @@ describe('PromptManager', () => {
         onGenerateColoringPage={vi.fn()}
         onApproveAll={vi.fn()}
         onApprove={vi.fn()}
-        onReject={vi.fn()}
         onDelete={vi.fn()}
-        onNotesChange={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
 
     expect(screen.getAllByText('lion.png').length).toBeGreaterThan(0);
     expect(screen.getByText(/white background/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Needs image').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Needs mask').length).toBeGreaterThan(0);
     expect(screen.queryByText(/filename match/i)).not.toBeInTheDocument();
   });
 
@@ -62,9 +60,7 @@ describe('PromptManager', () => {
         onGenerateColoringPage={vi.fn()}
         onApproveAll={vi.fn()}
         onApprove={vi.fn()}
-        onReject={vi.fn()}
         onDelete={vi.fn()}
-        onNotesChange={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
@@ -106,9 +102,7 @@ describe('PromptManager', () => {
         onGenerateColoringPage={vi.fn()}
         onApproveAll={onApproveAll}
         onApprove={vi.fn()}
-        onReject={vi.fn()}
         onDelete={vi.fn()}
-        onNotesChange={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
@@ -151,9 +145,7 @@ describe('PromptManager', () => {
         onGenerateColoringPage={vi.fn()}
         onApproveAll={vi.fn()}
         onApprove={vi.fn()}
-        onReject={vi.fn()}
         onDelete={vi.fn()}
-        onNotesChange={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
@@ -358,7 +350,7 @@ describe('InitialPromptPanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Watercolor forest/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Fluffy plush/i }));
 
     expect(screen.getByLabelText('Bundle idea')).toHaveValue(watercolorTemplate.prompt);
   });

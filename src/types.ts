@@ -19,9 +19,8 @@ export type ActivityType =
   | 'file-removed'
   | 'image-generated'
   | 'image-approved'
-  | 'image-rejected'
   | 'image-mapped'
-  | 'notes-updated'
+  | 'prompt-copied'
   | 'pdf-generated'
   | 'preview-generated'
   | 'project-imported'
@@ -226,48 +225,12 @@ export type OpenAIImageBackground = 'transparent' | 'opaque' | 'auto';
 
 export type OpenAIImageOutputFormat = 'png' | 'webp' | 'jpeg';
 
-export type FinalImageResolution =
-  | 'native'
-  | '1024x1024'
-  | '1536x1024'
-  | '1024x1536'
-  | '1920x1920'
-  | '1920x1080'
-  | '1080x1920'
-  | '2048x2048'
-  | '2048x1536'
-  | '1536x2048'
-  | '2048x1365'
-  | '1365x2048'
-  | '2560x2560'
-  | '2560x1440'
-  | '1440x2560'
-  | '3072x3072'
-  | '3072x2304'
-  | '2304x3072'
-  | '3072x2048'
-  | '2048x3072'
-  | '3840x2160'
-  | '2160x3840'
-  | '3840x2880'
-  | '2880x3840'
-  | '3840x2560'
-  | '2560x3840'
-  | '4096x4096'
-  | '4096x3072'
-  | '3072x4096'
-  | '4096x2736'
-  | '2736x4096'
-  | '4096x2304'
-  | '2304x4096';
-
 export type OpenAIImageSettings = {
   model: OpenAIImageModel;
   size: OpenAIImageSize;
   quality: OpenAIImageQuality;
   background: OpenAIImageBackground;
   outputFormat: OpenAIImageOutputFormat;
-  finalResolution: FinalImageResolution;
 };
 
 export type BrowserSupportResult = {

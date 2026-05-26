@@ -1,10 +1,12 @@
-import { Check, Copy, FileText, RotateCw, Trash2, X } from 'lucide-react';
+import { Check, Copy, FileText, RotateCw, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { copyText } from '../../lib/clipboard';
 import { getCurrentColoringPageForSubject, getFileForSubject, isImageFile } from '../../lib/files';
 import { AIButton } from '../ui/AIButton';
 import { Alert } from '../ui/Alert';
 import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
 import { ImagePreviewButton } from '../ui/ImagePreviewButton';
 import { Surface } from '../ui/Surface';
@@ -21,13 +23,22 @@ type PromptCardProps = {
   generatingColoringPageSubjectIds: string[];
   allowTopicEditing: boolean;
   onRemoveSubject: (subjectId: string) => void;
-  onGenerateImage: (subjectId: string) => void;
+  onGenerateImage: (subjectId: string, promptOverride?: string) => void;
   onGenerateColoringPage: (subjectId: string) => void;
   onApprove: (fileId: string) => void;
-  onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
-  onNotesChange: (fileId: string, notes: string) => void;
   onCopy: (label: string) => void;
+};
+
+const getDraftTone = (file: ManagedFile | undefined) =>
+  file?.reviewState === 'approved' ? ('success' as const) : ('warning' as const);
+
+const getDraftLabel = (file: ManagedFile | undefined, emptyLabel: string) => {
+  if (!file) {
+    return emptyLabel;
+  }
+
+  return file.reviewState === 'approved' ? 'Approved' : 'Draft';
 };
 
 export const PromptCard = ({
@@ -42,22 +53,23 @@ export const PromptCard = ({
   onGenerateImage,
   onGenerateColoringPage,
   onApprove,
-  onReject,
   onDelete,
-  onNotesChange,
   onCopy,
 }: PromptCardProps) => {
+  const [promptDraft, setPromptDraft] = useState(prompt.prompt);
+
+  useEffect(() => {
+    setPromptDraft(prompt.prompt);
+  }, [prompt.prompt]);
+
   const mappedFile = getFileForSubject(files, prompt.subjectId, 'approved');
   const pendingFile = getFileForSubject(files, prompt.subjectId, 'pending');
-  const rejectedFile = getFileForSubject(files, prompt.subjectId, 'rejected');
   const latestColoringPageFile =
     getFileForSubject(files, prompt.subjectId, 'approved', 'coloring-page') ??
-    getFileForSubject(files, prompt.subjectId, 'pending', 'coloring-page') ??
-    getFileForSubject(files, prompt.subjectId, 'rejected', 'coloring-page');
+    getFileForSubject(files, prompt.subjectId, 'pending', 'coloring-page');
   const currentColoringPageFile = mappedFile
     ? (getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'approved') ??
-      getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'pending') ??
-      getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'rejected'))
+      getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'pending'))
     : undefined;
   const staleColoringPageFile =
     latestColoringPageFile?.sourceFileId &&
@@ -79,28 +91,23 @@ export const PromptCard = ({
       isImageFile(file) &&
       file.mappedSubjectId === prompt.subjectId,
   );
-  const previewFile = pendingFile ?? rejectedFile ?? mappedFile ?? subjectFiles.at(-1);
+  const previewFile = pendingFile ?? mappedFile ?? subjectFiles.at(-1);
   const subject = subjects.find((item) => item.id === prompt.subjectId);
   const isGenerating = generatingSubjectIds.includes(prompt.subjectId);
   const isGeneratingColoringPage = generatingColoringPageSubjectIds.includes(prompt.subjectId);
   const isAnyImageGenerating =
     generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
-  const reviewStatus = pendingFile
-    ? { label: 'Review needed', tone: 'warning' as const }
-    : rejectedFile
-      ? { label: 'Rejected', tone: 'danger' as const }
-      : mappedFile
-        ? { label: 'Approved', tone: 'success' as const }
-        : { label: 'Needs image', tone: 'neutral' as const };
+  const colorStatus = {
+    label: getDraftLabel(previewFile, 'Needs mask'),
+    tone: previewFile ? getDraftTone(previewFile) : ('neutral' as const),
+  };
   const coloringPageStatus = isColoringPageStale
-    ? { label: 'Coloring page stale', tone: 'warning' as const }
-    : coloringPageFile
-      ? coloringPageFile.reviewState === 'approved'
-        ? { label: 'Coloring page ready', tone: 'success' as const }
-        : coloringPageFile.reviewState === 'rejected'
-          ? { label: 'Coloring page rejected', tone: 'danger' as const }
-          : { label: 'Coloring page review', tone: 'warning' as const }
-      : { label: 'Needs coloring page', tone: 'neutral' as const };
+    ? { label: 'Stale coloring page', tone: 'warning' as const }
+    : {
+        label: getDraftLabel(coloringPageFile, 'Needs coloring page'),
+        tone: coloringPageFile ? getDraftTone(coloringPageFile) : ('neutral' as const),
+      };
+  const promptForGeneration = promptDraft.trim() || prompt.prompt;
 
   return (
     <Surface as="article" key={prompt.subjectId} variant="muted" className="p-4">
@@ -115,22 +122,22 @@ export const PromptCard = ({
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <Badge tone={reviewStatus.tone}>{reviewStatus.label}</Badge>
+            <Badge tone={colorStatus.tone}>{colorStatus.label}</Badge>
             <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <AIButton
             disabled={!canGenerateImages || isAnyImageGenerating}
-            onClick={() => onGenerateImage(prompt.subjectId)}
+            onClick={() => onGenerateImage(prompt.subjectId, promptForGeneration)}
           >
-            {isGenerating ? 'Generating' : previewFile ? 'Regenerate' : 'Generate image'}
+            {isGenerating ? 'Generating' : previewFile ? 'Regenerate mask' : 'Generate mask'}
           </AIButton>
           <IconButton
             icon={Copy}
             label={`Copy prompt for ${prompt.subjectName}`}
             onClick={() => {
-              void copyText(prompt.prompt)
+              void copyText(promptForGeneration)
                 .then(() => onCopy(`Copied prompt for ${prompt.subjectName}`))
                 .catch(() => onCopy(`Could not copy prompt for ${prompt.subjectName}`));
             }}
@@ -166,7 +173,7 @@ export const PromptCard = ({
                   {previewFile?.name ?? prompt.expectedFilename}
                 </p>
               </div>
-              <Badge tone={reviewStatus.tone}>{reviewStatus.label}</Badge>
+              <Badge tone={colorStatus.tone}>{colorStatus.label}</Badge>
             </div>
             {isGenerating ? (
               <div className="mt-3 flex aspect-square flex-col items-center justify-center gap-3 rounded-control border border-surface-outline bg-surface-muted p-4 text-center text-sm text-ink-muted">
@@ -181,54 +188,28 @@ export const PromptCard = ({
                   label={`Open full-size color mask preview for ${prompt.subjectName}`}
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    tone={
-                      previewFile.reviewState === 'approved'
-                        ? 'success'
-                        : previewFile.reviewState === 'rejected'
-                          ? 'danger'
-                          : 'warning'
-                    }
-                  >
-                    {previewFile.reviewState}
-                  </Badge>
                   {previewFile.imageMetadata ? (
                     <Badge tone="neutral">
                       {previewFile.imageMetadata.width} x {previewFile.imageMetadata.height}
                     </Badge>
                   ) : null}
                 </div>
-                <Textarea
-                  label="Review notes"
-                  name={`topic-notes-${previewFile.id}`}
-                  rows={2}
-                  value={previewFile.reviewNotes}
-                  onChange={(event) => onNotesChange(previewFile.id, event.target.value)}
-                />
                 <div className="flex flex-wrap gap-2">
-                  <IconButton
-                    icon={Check}
-                    label={`Approve ${prompt.subjectName}`}
-                    variant="success"
-                    onClick={() => onApprove(previewFile.id)}
-                  />
-                  <IconButton
-                    icon={X}
-                    label={`Reject ${prompt.subjectName}`}
-                    variant="danger"
-                    onClick={() => onReject(previewFile.id)}
-                  />
-                  <IconButton
-                    icon={Trash2}
-                    label={`Delete image for ${prompt.subjectName}`}
-                    variant="ghost"
-                    onClick={() => onDelete(previewFile.id)}
-                  />
+                  {previewFile.reviewState !== 'approved' ? (
+                    <Button variant="primary" onClick={() => onApprove(previewFile.id)}>
+                      <Check aria-hidden="true" className="mr-2" size={17} />
+                      Approve mask
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" onClick={() => onDelete(previewFile.id)}>
+                    <Trash2 aria-hidden="true" className="mr-2" size={17} />
+                    Discard
+                  </Button>
                 </div>
               </div>
             ) : (
               <Alert tone="info" className="mt-3">
-                Generate an image to review it here.
+                Generate a color mask to review it here.
               </Alert>
             )}
           </Surface>
@@ -247,7 +228,11 @@ export const PromptCard = ({
                   disabled={!canGenerateImages || !mappedFile || isAnyImageGenerating}
                   onClick={() => onGenerateColoringPage(prompt.subjectId)}
                 >
-                  {isGeneratingColoringPage ? 'Generating' : 'Generate coloring page'}
+                  {isGeneratingColoringPage
+                    ? 'Generating'
+                    : coloringPageFile
+                      ? 'Regenerate coloring page'
+                      : 'Generate coloring page'}
                 </AIButton>
               )}
             </div>
@@ -271,19 +256,6 @@ export const PromptCard = ({
                   </Alert>
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    tone={
-                      isColoringPageStale
-                        ? 'warning'
-                        : coloringPageFile.reviewState === 'approved'
-                          ? 'success'
-                          : coloringPageFile.reviewState === 'rejected'
-                            ? 'danger'
-                            : 'warning'
-                    }
-                  >
-                    {isColoringPageStale ? 'stale' : coloringPageFile.reviewState}
-                  </Badge>
                   {coloringPageFile.imageMetadata ? (
                     <Badge tone="neutral">
                       {coloringPageFile.imageMetadata.width} x{' '}
@@ -293,27 +265,15 @@ export const PromptCard = ({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!isColoringPageStale && coloringPageFile.reviewState !== 'approved' ? (
-                    <IconButton
-                      icon={Check}
-                      label={`Approve coloring page for ${prompt.subjectName}`}
-                      variant="success"
-                      onClick={() => onApprove(coloringPageFile.id)}
-                    />
+                    <Button variant="primary" onClick={() => onApprove(coloringPageFile.id)}>
+                      <Check aria-hidden="true" className="mr-2" size={17} />
+                      Approve coloring page
+                    </Button>
                   ) : null}
-                  {!isColoringPageStale && coloringPageFile.reviewState !== 'rejected' ? (
-                    <IconButton
-                      icon={X}
-                      label={`Reject coloring page for ${prompt.subjectName}`}
-                      variant="danger"
-                      onClick={() => onReject(coloringPageFile.id)}
-                    />
-                  ) : null}
-                  <IconButton
-                    icon={Trash2}
-                    label={`Delete coloring page for ${prompt.subjectName}`}
-                    variant="ghost"
-                    onClick={() => onDelete(coloringPageFile.id)}
-                  />
+                  <Button variant="ghost" onClick={() => onDelete(coloringPageFile.id)}>
+                    <Trash2 aria-hidden="true" className="mr-2" size={17} />
+                    Discard
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -324,12 +284,18 @@ export const PromptCard = ({
           </Surface>
         </div>
         <details className="rounded-control border border-surface-outline bg-surface-raised p-3 text-sm text-ink-base">
-          <summary className="cursor-pointer font-semibold text-ink-strong">Prompt details</summary>
+          <summary className="cursor-pointer font-semibold text-ink-strong">
+            Generation prompt
+          </summary>
           <div className="mt-3 space-y-3">
-            <div>
-              <p className="text-xs font-semibold uppercase text-ink-muted">Image prompt</p>
-              <p className="mt-1 whitespace-pre-wrap break-words leading-6">{prompt.prompt}</p>
-            </div>
+            <Textarea
+              label="Prompt for next generation"
+              name={`topic-prompt-${prompt.subjectId}`}
+              rows={8}
+              value={promptDraft}
+              helperText="Edit this before clicking Regenerate mask. It affects the next image request only."
+              onChange={(event) => setPromptDraft(event.target.value)}
+            />
             <div>
               <p className="text-xs font-semibold uppercase text-ink-muted">Avoid</p>
               <p className="mt-1 whitespace-pre-wrap break-words leading-6">

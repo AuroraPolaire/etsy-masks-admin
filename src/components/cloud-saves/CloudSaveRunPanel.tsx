@@ -85,12 +85,12 @@ export const CloudSaveRunPanel = ({
       <CardBody className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <Input
-            label="Run idea label"
+            label="Draft name"
             name="backendRunIdea"
             type="text"
             value={saveIdea}
             placeholder={suggestedIdea}
-            helperText="Use a short idea name that will be easy to find later."
+            helperText="This is the searchable name shown in saved runs."
             onChange={(event) => onSaveIdeaChange(event.target.value)}
           />
           <div className="flex flex-col gap-2 sm:flex-row">

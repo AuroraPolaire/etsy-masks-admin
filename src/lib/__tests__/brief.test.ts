@@ -22,15 +22,15 @@ describe('brief prompt drafting', () => {
   });
 
   it('keeps style template mask and color painting direction in fallback drafts', () => {
-    const [watercolorTemplate] = initialPromptStyleTemplates;
-    if (!watercolorTemplate) {
+    const [styleTemplate] = initialPromptStyleTemplates;
+    if (!styleTemplate) {
       throw new Error('Expected at least one style template.');
     }
 
-    const draft = createProjectDraftFromInitialPrompt(watercolorTemplate.prompt);
+    const draft = createProjectDraftFromInitialPrompt(styleTemplate.prompt);
 
-    expect(draft.subjects.map((subject) => subject.name)).toContain('Hedgehog');
-    expect(draft.settings.style).toContain('transparent watercolor washes');
+    expect(draft.subjects).toEqual([]);
+    expect(draft.settings.style).toContain('soft plush-inspired shapes');
     expect(draft.settings.style).toContain('Coloring page');
     expect(draft.settings.style).toContain('no side punch holes');
   });

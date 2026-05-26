@@ -1,5 +1,5 @@
-import { CheckCheck, FilePenLine } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCheck, FilePenLine, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { PhotoProvider } from 'react-photo-view';
 
 import { PromptCard } from './prompts/PromptCard';
@@ -25,16 +25,39 @@ type PromptManagerProps = {
   allowTopicEditing?: boolean;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
-  onGenerateImage: (subjectId: string) => void;
+  onGenerateImage: (subjectId: string, promptOverride?: string) => void;
   onGenerateMissingImages?: () => void;
   onGenerateColoringPage: (subjectId: string) => void;
   onGenerateMissingColoringPages?: () => void;
   onApproveAll: (fileIds: string[]) => void;
   onApprove: (fileId: string) => void;
-  onReject: (fileId: string) => void;
   onDelete: (fileId: string) => void;
-  onNotesChange: (fileId: string, notes: string) => void;
   onCopy: (label: string) => void;
+};
+
+const PhotoPreviewControls = ({ onClose }: { onClose: () => void }) => {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <button
+      type="button"
+      className="inline-flex size-11 items-center justify-center border-0 bg-transparent text-white opacity-75 transition hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white/60"
+      aria-label="Close image preview"
+      onClick={() => onClose()}
+    >
+      <X aria-hidden="true" size={22} />
+    </button>
+  );
 };
 
 export const PromptManager = ({
@@ -56,26 +79,16 @@ export const PromptManager = ({
   onGenerateMissingColoringPages,
   onApproveAll,
   onApprove,
-  onReject,
   onDelete,
-  onNotesChange,
   onCopy,
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
   const filesReadyForApproval = prompts
     .flatMap((prompt) => {
-      const colorFile =
-        getFileForSubject(files, prompt.subjectId, 'pending') ??
-        getFileForSubject(files, prompt.subjectId, 'rejected');
+      const colorFile = getFileForSubject(files, prompt.subjectId, 'pending');
       const approvedColorFile = getFileForSubject(files, prompt.subjectId);
       const coloringPageFile = approvedColorFile
-        ? (getCurrentColoringPageForSubject(
-            files,
-            prompt.subjectId,
-            approvedColorFile,
-            'pending',
-          ) ??
-          getCurrentColoringPageForSubject(files, prompt.subjectId, approvedColorFile, 'rejected'))
+        ? getCurrentColoringPageForSubject(files, prompt.subjectId, approvedColorFile, 'pending')
         : undefined;
 
       return [colorFile, coloringPageFile];
@@ -175,7 +188,9 @@ export const PromptManager = ({
         {prompts.length === 0 ? (
           <EmptyState>Add mask topics here to generate image prompts.</EmptyState>
         ) : (
-          <PhotoProvider>
+          <PhotoProvider
+            toolbarRender={({ onClose }) => <PhotoPreviewControls onClose={onClose} />}
+          >
             <div className="grid gap-4">
               {prompts.map((prompt) => (
                 <PromptCard
@@ -191,9 +206,7 @@ export const PromptManager = ({
                   onGenerateImage={onGenerateImage}
                   onGenerateColoringPage={onGenerateColoringPage}
                   onApprove={onApprove}
-                  onReject={onReject}
                   onDelete={onDelete}
-                  onNotesChange={onNotesChange}
                   onCopy={onCopy}
                 />
               ))}

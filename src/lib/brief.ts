@@ -105,10 +105,22 @@ const extractPromptLine = (idea: string, label: string): string | undefined => {
   return value && value.length > 0 ? value : undefined;
 };
 
+const removeStyleInstructionLines = (idea: string): string =>
+  idea
+    .split(/\n+/)
+    .filter(
+      (line) =>
+        !/^\s*(mask style|color painting|coloring page|coloring page lines|style requirements|remove|keep):/i.test(
+          line,
+        ),
+    )
+    .join('\n');
+
 const extractSubjectNames = (idea: string): string[] => {
+  const subjectIdea = removeStyleInstructionLines(idea);
   const listMatch =
     /(?:subjects?|topics?|designs?)\s*:\s*([^.;\n]+)|(?:include|including|with|featuring)\s+([^.;\n]+)/i.exec(
-      idea,
+      subjectIdea,
     );
   const matchedList = listMatch?.[1] ?? listMatch?.[2];
 
@@ -120,7 +132,7 @@ const extractSubjectNames = (idea: string): string[] => {
       .slice(0, 20);
   }
 
-  const normalized = idea.toLowerCase();
+  const normalized = subjectIdea.toLowerCase();
   const matched = KNOWN_SUBJECTS.filter((subject) => normalized.includes(subject));
 
   return [...new Set(matched.map(titleCase))].slice(0, 20);
@@ -163,7 +175,7 @@ const inferAudience = (idea: string): string => {
 const inferStyle = (idea: string): string => {
   const maskStyle = extractPromptLine(idea, 'Mask style');
   const colorPainting = extractPromptLine(idea, 'Color painting');
-  const coloringPage = extractPromptLine(idea, 'Coloring page');
+  const coloringPage = extractPromptLine(idea, 'Coloring page(?: lines)?');
   const templateStyleParts = [
     maskStyle ? `Mask style: ${maskStyle}` : undefined,
     colorPainting ? `Color painting: ${colorPainting}` : undefined,
@@ -195,7 +207,7 @@ const inferStyle = (idea: string): string => {
 export const createProjectDraftFromInitialPrompt = (initialPrompt: string): ProjectDraft => {
   const cleaned = cleanIdea(initialPrompt);
   const theme = inferTheme(cleaned);
-  const subjectNames = extractSubjectNames(cleaned);
+  const subjectNames = extractSubjectNames(initialPrompt);
   const maskCount = subjectNames.length;
   const title = [
     `${theme} Printable Bundle for Kids`,

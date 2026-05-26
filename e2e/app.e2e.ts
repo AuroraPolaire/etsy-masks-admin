@@ -643,16 +643,16 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Add topic' }).click();
     await expect(page.getByText('moon.png').first()).toBeVisible();
 
-    await page.getByRole('button', { name: 'Generate image' }).click();
+    await page.getByRole('button', { name: 'Generate mask' }).click();
     await expect.poll(() => backend.getImageRequestCount()).toBe(1);
-    await expect(page.getByText('Review needed').first()).toBeVisible();
+    await expect(page.getByText('Draft').first()).toBeVisible();
     await page.getByRole('button', { name: 'Open full-size color mask preview for Moon' }).click();
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Approve Moon' }).click();
+    await page.getByRole('button', { name: 'Approve mask' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
-    await expect(page.getByText('Coloring page ready').first()).toBeVisible();
+    await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
     await page.getByRole('button', { name: 'Next: QA and export' }).click();
     await expect(page.getByRole('heading', { name: 'Export package' })).toBeVisible();
 
@@ -681,16 +681,16 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Next: topics and images' }).click();
     await page.getByLabel('Add mask topic').fill('Moon');
     await page.getByRole('button', { name: 'Add topic' }).click();
-    await expect(page.getByRole('button', { name: 'Generate image' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Generate mask' })).toBeEnabled();
 
-    await page.getByRole('button', { name: 'Generate image' }).click();
+    await page.getByRole('button', { name: 'Generate mask' }).click();
     await expect.poll(() => backend.getImageRequestCount()).toBe(1);
-    await expect(page.getByText('Review needed').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Approve Moon' }).click();
+    await expect(page.getByText('Draft').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Approve mask' }).click();
 
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
-    await expect(page.getByText('Coloring page ready').first()).toBeVisible();
+    await expect(page.getByText('Approved').first()).toBeVisible();
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {
@@ -722,14 +722,12 @@ test.describe('production workflow', () => {
     }));
     expect(scrollMetrics.overflowY).toBe('auto');
     expect(scrollMetrics.scrollHeight).toBeLessThanOrEqual(scrollMetrics.clientHeight + 24);
-    await expect(page.getByRole('heading', { name: 'Latest activity' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Next action' })).toBeVisible();
   });
 });
 
 test.describe('backend saves workflow', () => {
-  test('refreshes saved runs when Backend saves is opened after startup health is known', async ({
-    page,
-  }) => {
+  test('refreshes saved runs only when Refresh is clicked', async ({ page }) => {
     const backend = await mockSavedRunsBackend(page);
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -741,7 +739,10 @@ test.describe('backend saves workflow', () => {
     const listRunsBeforeOpen = backend.getListRunsRequestCount();
 
     await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await expect(page.getByText('No backend runs saved yet.')).toBeVisible();
+    expect(backend.getListRunsRequestCount()).toBe(listRunsBeforeOpen);
 
+    await page.getByRole('button', { name: 'Refresh' }).click();
     await expect.poll(() => backend.getListRunsRequestCount()).toBeGreaterThan(listRunsBeforeOpen);
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     const listRunsAfterFirstOpen = backend.getListRunsRequestCount();
@@ -750,9 +751,7 @@ test.describe('backend saves workflow', () => {
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
     await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
 
-    await expect
-      .poll(() => backend.getListRunsRequestCount())
-      .toBeGreaterThan(listRunsAfterFirstOpen);
+    expect(backend.getListRunsRequestCount()).toBe(listRunsAfterFirstOpen);
   });
 
   test('restores an existing project draft on refresh instead of creating a duplicate run', async ({
@@ -767,7 +766,7 @@ test.describe('backend saves workflow', () => {
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
-    await expect(page.getByText('Restored backend draft "Refresh masks".').first()).toBeVisible();
+    await expect(page.getByLabel('Listing title')).toHaveValue('Refresh Masks, 1 Kids Paper Mask');
     await page.waitForTimeout(2500);
 
     expect(backend.getDownloadFileCount()).toBe(1);
@@ -789,6 +788,7 @@ test.describe('backend saves workflow', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Progressive masks').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Restore' }).click();
@@ -840,6 +840,7 @@ test.describe('backend saves workflow', () => {
     await page.reload();
 
     await page.getByRole('button', { name: 'Backend saves', exact: true }).click();
+    await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     await expect(page.getByText('Preview', { exact: true })).toHaveCount(0);
 

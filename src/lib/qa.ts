@@ -92,9 +92,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
 
     return file.imageMetadata.width >= 3000 && file.imageMetadata.height >= 3000;
   });
-  const everyApprovedImageReviewed = approvedImages.every(
-    (file) => file.reviewNotes.trim().length > 0 || file.explicitlyConfirmed,
-  );
   const noSingleLargeSource = sourceFiles.every((file) => file.size <= MAX_ETSY_FILE_BYTES);
   const finalZipSize = project.nestedEtsyUploadZipSizeBytes;
   const aiListingChecks = project.etsySeoAnalysis?.checks.map(qaCheckFromAiSeoCheck) ?? [];
@@ -128,15 +125,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       maskCount === 0
         ? 'Add topics before preparing coloring pages.'
         : `${approvedColoringPageSubjectIds.size} of ${maskCount} topics have an approved coloring page.`,
-    ),
-    createCheck(
-      'rejected-not-approved',
-      'critical',
-      groups.rejected.every(
-        (file) => !groups.approvedMapped.some((approved) => approved.id === file.id),
-      ),
-      'Rejected images stay out of the export set',
-      'Rejected files are excluded from the ZIP.',
     ),
     createCheck(
       'nested-etsy-size',
@@ -183,13 +171,6 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       noSingleLargeSource,
       'No single source file is over 20MB',
       'Large files can exceed Etsy limits and slow browser ZIP generation.',
-    ),
-    createCheck(
-      'approved-reviewed',
-      'warning',
-      approvedImages.length > 0 && everyApprovedImageReviewed,
-      'Every approved image is reviewed',
-      'Approve each image or add notes to record manual review.',
     ),
     createCheck(
       'etsy-file-count',

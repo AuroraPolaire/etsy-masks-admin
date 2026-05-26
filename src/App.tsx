@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { AppAside } from './components/AppAside';
 import { AppMainLayout } from './components/AppMainLayout';
@@ -52,23 +52,23 @@ const toastTitles: Record<ActivityLevel, string> = {
 export const App = () => {
   const browserSupport = useMemo(() => checkBrowserSupport(), []);
   const { showToast } = useToast();
-  const { activityLog, addActivity: recordActivity } = useActivityLog();
+  const { addActivity: recordActivity } = useActivityLog();
   const addActivity = useCallback(
     (type: ActivityType, level: ActivityLevel, message: string) => {
       recordActivity(type, level, message);
-      showToast({
-        tone: level,
-        title: toastTitles[level],
-        message,
-      });
+      if (level === 'warning' || level === 'error') {
+        showToast({
+          tone: level,
+          title: toastTitles[level],
+          message,
+        });
+      }
     },
     [recordActivity, showToast],
   );
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('brief');
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const previousSectionIdRef = useRef<AppSectionId>(activeSectionId);
-  const pendingBackendRefreshOnOpenRef = useRef(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
@@ -89,9 +89,7 @@ export const App = () => {
     appendFiles,
     approveFile,
     approveFiles,
-    rejectFile,
     deleteFile,
-    updateNotes,
     clearAllMappings,
     clearSubjectMapping,
     clearFiles,
@@ -138,25 +136,6 @@ export const App = () => {
     runBusyAction,
     confirmAction: requestConfirmation,
   });
-  const testBackendConnection = backendCache.testConnection;
-  useEffect(() => {
-    const previousSectionId = previousSectionIdRef.current;
-    previousSectionIdRef.current = activeSectionId;
-
-    if (activeSectionId !== 'backend') {
-      pendingBackendRefreshOnOpenRef.current = false;
-      return;
-    }
-
-    if (previousSectionId !== 'backend') {
-      pendingBackendRefreshOnOpenRef.current = true;
-    }
-
-    if (pendingBackendRefreshOnOpenRef.current && busyAction === null) {
-      pendingBackendRefreshOnOpenRef.current = false;
-      testBackendConnection();
-    }
-  }, [activeSectionId, busyAction, testBackendConnection]);
   const generateImageFile = useCallback(
     async (
       settings: OpenAIImageSettings,
@@ -409,8 +388,10 @@ export const App = () => {
   }, [clearFiles, requestConfirmation]);
 
   const handleGenerateSubjectImage = useCallback(
-    (subjectId: string) => {
-      void runBusyAction('image-generation', (context) => generateSubjectImage(subjectId, context));
+    (subjectId: string, promptOverride?: string) => {
+      void runBusyAction('image-generation', (context) =>
+        generateSubjectImage(subjectId, context, promptOverride),
+      );
     },
     [generateSubjectImage, runBusyAction],
   );
@@ -517,7 +498,6 @@ export const App = () => {
       qaResult={qaResult}
       busyAction={busyAction}
       busyProgress={busyProgress}
-      activityLog={activityLog}
       onCancelBusyAction={cancelBusyAction}
     />
   );
@@ -551,10 +531,8 @@ export const App = () => {
         onGenerateMissingColoringPages={handleGenerateMissingColoringPages}
         onApproveAllFiles={handleApproveFiles}
         onApproveFile={handleApproveFile}
-        onRejectFile={rejectFile}
         onDeleteFile={handleDeleteFile}
-        onNotesChange={updateNotes}
-        onCopyPrompt={(message) => addActivity('notes-updated', 'success', message)}
+        onCopyPrompt={(message) => addActivity('prompt-copied', 'success', message)}
         onExportArchive={exportArchive}
       />
     </AppMainLayout>

@@ -41,15 +41,13 @@ type HomeWorkflowViewProps = {
   onUpdateSettings: (settings: ProjectSettings) => void;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
-  onGenerateImage: (subjectId: string) => void;
+  onGenerateImage: (subjectId: string, promptOverride?: string) => void;
   onGenerateMissingImages: () => void;
   onGenerateColoringPage: (subjectId: string) => void;
   onGenerateMissingColoringPages: () => void;
   onApproveAllFiles: (fileIds: string[]) => void;
   onApproveFile: (fileId: string) => void;
-  onRejectFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
-  onNotesChange: (fileId: string, notes: string) => void;
   onCopyPrompt: (message: string) => void;
   onExportArchive: () => void;
 };
@@ -81,9 +79,7 @@ export const HomeWorkflowView = ({
   onGenerateMissingColoringPages,
   onApproveAllFiles,
   onApproveFile,
-  onRejectFile,
   onDeleteFile,
-  onNotesChange,
   onCopyPrompt,
   onExportArchive,
 }: HomeWorkflowViewProps) => {
@@ -163,9 +159,7 @@ export const HomeWorkflowView = ({
                 onGenerateMissingColoringPages={onGenerateMissingColoringPages}
                 onApproveAll={onApproveAllFiles}
                 onApprove={onApproveFile}
-                onReject={onRejectFile}
                 onDelete={onDeleteFile}
-                onNotesChange={onNotesChange}
                 onCopy={onCopyPrompt}
               />
               <StepAdvanceButton

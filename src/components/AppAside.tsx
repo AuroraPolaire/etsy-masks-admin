@@ -1,7 +1,6 @@
-import { ActivityLog } from './ActivityLog';
 import { WorkflowStatus } from './WorkflowStatus';
 
-import type { ActivityItem, BusyAction, QAResult } from '../types';
+import type { BusyAction, QAResult } from '../types';
 import type { WorkflowState } from '../workflow/workflowState';
 
 type AppAsideProps = {
@@ -9,7 +8,6 @@ type AppAsideProps = {
   qaResult: QAResult;
   busyAction: BusyAction;
   busyProgress: string | null;
-  activityLog: ActivityItem[];
   onCancelBusyAction: () => void;
 };
 
@@ -18,7 +16,6 @@ export const AppAside = ({
   qaResult,
   busyAction,
   busyProgress,
-  activityLog,
   onCancelBusyAction,
 }: AppAsideProps) => (
   <aside
@@ -32,6 +29,5 @@ export const AppAside = ({
       busyProgress={busyProgress}
       onCancelBusyAction={onCancelBusyAction}
     />
-    <ActivityLog items={activityLog} />
   </aside>
 );

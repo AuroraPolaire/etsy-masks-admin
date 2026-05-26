@@ -1,4 +1,3 @@
-import { finalImageResolutionOptions } from '../lib/imageResolution';
 import { getOpenAIImageCostComparison, formatUsdEstimate } from '../lib/openaiImageCosts';
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
@@ -82,25 +81,13 @@ export const OpenAIImagePanel = ({
             name="openaiSize"
             value={settings.size}
             options={[
-              { value: '1024x1024', label: '1024 x 1024' },
-              { value: '1536x1024', label: '1536 x 1024' },
-              { value: '1024x1536', label: '1024 x 1536' },
-              { value: 'auto', label: 'Auto' },
+              { value: '1024x1024', label: '1024 x 1024 square' },
+              { value: '1536x1024', label: '1536 x 1024 landscape' },
+              { value: '1024x1536', label: '1024 x 1536 portrait' },
+              { value: 'auto', label: 'Auto API size' },
             ]}
+            helperText="OpenAI currently supports square, landscape, portrait, and auto sizes for GPT Image generation."
             onChange={(event) => update('size', event.target.value as OpenAIImageSettings['size'])}
-          />
-          <Select
-            label="Final output resolution"
-            name="finalImageResolution"
-            value={settings.finalResolution}
-            options={finalImageResolutionOptions}
-            helperText="Applied after generation to saved images and exports. Higher resolutions create larger files."
-            onChange={(event) =>
-              update(
-                'finalResolution',
-                event.target.value as OpenAIImageSettings['finalResolution'],
-              )
-            }
           />
           <Select
             label="Quality"
@@ -147,13 +134,6 @@ export const OpenAIImagePanel = ({
           <Alert tone="warning">
             Transparent output needs GPT Image 1.x with PNG or WEBP. With `gpt-image-2`, requests
             use an opaque background.
-          </Alert>
-        ) : null}
-        {settings.finalResolution !== 'native' ? (
-          <Alert tone="info">
-            OpenAI generation still uses the supported API size above. The app preserves aspect
-            ratio and pads the result onto the selected final canvas before review, cloud autosave,
-            and export.
           </Alert>
         ) : null}
         <Surface variant="muted" className="p-4">

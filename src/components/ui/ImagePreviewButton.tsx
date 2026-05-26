@@ -22,7 +22,7 @@ export const ImagePreviewButton = ({
       className={`group flex aspect-square w-full items-center justify-center rounded-control bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/30 ${frameClassName}`}
     >
       <img
-        className={`size-full object-contain p-3 transition group-hover:scale-[1.01] ${imageClassName}`}
+        className={`size-full object-contain transition group-hover:scale-[1.01] ${imageClassName}`}
         src={src}
         alt={alt}
       />
