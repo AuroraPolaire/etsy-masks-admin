@@ -15,6 +15,7 @@ import {
   proxyOpenAIColoringPageImage,
   proxyOpenAIEtsySeoReview,
   proxyOpenAIImage,
+  proxyOpenAIMarketingSceneImage,
 } from './openaiProxy';
 import {
   createRun,
@@ -231,6 +232,15 @@ const routeAuthenticatedRequest = async (
 
   if (parts[1] === 'openai' && parts[2] === 'etsy-seo' && request.method === 'POST') {
     return withCors(await proxyOpenAIEtsySeoReview(request, env), request, env);
+  }
+
+  if (
+    parts[1] === 'openai' &&
+    parts[2] === 'images' &&
+    parts[3] === 'marketing-scene' &&
+    request.method === 'POST'
+  ) {
+    return withCors(await proxyOpenAIMarketingSceneImage(request, env), request, env);
   }
 
   if (

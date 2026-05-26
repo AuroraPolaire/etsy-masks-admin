@@ -65,6 +65,7 @@ describe('workflow state', () => {
       'active',
       'available',
       'locked',
+      'locked',
     ]);
   });
 
@@ -100,6 +101,7 @@ describe('workflow state', () => {
     });
 
     expect(workflow.imagesComplete).toBe(false);
+    expect(workflow.marketingUnlocked).toBe(true);
     expect(workflow.canExportFinalFiles).toBe(true);
     expect(workflow.visibleActiveStepId).toBe('export');
     expect(workflow.getStepState('export')).toBe('active');

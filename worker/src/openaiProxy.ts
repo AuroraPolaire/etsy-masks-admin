@@ -11,11 +11,25 @@ import type { Env } from './types';
 
 const OPENAI_BRIEF_MODEL = 'gpt-5.4-mini';
 const IMAGE_MODELS = ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-image-2'] as const;
-const IMAGE_SIZES = ['1024x1024', '1536x1024', '1024x1536', 'auto'] as const;
+const IMAGE_SIZES = [
+  '1024x1024',
+  '1536x1024',
+  '1024x1536',
+  '2048x2048',
+  '2048x1152',
+  '1152x2048',
+  'auto',
+] as const;
 const IMAGE_QUALITIES = ['low', 'medium', 'high', 'auto'] as const;
 const IMAGE_BACKGROUNDS = ['transparent', 'opaque', 'auto'] as const;
 const OUTPUT_FORMATS = ['png', 'webp', 'jpeg'] as const;
 const EDIT_IMAGE_MODELS = ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini'] as const;
+const MARKETING_EDIT_IMAGE_MODELS = [
+  'gpt-image-2',
+  'gpt-image-1.5',
+  'gpt-image-1',
+  'gpt-image-1-mini',
+] as const;
 
 type ImageModel = (typeof IMAGE_MODELS)[number];
 type ImageSize = (typeof IMAGE_SIZES)[number];
@@ -41,6 +55,24 @@ type ColoringPageInput = {
   settings: ImageSettings;
   promptItem: PromptItemInput;
   image: Blob;
+};
+
+type MarketingSceneInput = {
+  settings: ImageSettings;
+  project: {
+    theme: string;
+    title: string;
+    audience: string;
+    style: string;
+    slogan: string;
+  };
+  recipe: {
+    id: string;
+    optionIndex: number;
+    stage: 'preview' | 'final';
+    maskCount: number;
+  };
+  images: Blob[];
 };
 
 type OpenAIImageGenerationResponse = {
@@ -282,6 +314,19 @@ const readImageSettings = (value: unknown): ImageSettings => {
   };
 };
 
+const readMarketingImageSettings = (value: unknown): ImageSettings => {
+  const settings = readImageSettings(value);
+
+  return {
+    ...settings,
+    quality: settings.quality === 'high' ? 'medium' : settings.quality,
+    background:
+      settings.model === 'gpt-image-2' && settings.background === 'transparent'
+        ? 'opaque'
+        : settings.background,
+  };
+};
+
 const readPromptItem = (value: unknown): PromptItemInput => {
   if (!isRecord(value)) {
     throw new ApiError(400, 'promptItem is required.');
@@ -410,6 +455,59 @@ const readColoringPageInput = async (request: Request, env: Env): Promise<Colori
   };
 };
 
+const readMarketingSceneInput = async (
+  request: Request,
+  env: Env,
+): Promise<MarketingSceneInput> => {
+  const formData = await request.formData();
+  const images = (formData.getAll('image') as unknown[]).filter((image): image is Blob =>
+    isBlobLike(image),
+  );
+
+  if (images.length === 0) {
+    throw new ApiError(400, 'At least one image form field is required.');
+  }
+
+  for (const image of images) {
+    if (image.size > getMaxFileBytes(env)) {
+      throw new ApiError(413, 'Image is larger than the configured backend limit.');
+    }
+
+    const imageType = image.type.toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(imageType)) {
+      throw new ApiError(400, 'Every image must be a PNG, JPG, or WEBP file.');
+    }
+  }
+
+  const projectJson = readFormJsonObject(formData, 'project');
+  const recipeJson = readFormJsonObject(formData, 'recipe');
+  const stage = recipeJson.stage === 'final' ? 'final' : 'preview';
+
+  return {
+    settings: readMarketingImageSettings(readFormJsonObject(formData, 'settings')),
+    project: {
+      theme: readRequiredString(projectJson.theme, 'project.theme'),
+      title: readRequiredString(projectJson.title, 'project.title'),
+      audience: readRequiredString(projectJson.audience, 'project.audience'),
+      style: readRequiredString(projectJson.style, 'project.style'),
+      slogan: readRequiredString(projectJson.slogan, 'project.slogan'),
+    },
+    recipe: {
+      id: readRequiredString(recipeJson.id, 'recipe.id'),
+      optionIndex:
+        typeof recipeJson.optionIndex === 'number' && Number.isFinite(recipeJson.optionIndex)
+          ? Math.max(0, Math.floor(recipeJson.optionIndex))
+          : 0,
+      stage,
+      maskCount:
+        typeof recipeJson.maskCount === 'number' && Number.isFinite(recipeJson.maskCount)
+          ? Math.max(1, Math.floor(recipeJson.maskCount))
+          : images.length,
+    },
+    images,
+  };
+};
+
 const buildColoringPageEditFormData = ({
   settings,
   promptItem,
@@ -429,6 +527,43 @@ const buildColoringPageEditFormData = ({
   if (supportsHighInputFidelity(model)) {
     formData.append('input_fidelity', 'high');
   }
+
+  return formData;
+};
+
+const getMarketingEditModel = (
+  settings: ImageSettings,
+): (typeof MARKETING_EDIT_IMAGE_MODELS)[number] =>
+  MARKETING_EDIT_IMAGE_MODELS.includes(settings.model) ? settings.model : 'gpt-image-2';
+
+const buildMarketingScenePrompt = ({ project, recipe }: MarketingSceneInput): string =>
+  [
+    `Create a warm, child-safe marketplace preview background for ${project.theme}.`,
+    `Listing title context: ${project.title}.`,
+    `Audience: ${project.audience}.`,
+    `Slogan: ${project.slogan}.`,
+    `Visual style context: ${project.style}.`,
+    `Create ${recipe.maskCount} fully clothed fictional children in a thematic party, classroom, or play setting, facing the camera with clear face placement for printable masks.`,
+    'Use the provided mask images only as visual references for the kind of masks that will be composited later.',
+    'Do not add text, logos, watermarks, brand characters, celebrities, unsafe behavior, scary expressions, or distorted faces.',
+    'Keep the center of each child face unobstructed so the app can overlay the exact approved mask files afterward.',
+    `Variant recipe: ${recipe.id}, option ${recipe.optionIndex + 1}, ${recipe.stage}.`,
+  ].join('\n');
+
+export const buildMarketingSceneEditFormData = (input: MarketingSceneInput): FormData => {
+  const formData = new FormData();
+  const model = getMarketingEditModel(input.settings);
+
+  formData.append('model', model);
+  for (const [index, image] of input.images.entries()) {
+    formData.append('image[]', image, `approved-mask-${index + 1}.png`);
+  }
+  formData.append('prompt', buildMarketingScenePrompt(input));
+  formData.append('n', '1');
+  formData.append('size', input.settings.size);
+  formData.append('quality', input.settings.quality === 'high' ? 'medium' : input.settings.quality);
+  formData.append('background', 'opaque');
+  formData.append('output_format', input.settings.outputFormat);
 
   return formData;
 };
@@ -616,6 +751,65 @@ export const proxyOpenAIColoringPageImage = async (
 
   return Response.json(
     { error: 'OpenAI returned an unsupported coloring page image response.' },
+    { status: 502 },
+  );
+};
+
+export const proxyOpenAIMarketingSceneImage = async (
+  request: Request,
+  env: Env,
+): Promise<Response> => {
+  const input = await readMarketingSceneInput(request, env);
+  const response = await fetch('https://api.openai.com/v1/images/edits', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getOpenAIKey(env)}`,
+    },
+    body: buildMarketingSceneEditFormData(input),
+  });
+  const result = await readImageGenerationResponse(response);
+
+  if (!response.ok) {
+    return Response.json(
+      { error: result.error?.message ?? `OpenAI marketing image edit failed: ${response.status}` },
+      { status: response.status },
+    );
+  }
+
+  const firstImage = result.data?.[0];
+  if (!firstImage) {
+    return Response.json({ error: 'OpenAI returned no marketing image data.' }, { status: 502 });
+  }
+
+  const fileName = `marketing-scene-${input.recipe.stage}-${input.recipe.optionIndex + 1}.${input.settings.outputFormat}`;
+  if (firstImage.b64_json) {
+    return Response.json({
+      fileName,
+      mimeType: inferMimeType(input.settings.outputFormat),
+      base64: firstImage.b64_json,
+    });
+  }
+
+  if (firstImage.url) {
+    const imageResponse = await fetch(firstImage.url);
+    if (!imageResponse.ok) {
+      return Response.json(
+        { error: `Could not download generated marketing image: ${imageResponse.status}` },
+        { status: 502 },
+      );
+    }
+
+    const buffer = await imageResponse.arrayBuffer();
+    return Response.json({
+      fileName,
+      mimeType:
+        imageResponse.headers.get('Content-Type') ?? inferMimeType(input.settings.outputFormat),
+      base64: arrayBufferToBase64(buffer),
+    });
+  }
+
+  return Response.json(
+    { error: 'OpenAI returned an unsupported marketing image response.' },
     { status: 502 },
   );
 };

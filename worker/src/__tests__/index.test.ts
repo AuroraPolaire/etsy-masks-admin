@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createRunFileHeaders } from '../index';
+import { buildMarketingSceneEditFormData } from '../openaiProxy';
 
 describe('worker file responses', () => {
   it('sets cache validators and private cache headers for versioned file downloads', () => {
@@ -41,5 +42,41 @@ describe('worker file responses', () => {
 
     expect(headers.get('Content-Type')).toBe('image/png');
     expect(headers.get('Cache-Control')).toBeNull();
+  });
+});
+
+describe('worker OpenAI marketing image requests', () => {
+  it('sends approved masks as image array inputs without high quality or input fidelity', () => {
+    const formData = buildMarketingSceneEditFormData({
+      settings: {
+        model: 'gpt-image-2',
+        size: '2048x2048',
+        quality: 'high',
+        background: 'opaque',
+        outputFormat: 'png',
+      },
+      project: {
+        theme: 'Dinosaur masks',
+        title: 'Dinosaur Printable Masks',
+        audience: 'Kids',
+        style: 'Printable paper masks',
+        slogan: 'Dinosaur masks for kids',
+      },
+      recipe: {
+        id: 'party-table',
+        optionIndex: 0,
+        stage: 'final',
+        maskCount: 2,
+      },
+      images: [
+        new Blob(['mask-1'], { type: 'image/png' }),
+        new Blob(['mask-2'], { type: 'image/png' }),
+      ],
+    });
+
+    expect(formData.get('model')).toBe('gpt-image-2');
+    expect(formData.get('quality')).toBe('medium');
+    expect(formData.get('input_fidelity')).toBeNull();
+    expect(formData.getAll('image[]')).toHaveLength(2);
   });
 });

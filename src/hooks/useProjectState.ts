@@ -5,6 +5,7 @@ import { loadProject, saveProject } from '../lib/storage';
 
 import type {
   OpenAIImageSettings,
+  MarketingSettings,
   PdfSettings,
   EtsySeoAnalysis,
   Project,
@@ -71,6 +72,13 @@ export const useProjectState = () => {
     [updateProject],
   );
 
+  const updateMarketingSettings = useCallback(
+    (marketingSettings: MarketingSettings) => {
+      updateProject((currentProject) => ({ ...currentProject, marketingSettings }));
+    },
+    [updateProject],
+  );
+
   const applyInitialDraft = useCallback(
     (draft: InitialProjectDraft) => {
       const timestamp = nowIso();
@@ -80,6 +88,7 @@ export const useProjectState = () => {
         subjects: draft.subjects,
         pdfSettings: currentProject.pdfSettings,
         openAIImageSettings: currentProject.openAIImageSettings,
+        marketingSettings: currentProject.marketingSettings,
         createdAt: timestamp,
         updatedAt: timestamp,
         lastBriefUpdatedAt: timestamp,
@@ -152,6 +161,7 @@ export const useProjectState = () => {
     updateSettings,
     updatePdfSettings,
     updateOpenAIImageSettings,
+    updateMarketingSettings,
     applyInitialDraft,
     applyEtsySeoAnalysis,
     addSubject,

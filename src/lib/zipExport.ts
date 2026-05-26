@@ -10,6 +10,7 @@ import {
   getSourceFiles,
   groupFilesForExport,
 } from './files';
+import { getFinalMarketingAssetFiles } from './marketingAssets';
 import { createManifestImageDimensions, runQA } from './qa';
 import { slugify } from './slugify';
 
@@ -130,13 +131,14 @@ export const createListingPdf = (
   return doc.output('blob');
 };
 
-const createManifest = (
+export const createManifest = (
   project: Project,
   files: ManagedFile[],
   qaResult: QAResult,
   nestedEtsyUploadZipSizeBytes: number,
 ): ExportManifest => {
   const groups = groupFilesForExport(files, project.subjects);
+  const marketingFiles = getFinalMarketingAssetFiles(files);
   const sourceFiles = getSourceFiles(files);
   const mappedImages = groups.approvedMapped.reduce<Record<string, string>>((mapped, file) => {
     const subject = project.subjects.find((item) => item.id === file.mappedSubjectId);
@@ -178,7 +180,7 @@ const createManifest = (
     mappedColoringPages,
     imageDimensions: createManifestImageDimensions(files),
     pdfFiles: ['listing_details.pdf'],
-    marketplacePreviewFiles: [],
+    marketplacePreviewFiles: marketingFiles.map((file) => file.name),
     sourceFileCount: sourceFiles.length,
     sourceTotalSizeBytes: sourceFiles.reduce((total, file) => total + file.size, 0),
     nestedEtsyUploadZipSizeBytes,
@@ -200,6 +202,10 @@ export const exportArchive = async (
 
   await addApprovedPngs(zip, 'mask_pngs/color', project, groups.approvedMapped);
   await addApprovedPngs(zip, 'mask_pngs/coloring_pages', project, groups.approvedColoringPages);
+  for (const file of getFinalMarketingAssetFiles(files)) {
+    const pngBlob = await createPngBlobFromImage(file.file);
+    zip.file(`marketing_assets/${file.name}`, pngBlob);
+  }
   zip.file('listing_details.pdf', listingPdf);
 
   const archiveBlob = await zip.generateAsync({

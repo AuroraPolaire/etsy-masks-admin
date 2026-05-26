@@ -2,6 +2,7 @@ import { ArchiveActions } from './ArchiveActions';
 import { BrowserSupportWarning } from './BrowserSupportWarning';
 import { EtsySeoPanel } from './EtsySeoPanel';
 import { InitialPromptPanel } from './InitialPromptPanel';
+import { MarketingAssetsPanel } from './MarketingAssetsPanel';
 import { ProductBriefForm } from './ProductBriefForm';
 import { PromptManager } from './PromptManager';
 import { QAPanel } from './QAPanel';
@@ -15,6 +16,7 @@ import type {
   ManagedFile,
   Project,
   ProjectSettings,
+  MarketingSettings,
   PromptItem,
   QAResult,
 } from '../types';
@@ -39,12 +41,18 @@ type HomeWorkflowViewProps = {
   onFillProductBrief: (initialPrompt: string) => void;
   onAnalyzeListingWithAI: () => void;
   onUpdateSettings: (settings: ProjectSettings) => void;
+  onUpdateMarketingSettings: (settings: MarketingSettings) => void;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string, promptOverride?: string) => void;
   onGenerateMissingImages: () => void;
   onGenerateColoringPage: (subjectId: string) => void;
   onGenerateMissingColoringPages: () => void;
+  onGenerateSloganPreviews: () => void;
+  onFinalizeSloganPoster: (previewFileId: string) => void;
+  onGenerateMaskSheets: () => void;
+  onGenerateChildrenScenePreviews: () => void;
+  onFinalizeChildrenScene: (previewFileId: string) => void;
   onApproveAllFiles: (fileIds: string[]) => void;
   onApproveFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -71,12 +79,18 @@ export const HomeWorkflowView = ({
   onFillProductBrief,
   onAnalyzeListingWithAI,
   onUpdateSettings,
+  onUpdateMarketingSettings,
   onAddSubject,
   onRemoveSubject,
   onGenerateImage,
   onGenerateMissingImages,
   onGenerateColoringPage,
   onGenerateMissingColoringPages,
+  onGenerateSloganPreviews,
+  onFinalizeSloganPoster,
+  onGenerateMaskSheets,
+  onGenerateChildrenScenePreviews,
+  onFinalizeChildrenScene,
   onApproveAllFiles,
   onApproveFile,
   onDeleteFile,
@@ -164,9 +178,33 @@ export const HomeWorkflowView = ({
               />
               <StepAdvanceButton
                 disabled={!workflow.canExportFinalFiles}
+                onClick={() => onStepSelected(workflow.marketingUnlocked ? 'marketing' : 'export')}
+              >
+                {workflow.marketingUnlocked ? 'Next: marketing assets' : 'Review partial export'}
+              </StepAdvanceButton>
+            </div>
+          ) : null}
+          {step.id === 'marketing' ? (
+            <div className="space-y-6">
+              <MarketingAssetsPanel
+                project={project}
+                files={files}
+                hasAIProvider={hasAIProvider}
+                busyAction={busyAction}
+                onMarketingSettingsChange={onUpdateMarketingSettings}
+                onGenerateSloganPreviews={onGenerateSloganPreviews}
+                onFinalizeSloganPoster={onFinalizeSloganPoster}
+                onGenerateMaskSheets={onGenerateMaskSheets}
+                onGenerateChildrenScenePreviews={onGenerateChildrenScenePreviews}
+                onFinalizeChildrenScene={onFinalizeChildrenScene}
+                onApprovePreview={onApproveFile}
+                onDeleteFile={onDeleteFile}
+              />
+              <StepAdvanceButton
+                disabled={!workflow.canExportFinalFiles}
                 onClick={() => onStepSelected('export')}
               >
-                {workflow.imagesComplete ? 'Next: QA and export' : 'Review partial export'}
+                Next: QA and export
               </StepAdvanceButton>
             </div>
           ) : null}

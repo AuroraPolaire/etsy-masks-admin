@@ -35,6 +35,7 @@ import type {
   BusyActionContext,
   EtsySeoAnalysis,
   ManagedFile,
+  MarketingImageSettings,
   OpenAIImageSettings,
   Project,
   ProjectDraft,
@@ -587,6 +588,18 @@ export const useBackendCache = ({
     [client],
   );
 
+  const generateMarketingSceneImage = useCallback(
+    (
+      settings: MarketingImageSettings,
+      projectOverride: Project,
+      sourceFiles: ManagedFile[],
+      recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+      signal?: AbortSignal,
+    ): Promise<File> =>
+      client.generateMarketingSceneImage(settings, projectOverride, sourceFiles, recipe, signal),
+    [client],
+  );
+
   return {
     health,
     runs,
@@ -608,5 +621,6 @@ export const useBackendCache = ({
     generateEtsySeoAnalysis,
     generateImage,
     generateColoringPageImage,
+    generateMarketingSceneImage,
   };
 };

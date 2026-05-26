@@ -9,6 +9,7 @@ import type {
   BackendRunSummary,
   EtsySeoAnalysis,
   ManagedFile,
+  MarketingImageSettings,
   OpenAIImageSettings,
   Project,
   ProjectDraft,
@@ -127,6 +128,7 @@ const summarizeFilesForAiReview = (files: ManagedFile[]) =>
     reviewState: file.reviewState,
     mappedSubjectId: file.mappedSubjectId ?? null,
     assetVariant: file.assetVariant,
+    marketingAsset: file.marketingAsset ?? null,
     hasImageMetadata: Boolean(file.imageMetadata),
     explicitlyConfirmed: file.explicitlyConfirmed,
   }));
@@ -286,6 +288,47 @@ export const createBackendClient = () => ({
     formData.append('image', sourceFile, sourceFile.name);
 
     const response = await fetch('/api/openai/images/coloring-page', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      ...(signal ? { signal } : {}),
+    });
+
+    if (!response.ok) {
+      throw new BackendApiError(response.status, await readErrorMessage(response));
+    }
+
+    return base64ToFile(await response.json());
+  },
+
+  generateMarketingSceneImage: async (
+    settings: MarketingImageSettings,
+    project: Project,
+    sourceFiles: ManagedFile[],
+    recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+    signal?: AbortSignal,
+  ): Promise<File> => {
+    const formData = new FormData();
+    formData.append('settings', JSON.stringify(settings));
+    formData.append(
+      'project',
+      JSON.stringify({
+        theme: project.settings.theme || 'Printable masks',
+        title: project.settings.title || project.settings.theme || 'Printable masks',
+        audience: project.settings.audience || 'Kids',
+        style: project.settings.style || 'Printable kids mask bundle',
+        slogan:
+          project.marketingSettings.slogan ||
+          project.settings.title ||
+          `${project.settings.theme || 'Printable masks'} for kids`,
+      }),
+    );
+    formData.append('recipe', JSON.stringify(recipe));
+    for (const sourceFile of sourceFiles) {
+      formData.append('image', sourceFile.file, sourceFile.name);
+    }
+
+    const response = await fetch('/api/openai/images/marketing-scene', {
       method: 'POST',
       body: formData,
       credentials: 'include',

@@ -19,6 +19,7 @@ const busyActionLabels: Record<Exclude<BusyAction, null>, string> = {
   'brief-generation': 'Drafting brief',
   'ai-analysis': 'Reviewing listing',
   'image-generation': 'Generating images',
+  'marketing-generation': 'Generating marketing assets',
   archive: 'Creating archive',
   'backend-sync': 'Cloud activity',
   'project-json': 'Exporting project JSON',

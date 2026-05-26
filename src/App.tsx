@@ -7,6 +7,7 @@ import { AppSidebar } from './components/AppSidebar';
 import { BackendDataPanel } from './components/BackendDataPanel';
 import { Header } from './components/Header';
 import { HomeWorkflowView } from './components/HomeWorkflowView';
+import { MarketingSettingsPanel } from './components/MarketingSettingsPanel';
 import { OpenAIImagePanel } from './components/OpenAIImagePanel';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { useToast } from './components/ui/toastContext';
@@ -15,6 +16,7 @@ import { useBackendCache } from './hooks/useBackendCache';
 import { useBusyAction } from './hooks/useBusyAction';
 import { useExportActions } from './hooks/useExportActions';
 import { useManagedFiles } from './hooks/useManagedFiles';
+import { useMarketingAssetGeneration } from './hooks/useMarketingAssetGeneration';
 import { useOpenAIImageGeneration } from './hooks/useOpenAIImageGeneration';
 import { useProjectState } from './hooks/useProjectState';
 import { checkBrowserSupport } from './lib/browserSupport';
@@ -33,6 +35,7 @@ import type {
   ActivityLevel,
   ActivityType,
   ManagedFile,
+  MarketingImageSettings,
   OpenAIImageSettings,
   ProjectDraft,
   PromptItem,
@@ -77,6 +80,7 @@ export const App = () => {
     replaceProject,
     updateSettings,
     updateOpenAIImageSettings,
+    updateMarketingSettings,
     applyInitialDraft,
     applyEtsySeoAnalysis,
     addSubject,
@@ -165,6 +169,28 @@ export const App = () => {
     },
     [backendCache],
   );
+  const generateMarketingSceneFile = useCallback(
+    async (
+      settings: MarketingImageSettings,
+      projectOverride: typeof project,
+      sourceFiles: ManagedFile[],
+      recipe: { id: string; optionIndex: number; stage: 'preview' | 'final'; maskCount: number },
+      signal?: AbortSignal,
+    ): Promise<File> => {
+      if (!backendCache.canUseOpenAIProxy) {
+        throw new Error('Cloud OpenAI proxy is required before generating marketing scenes.');
+      }
+
+      return backendCache.generateMarketingSceneImage(
+        settings,
+        projectOverride,
+        sourceFiles,
+        recipe,
+        signal,
+      );
+    },
+    [backendCache],
+  );
   const {
     openAISettings,
     setOpenAISettings,
@@ -186,6 +212,19 @@ export const App = () => {
     onSettingsChange: updateOpenAIImageSettings,
     generateImageFile,
     generateColoringPageFile,
+  });
+  const {
+    generateSloganPreviews,
+    finalizeSloganPoster,
+    generateMaskSheets,
+    generateChildrenScenePreviews,
+    finalizeChildrenScene,
+  } = useMarketingAssetGeneration({
+    project,
+    filesRef,
+    appendFiles,
+    addActivity,
+    generateMarketingSceneFile,
   });
   const hasAIProvider = backendCache.canUseOpenAIProxy;
   const workflow = useMemo(
@@ -413,6 +452,36 @@ export const App = () => {
     void runBusyAction('image-generation', generateMissingColoringPages);
   }, [generateMissingColoringPages, runBusyAction]);
 
+  const handleGenerateSloganPreviews = useCallback(() => {
+    void runBusyAction('marketing-generation', generateSloganPreviews);
+  }, [generateSloganPreviews, runBusyAction]);
+
+  const handleFinalizeSloganPoster = useCallback(
+    (previewFileId: string) => {
+      void runBusyAction('marketing-generation', (context) =>
+        finalizeSloganPoster(previewFileId, context),
+      );
+    },
+    [finalizeSloganPoster, runBusyAction],
+  );
+
+  const handleGenerateMaskSheets = useCallback(() => {
+    void runBusyAction('marketing-generation', generateMaskSheets);
+  }, [generateMaskSheets, runBusyAction]);
+
+  const handleGenerateChildrenScenePreviews = useCallback(() => {
+    void runBusyAction('marketing-generation', generateChildrenScenePreviews);
+  }, [generateChildrenScenePreviews, runBusyAction]);
+
+  const handleFinalizeChildrenScene = useCallback(
+    (previewFileId: string) => {
+      void runBusyAction('marketing-generation', (context) =>
+        finalizeChildrenScene(previewFileId, context),
+      );
+    },
+    [finalizeChildrenScene, runBusyAction],
+  );
+
   const shouldAutoGenerateColoringPage = useCallback(
     (file: ManagedFile) => {
       if (
@@ -523,12 +592,18 @@ export const App = () => {
         onFillProductBrief={handleFillProductBrief}
         onAnalyzeListingWithAI={handleAnalyzeListingWithAI}
         onUpdateSettings={updateSettings}
+        onUpdateMarketingSettings={updateMarketingSettings}
         onAddSubject={handleAddSubject}
         onRemoveSubject={handleRemoveSubject}
         onGenerateImage={handleGenerateSubjectImage}
         onGenerateMissingImages={handleGenerateMissingSubjectImages}
         onGenerateColoringPage={handleGenerateSubjectColoringPage}
         onGenerateMissingColoringPages={handleGenerateMissingColoringPages}
+        onGenerateSloganPreviews={handleGenerateSloganPreviews}
+        onFinalizeSloganPoster={handleFinalizeSloganPoster}
+        onGenerateMaskSheets={handleGenerateMaskSheets}
+        onGenerateChildrenScenePreviews={handleGenerateChildrenScenePreviews}
+        onFinalizeChildrenScene={handleFinalizeChildrenScene}
         onApproveAllFiles={handleApproveFiles}
         onApproveFile={handleApproveFile}
         onDeleteFile={handleDeleteFile}
@@ -546,6 +621,13 @@ export const App = () => {
         description="Manage the model, API image size, quality, background, output format, and cost estimate used by Cloud AI generation."
       />
       {renderOpenAIImagePanel()}
+      <div className="mt-6">
+        <MarketingSettingsPanel
+          settings={project.marketingSettings}
+          maskSettings={project.openAIImageSettings}
+          onChange={updateMarketingSettings}
+        />
+      </div>
     </AppMainLayout>
   );
 

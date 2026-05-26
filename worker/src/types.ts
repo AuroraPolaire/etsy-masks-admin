@@ -39,6 +39,7 @@ export type FileRow = {
   mapped_subject_id: string | null;
   asset_variant: string;
   source_file_id: string | null;
+  metadata_json: string | null;
   explicitly_confirmed: number;
   image_width: number | null;
   image_height: number | null;
@@ -70,6 +71,7 @@ export type FileMetadataInput = {
   mappedSubjectId?: string;
   assetVariant?: string;
   sourceFileId?: string;
+  metadataJson?: string;
   explicitlyConfirmed: boolean;
   imageMetadata?: {
     width: number;

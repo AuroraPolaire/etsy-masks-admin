@@ -1,4 +1,11 @@
-import type { OpenAIImageSettings, PdfSettings, Project, ProjectSettings } from './types';
+import type {
+  MarketingImageSettings,
+  MarketingSettings,
+  OpenAIImageSettings,
+  PdfSettings,
+  Project,
+  ProjectSettings,
+} from './types';
 
 export const APP_VERSION = '1.0.0';
 
@@ -59,6 +66,32 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
   outputFormat: 'png',
 };
 
+export const DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS: MarketingImageSettings = {
+  model: 'gpt-image-2',
+  size: '1024x1024',
+  quality: 'low',
+  background: 'opaque',
+  outputFormat: 'png',
+};
+
+export const DEFAULT_MARKETING_FINAL_IMAGE_SETTINGS: MarketingImageSettings = {
+  model: 'gpt-image-2',
+  size: '2048x2048',
+  quality: 'medium',
+  background: 'opaque',
+  outputFormat: 'png',
+};
+
+export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {
+  slogan: '',
+  preview: {
+    mode: 'inherit-mask',
+    customSettings: DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS,
+  },
+  final: DEFAULT_MARKETING_FINAL_IMAGE_SETTINGS,
+  childrenSceneSubjectIds: [],
+};
+
 export const PROMPT_NEGATIVE_REQUIREMENTS =
   'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes, no extra holes, no side holes, no round punch holes, no string holes, no strap holes, no hanging holes, no attachment holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
 
@@ -78,6 +111,7 @@ export const createDefaultProject = (): Project => {
     subjects: [],
     pdfSettings: DEFAULT_PDF_SETTINGS,
     openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
+    marketingSettings: DEFAULT_MARKETING_SETTINGS,
     createdAt: now,
     updatedAt: now,
   };

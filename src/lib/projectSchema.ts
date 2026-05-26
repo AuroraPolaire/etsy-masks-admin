@@ -1,5 +1,6 @@
 import type {
   Marketplace,
+  MarketingSettings,
   MaskScale,
   EtsySeoAnalysis,
   EtsySeoCheck,
@@ -195,7 +196,7 @@ const readOpenAIImageSettings = (
     ),
     size: readEnum<OpenAIImageSize>(
       settings.size,
-      ['1024x1024', '1536x1024', '1024x1536', 'auto'],
+      ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', 'auto'],
       fallback.size,
     ),
     quality: readEnum<OpenAIImageQuality>(
@@ -213,6 +214,67 @@ const readOpenAIImageSettings = (
       ['png', 'webp', 'jpeg'],
       fallback.outputFormat,
     ),
+  };
+};
+
+const readMarketingImageSettings = (
+  settingsLike: unknown,
+  fallback: MarketingSettings['final'],
+): MarketingSettings['final'] => {
+  const settings = isRecord(settingsLike) ? settingsLike : {};
+  const quality = readEnum<OpenAIImageQuality>(
+    settings.quality,
+    ['low', 'medium', 'high', 'auto'],
+    fallback.quality,
+  );
+
+  return {
+    model: readEnum<OpenAIImageModel>(
+      settings.model,
+      ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-image-2'],
+      fallback.model,
+    ),
+    size: readEnum<OpenAIImageSize>(
+      settings.size,
+      ['1024x1024', '1536x1024', '1024x1536', '2048x2048', '2048x1152', '1152x2048', 'auto'],
+      fallback.size,
+    ),
+    quality: quality === 'high' ? 'medium' : quality,
+    background: readEnum<OpenAIImageBackground>(
+      settings.background,
+      ['transparent', 'opaque', 'auto'],
+      fallback.background,
+    ),
+    outputFormat: readEnum<OpenAIImageOutputFormat>(
+      settings.outputFormat,
+      ['png', 'webp', 'jpeg'],
+      fallback.outputFormat,
+    ),
+  };
+};
+
+const readMarketingSettings = (
+  settingsLike: unknown,
+  fallback: MarketingSettings,
+): MarketingSettings => {
+  const settings = isRecord(settingsLike) ? settingsLike : {};
+  const preview = isRecord(settings.preview) ? settings.preview : {};
+  const mode =
+    preview.mode === 'custom' || preview.mode === 'inherit-mask'
+      ? preview.mode
+      : fallback.preview.mode;
+
+  return {
+    slogan: readString(settings.slogan, fallback.slogan),
+    preview: {
+      mode,
+      customSettings: readMarketingImageSettings(
+        preview.customSettings,
+        fallback.preview.customSettings,
+      ),
+    },
+    final: readMarketingImageSettings(settings.final, fallback.final),
+    childrenSceneSubjectIds: readStringArray(settings.childrenSceneSubjectIds, 3),
   };
 };
 
@@ -316,12 +378,17 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
       projectLike.imageGenerationSettings,
     fallback.openAIImageSettings,
   );
+  const marketingSettings = readMarketingSettings(
+    projectLike.marketingSettings,
+    fallback.marketingSettings,
+  );
 
   if (hasLegacyMockTitle(settings)) {
     return {
       ...fallback,
       pdfSettings,
       openAIImageSettings,
+      marketingSettings,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -345,6 +412,7 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
     subjects,
     pdfSettings,
     openAIImageSettings,
+    marketingSettings,
     createdAt: readRequiredString(projectLike.createdAt, fallback.createdAt),
     updatedAt: new Date().toISOString(),
     ...optionalDates,

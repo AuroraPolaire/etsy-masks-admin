@@ -16,6 +16,7 @@ export type BackendManagedFileMetadata = {
   mappedSubjectId?: string;
   assetVariant: ManagedFile['assetVariant'];
   sourceFileId?: string;
+  marketingAsset?: ManagedFile['marketingAsset'];
   explicitlyConfirmed: boolean;
   imageMetadata?: ManagedFile['imageMetadata'];
 };
@@ -37,6 +38,7 @@ export const managedFileToBackendMetadata = (
   ...(managedFile.mappedSubjectId ? { mappedSubjectId: managedFile.mappedSubjectId } : {}),
   assetVariant: managedFile.assetVariant,
   ...(managedFile.sourceFileId ? { sourceFileId: managedFile.sourceFileId } : {}),
+  ...(managedFile.marketingAsset ? { marketingAsset: managedFile.marketingAsset } : {}),
   explicitlyConfirmed: managedFile.explicitlyConfirmed,
   ...(managedFile.imageMetadata ? { imageMetadata: managedFile.imageMetadata } : {}),
 });
@@ -67,6 +69,7 @@ export const createManagedFileFromBackendRecord = (
     ...(record.mappedSubjectId ? { mappedSubjectId: record.mappedSubjectId } : {}),
     assetVariant: record.assetVariant ?? 'color',
     ...(record.sourceFileId ? { sourceFileId: record.sourceFileId } : {}),
+    ...(record.marketingAsset ? { marketingAsset: record.marketingAsset } : {}),
     explicitlyConfirmed: record.explicitlyConfirmed,
   };
 };

@@ -91,6 +91,7 @@ const backendFileSignature = (file: BackendFileRecord): string =>
     ...(file.mappedSubjectId ? { mappedSubjectId: file.mappedSubjectId } : {}),
     assetVariant: file.assetVariant ?? 'color',
     ...(file.sourceFileId ? { sourceFileId: file.sourceFileId } : {}),
+    ...(file.marketingAsset ? { marketingAsset: file.marketingAsset } : {}),
     explicitlyConfirmed: file.explicitlyConfirmed,
     ...(file.imageMetadata ? { imageMetadata: file.imageMetadata } : {}),
   });

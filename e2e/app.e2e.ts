@@ -653,6 +653,8 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Approve mask' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Next: marketing assets' }).click();
+    await expect(page.getByText('Generate optional listing graphics')).toBeVisible();
     await page.getByRole('button', { name: 'Next: QA and export' }).click();
     await expect(page.getByRole('heading', { name: 'Export package' })).toBeVisible();
 

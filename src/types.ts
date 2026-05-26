@@ -4,7 +4,26 @@ export type FileReviewState = 'pending' | 'approved' | 'rejected';
 
 export type ManagedFileKind = 'uploaded' | 'generated-pdf' | 'generated-preview';
 
-export type FileAssetVariant = 'color' | 'coloring-page';
+export type FileAssetVariant =
+  | 'color'
+  | 'coloring-page'
+  | 'marketing-slogan'
+  | 'marketing-mask-sheet'
+  | 'marketing-children-scene';
+
+export type MarketingAssetType = 'slogan-poster' | 'mask-sheet' | 'children-scene';
+
+export type MarketingAssetStage = 'preview' | 'final';
+
+export type MarketingAssetMetadata = {
+  type: MarketingAssetType;
+  stage: MarketingAssetStage;
+  optionIndex?: number;
+  recipeId: string;
+  sourceFileIds: string[];
+  generatedFromSettings: MarketingImageSettings;
+  generatedAt: string;
+};
 
 export type MaskScale = 'small' | 'medium' | 'large';
 
@@ -20,6 +39,7 @@ export type ActivityType =
   | 'image-generated'
   | 'image-approved'
   | 'image-mapped'
+  | 'marketing-generated'
   | 'prompt-copied'
   | 'pdf-generated'
   | 'preview-generated'
@@ -35,6 +55,7 @@ export type BusyAction =
   | 'brief-generation'
   | 'ai-analysis'
   | 'image-generation'
+  | 'marketing-generation'
   | 'archive'
   | 'backend-sync'
   | 'project-json'
@@ -93,6 +114,7 @@ export type Project = {
   subjects: SubjectItem[];
   pdfSettings: PdfSettings;
   openAIImageSettings: OpenAIImageSettings;
+  marketingSettings: MarketingSettings;
   createdAt: string;
   updatedAt: string;
   lastProjectJsonExportAt?: string;
@@ -128,6 +150,7 @@ export type ManagedFile = {
   mappedSubjectId?: string;
   assetVariant: FileAssetVariant;
   sourceFileId?: string;
+  marketingAsset?: MarketingAssetMetadata;
   explicitlyConfirmed: boolean;
 };
 
@@ -217,7 +240,14 @@ export type ExportManifest = {
 
 export type OpenAIImageModel = 'gpt-image-1.5' | 'gpt-image-1' | 'gpt-image-1-mini' | 'gpt-image-2';
 
-export type OpenAIImageSize = '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
+export type OpenAIImageSize =
+  | '1024x1024'
+  | '1536x1024'
+  | '1024x1536'
+  | '2048x2048'
+  | '2048x1152'
+  | '1152x2048'
+  | 'auto';
 
 export type OpenAIImageQuality = 'low' | 'medium' | 'high' | 'auto';
 
@@ -231,6 +261,24 @@ export type OpenAIImageSettings = {
   quality: OpenAIImageQuality;
   background: OpenAIImageBackground;
   outputFormat: OpenAIImageOutputFormat;
+};
+
+export type MarketingImageQuality = Exclude<OpenAIImageQuality, 'high'>;
+
+export type MarketingImageSettings = Omit<OpenAIImageSettings, 'quality'> & {
+  quality: MarketingImageQuality;
+};
+
+export type MarketingPreviewSettings = {
+  mode: 'inherit-mask' | 'custom';
+  customSettings: MarketingImageSettings;
+};
+
+export type MarketingSettings = {
+  slogan: string;
+  preview: MarketingPreviewSettings;
+  final: MarketingImageSettings;
+  childrenSceneSubjectIds: string[];
 };
 
 export type BrowserSupportResult = {
@@ -285,6 +333,7 @@ export type BackendFileRecord = {
   mappedSubjectId?: string;
   assetVariant?: FileAssetVariant;
   sourceFileId?: string;
+  marketingAsset?: MarketingAssetMetadata;
   explicitlyConfirmed: boolean;
   imageMetadata?: ImageMetadata;
   thumbnail?: {

@@ -3,7 +3,7 @@ import type { OpenAIImageQuality, OpenAIImageSize } from '../types';
 export type EstimatedImageCostModel = 'gpt-image-1.5' | 'gpt-image-2';
 
 type EstimatedQuality = Exclude<OpenAIImageQuality, 'auto'>;
-type EstimatedSize = Exclude<OpenAIImageSize, 'auto'>;
+type EstimatedSize = '1024x1024' | '1024x1536' | '1536x1024';
 
 type ImageCostEstimate = {
   model: EstimatedImageCostModel;
@@ -68,8 +68,12 @@ const ESTIMATED_COST_USD: Record<
 const normalizeQuality = (quality: OpenAIImageQuality): EstimatedQuality =>
   quality === 'auto' ? DEFAULT_ESTIMATE_QUALITY : quality;
 
+const ESTIMATED_SIZES: EstimatedSize[] = ['1024x1024', '1024x1536', '1536x1024'];
+
 const normalizeSize = (size: OpenAIImageSize): EstimatedSize =>
-  size === 'auto' ? DEFAULT_ESTIMATE_SIZE : size;
+  size === 'auto' || !ESTIMATED_SIZES.includes(size as EstimatedSize)
+    ? DEFAULT_ESTIMATE_SIZE
+    : (size as EstimatedSize);
 
 export const getEstimatedOpenAIImageCost = (
   model: EstimatedImageCostModel,
@@ -86,7 +90,7 @@ export const getEstimatedOpenAIImageCost = (
     estimatedQuality,
     estimatedSize,
     costUsd: ESTIMATED_COST_USD[model][estimatedQuality][estimatedSize],
-    usesFallbackAssumption: quality === 'auto' || size === 'auto',
+    usesFallbackAssumption: quality === 'auto' || size === 'auto' || estimatedSize !== size,
   };
 };
 

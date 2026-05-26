@@ -2,7 +2,7 @@ import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/file
 
 import type { ManagedFile, Project, QAResult } from '../types';
 
-export type WorkflowStepId = 'brief' | 'images' | 'export';
+export type WorkflowStepId = 'brief' | 'images' | 'marketing' | 'export';
 
 export type WorkflowStepState = 'active' | 'available' | 'complete' | 'locked';
 
@@ -30,6 +30,7 @@ export type WorkflowState = {
   briefComplete: boolean;
   topicsComplete: boolean;
   imagesComplete: boolean;
+  marketingUnlocked: boolean;
   canExportFinalFiles: boolean;
   recommendedStepId: WorkflowStepId;
   visibleActiveStepId: WorkflowStepId;
@@ -81,12 +82,15 @@ export const createWorkflowState = ({
     topicsComplete &&
     approvedImageCount === subjectCount &&
     approvedColoringPageCount === subjectCount;
+  const marketingUnlocked = approvedImageCount > 0;
   const canExportFinalFiles = approvedImageCount > 0;
   const recommendedStepId: WorkflowStepId = !briefComplete
     ? 'brief'
-    : !imagesComplete
+    : !marketingUnlocked
       ? 'images'
-      : 'export';
+      : !imagesComplete
+        ? 'images'
+        : 'marketing';
   const exportSummary = !canExportFinalFiles
     ? `QA is ${qaResult.readinessPercentage}% ready.`
     : !imagesComplete
@@ -122,9 +126,21 @@ export const createWorkflowState = ({
       lockedReason: 'Finish the brief first.',
     },
     {
+      id: 'marketing',
+      title: 'Marketing assets',
+      description: 'Create optional listing graphics from approved masks.',
+      summary: marketingUnlocked
+        ? 'Optional assets can be generated from approved masks.'
+        : 'Approve at least one mask before creating marketing assets.',
+      complete: false,
+      unlocked: marketingUnlocked,
+      lockedReason: 'Approve at least one color mask first.',
+    },
+    {
       id: 'export',
       title: 'QA and export',
-      description: 'Export color mask PNGs, coloring-page PNGs, and one listing PDF.',
+      description:
+        'Export color mask PNGs, coloring-page PNGs, marketing assets, and one listing PDF.',
       summary: exportSummary,
       complete: qaResult.status === 'etsy-ready',
       unlocked: canExportFinalFiles,
@@ -178,6 +194,7 @@ export const createWorkflowState = ({
     briefComplete,
     topicsComplete,
     imagesComplete,
+    marketingUnlocked,
     canExportFinalFiles,
     recommendedStepId,
     visibleActiveStepId,

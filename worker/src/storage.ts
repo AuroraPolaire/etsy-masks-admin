@@ -80,6 +80,16 @@ const fileRowToRecord = (row: FileRow): Record<string, unknown> => {
           height: row.image_height,
         }
       : undefined;
+  const metadata = row.metadata_json
+    ? (() => {
+        try {
+          const parsed = JSON.parse(row.metadata_json) as unknown;
+          return isRecord(parsed) ? parsed : undefined;
+        } catch {
+          return undefined;
+        }
+      })()
+    : undefined;
 
   return {
     id: row.id,
@@ -98,6 +108,7 @@ const fileRowToRecord = (row: FileRow): Record<string, unknown> => {
     updatedAt: row.updated_at,
     ...(row.mapped_subject_id ? { mappedSubjectId: row.mapped_subject_id } : {}),
     ...(row.source_file_id ? { sourceFileId: row.source_file_id } : {}),
+    ...(metadata ?? {}),
     ...(imageMetadata ? { imageMetadata } : {}),
     ...(row.thumbnail_r2_key && row.thumbnail_size !== null && row.thumbnail_type
       ? {
@@ -371,10 +382,20 @@ const parseFileMetadata = (value: unknown): FileMetadataInput => {
     : undefined;
   const mappedSubjectId = readOptionalString(parsed.mappedSubjectId);
   const assetVariant = readOptionalString(parsed.assetVariant) ?? 'color';
-  if (assetVariant !== 'color' && assetVariant !== 'coloring-page') {
+  const validAssetVariants = [
+    'color',
+    'coloring-page',
+    'marketing-slogan',
+    'marketing-mask-sheet',
+    'marketing-children-scene',
+  ];
+  if (!validAssetVariants.includes(assetVariant)) {
     throw new ApiError(400, 'metadata.assetVariant is invalid.');
   }
   const sourceFileId = readOptionalString(parsed.sourceFileId);
+  const metadataJson = isRecord(parsed.marketingAsset)
+    ? JSON.stringify({ marketingAsset: parsed.marketingAsset })
+    : undefined;
 
   return {
     id: readRequiredString(parsed.id, 'metadata.id'),
@@ -389,6 +410,7 @@ const parseFileMetadata = (value: unknown): FileMetadataInput => {
     reviewNotes: typeof parsed.reviewNotes === 'string' ? parsed.reviewNotes : '',
     assetVariant,
     ...(sourceFileId ? { sourceFileId } : {}),
+    ...(metadataJson ? { metadataJson } : {}),
     explicitlyConfirmed: readBoolean(parsed.explicitlyConfirmed, 'metadata.explicitlyConfirmed'),
     ...(mappedSubjectId ? { mappedSubjectId } : {}),
     ...(imageMetadata ? { imageMetadata } : {}),
@@ -449,11 +471,11 @@ export const putRunFile = async (
   await env.DB.prepare(
     `INSERT INTO file_backups (
        id, run_id, project_id, r2_key, name, original_name, size, type, kind, added_at,
-       review_state, review_notes, mapped_subject_id, asset_variant, source_file_id,
+       review_state, review_notes, mapped_subject_id, asset_variant, source_file_id, metadata_json,
        explicitly_confirmed, image_width, image_height, thumbnail_r2_key, thumbnail_size,
        thumbnail_type, thumbnail_updated_at, updated_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(run_id, id) DO UPDATE SET
        project_id = excluded.project_id,
        r2_key = excluded.r2_key,
@@ -468,6 +490,7 @@ export const putRunFile = async (
        mapped_subject_id = excluded.mapped_subject_id,
        asset_variant = excluded.asset_variant,
        source_file_id = excluded.source_file_id,
+       metadata_json = excluded.metadata_json,
        explicitly_confirmed = excluded.explicitly_confirmed,
        image_width = excluded.image_width,
        image_height = excluded.image_height,
@@ -493,6 +516,7 @@ export const putRunFile = async (
       metadata.mappedSubjectId ?? null,
       metadata.assetVariant,
       metadata.sourceFileId ?? null,
+      metadata.metadataJson ?? null,
       metadata.explicitlyConfirmed ? 1 : 0,
       metadata.imageMetadata?.width ?? null,
       metadata.imageMetadata?.height ?? null,

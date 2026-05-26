@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_OPENAI_IMAGE_SETTINGS } from '../../constants';
+import { DEFAULT_MARKETING_SETTINGS, DEFAULT_OPENAI_IMAGE_SETTINGS } from '../../constants';
 import { createManagedFileFromBackendRecord, managedFileToBackendMetadata } from '../backendFiles';
 
 import type { BackendFileRecord, ManagedFile, Project } from '../../types';
@@ -31,6 +31,7 @@ const createProject = (): Project => ({
     includeCalibrationPage: true,
   },
   openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
+  marketingSettings: DEFAULT_MARKETING_SETTINGS,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 });
@@ -70,6 +71,66 @@ describe('backendFiles', () => {
       mappedSubjectId: 'subject-1',
       explicitlyConfirmed: true,
     });
+  });
+
+  it('round-trips marketing asset metadata', () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:marketing'),
+    });
+    const project = createProject();
+    const file = new File(['png'], 'moon-slogan-final.png', { type: 'image/png' });
+    const marketingAsset: ManagedFile['marketingAsset'] = {
+      type: 'slogan-poster',
+      stage: 'final',
+      optionIndex: 1,
+      recipeId: 'slogan-2',
+      sourceFileIds: ['moon-color'],
+      generatedFromSettings: project.marketingSettings.final,
+      generatedAt: '2026-05-26T10:00:00.000Z',
+    };
+    const managedFile: ManagedFile = {
+      id: 'file-marketing',
+      file,
+      name: file.name,
+      originalName: file.name,
+      size: file.size,
+      type: file.type,
+      addedAt: '2026-05-26T10:00:00.000Z',
+      kind: 'generated-preview',
+      assetVariant: 'marketing-slogan',
+      reviewState: 'approved',
+      reviewNotes: 'Ready',
+      explicitlyConfirmed: true,
+      marketingAsset,
+    };
+
+    const metadata = managedFileToBackendMetadata(project, managedFile);
+    expect(metadata.marketingAsset).toEqual(marketingAsset);
+
+    const restored = createManagedFileFromBackendRecord(
+      {
+        id: managedFile.id,
+        runId: 'run-1',
+        projectId: project.id,
+        name: managedFile.name,
+        originalName: managedFile.originalName,
+        size: managedFile.size,
+        type: managedFile.type,
+        kind: managedFile.kind,
+        addedAt: managedFile.addedAt,
+        reviewState: managedFile.reviewState,
+        reviewNotes: managedFile.reviewNotes,
+        assetVariant: managedFile.assetVariant,
+        explicitlyConfirmed: managedFile.explicitlyConfirmed,
+        marketingAsset,
+        updatedAt: '2026-05-26T10:01:00.000Z',
+      },
+      file,
+    );
+
+    expect(restored.marketingAsset).toEqual(marketingAsset);
+    expect(restored.assetVariant).toBe('marketing-slogan');
   });
 
   it('recreates managed files from backend records and blobs', () => {
