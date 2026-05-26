@@ -1,5 +1,6 @@
 import { CheckCheck, FilePenLine } from 'lucide-react';
 import { useState } from 'react';
+import { PhotoProvider } from 'react-photo-view';
 
 import { PromptCard } from './prompts/PromptCard';
 import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/files';
@@ -174,28 +175,30 @@ export const PromptManager = ({
         {prompts.length === 0 ? (
           <EmptyState>Add mask topics here to generate image prompts.</EmptyState>
         ) : (
-          <div className="grid gap-4">
-            {prompts.map((prompt) => (
-              <PromptCard
-                key={prompt.subjectId}
-                prompt={prompt}
-                subjects={subjects}
-                files={files}
-                canGenerateImages={canGenerateImages}
-                generatingSubjectIds={generatingSubjectIds}
-                generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
-                allowTopicEditing={allowTopicEditing}
-                onRemoveSubject={onRemoveSubject}
-                onGenerateImage={onGenerateImage}
-                onGenerateColoringPage={onGenerateColoringPage}
-                onApprove={onApprove}
-                onReject={onReject}
-                onDelete={onDelete}
-                onNotesChange={onNotesChange}
-                onCopy={onCopy}
-              />
-            ))}
-          </div>
+          <PhotoProvider>
+            <div className="grid gap-4">
+              {prompts.map((prompt) => (
+                <PromptCard
+                  key={prompt.subjectId}
+                  prompt={prompt}
+                  subjects={subjects}
+                  files={files}
+                  canGenerateImages={canGenerateImages}
+                  generatingSubjectIds={generatingSubjectIds}
+                  generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+                  allowTopicEditing={allowTopicEditing}
+                  onRemoveSubject={onRemoveSubject}
+                  onGenerateImage={onGenerateImage}
+                  onGenerateColoringPage={onGenerateColoringPage}
+                  onApprove={onApprove}
+                  onReject={onReject}
+                  onDelete={onDelete}
+                  onNotesChange={onNotesChange}
+                  onCopy={onCopy}
+                />
+              ))}
+            </div>
+          </PhotoProvider>
         )}
       </CardBody>
     </Card>

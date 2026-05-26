@@ -116,6 +116,51 @@ describe('PromptManager', () => {
 
     expect(onApproveAll).toHaveBeenCalledWith(['lion-file']);
   });
+
+  it('renders generated images as full-size preview triggers', () => {
+    const pendingImage: ManagedFile = {
+      id: 'lion-file',
+      file: new File(['image'], 'lion.png', { type: 'image/png' }),
+      name: 'lion.png',
+      originalName: 'lion.png',
+      size: 5,
+      type: 'image/png',
+      addedAt: '2026-05-26T08:00:00.000Z',
+      kind: 'uploaded',
+      assetVariant: 'color',
+      reviewState: 'pending',
+      reviewNotes: '',
+      mappedSubjectId: 'lion',
+      objectUrl: 'blob:lion-preview',
+      explicitlyConfirmed: false,
+    };
+
+    render(
+      <PromptManager
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
+        files={[pendingImage]}
+        canGenerateImages={false}
+        generatingSubjectIds={[]}
+        generatingColoringPageSubjectIds={[]}
+        allowTopicEditing={false}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
+        onGenerateImage={vi.fn()}
+        onGenerateColoringPage={vi.fn()}
+        onApproveAll={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
+        onDelete={vi.fn()}
+        onNotesChange={vi.fn()}
+        onCopy={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Open full-size color mask preview for Lion' }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('QAPanel', () => {

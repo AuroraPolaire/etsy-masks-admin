@@ -496,6 +496,10 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Generate image' }).click();
     await expect.poll(() => backend.getImageRequestCount()).toBe(1);
     await expect(page.getByText('Review needed').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Open full-size color mask preview for Moon' }).click();
+    await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Approve Moon' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('Coloring page ready').first()).toBeVisible();

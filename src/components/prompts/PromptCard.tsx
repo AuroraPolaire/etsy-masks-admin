@@ -6,6 +6,7 @@ import { AIButton } from '../ui/AIButton';
 import { Alert } from '../ui/Alert';
 import { Badge } from '../ui/Badge';
 import { IconButton } from '../ui/IconButton';
+import { ImagePreviewButton } from '../ui/ImagePreviewButton';
 import { Surface } from '../ui/Surface';
 import { Textarea } from '../ui/Textarea';
 
@@ -174,13 +175,11 @@ export const PromptCard = ({
               </div>
             ) : previewFile?.objectUrl ? (
               <div className="mt-3 space-y-3">
-                <div className="flex aspect-square items-center justify-center rounded-control bg-surface-muted">
-                  <img
-                    className="size-full object-contain p-3"
-                    src={previewFile.objectUrl}
-                    alt={`Generated preview of ${prompt.subjectName}`}
-                  />
-                </div>
+                <ImagePreviewButton
+                  src={previewFile.objectUrl}
+                  alt={`Generated preview of ${prompt.subjectName}`}
+                  label={`Open full-size color mask preview for ${prompt.subjectName}`}
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     tone={
@@ -259,13 +258,12 @@ export const PromptCard = ({
               </div>
             ) : coloringPageFile?.objectUrl ? (
               <div className="mt-3 space-y-3">
-                <div className="flex aspect-square items-center justify-center rounded-control bg-white">
-                  <img
-                    className="size-full object-contain p-3"
-                    src={coloringPageFile.objectUrl}
-                    alt={`Coloring page preview of ${prompt.subjectName}`}
-                  />
-                </div>
+                <ImagePreviewButton
+                  src={coloringPageFile.objectUrl}
+                  alt={`Coloring page preview of ${prompt.subjectName}`}
+                  label={`Open full-size coloring page preview for ${prompt.subjectName}`}
+                  frameClassName="bg-white"
+                />
                 {isColoringPageStale ? (
                   <Alert tone="warning">
                     This coloring page was generated from an older color mask. Regenerate it from
