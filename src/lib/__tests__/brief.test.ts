@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createProjectDraftFromInitialPrompt } from '../brief';
+import { initialPromptStyleTemplates } from '../styleTemplates';
 
 describe('brief prompt drafting', () => {
   it('fills settings and extracts known topics from an initial idea', () => {
@@ -12,12 +13,26 @@ describe('brief prompt drafting', () => {
     expect(draft.settings.description).toContain('digital download');
     expect(draft.subjects.map((subject) => subject.name)).toEqual([
       'Fox',
-      'Wolf',
-      'Bear',
-      'Rabbit',
-      'Deer',
       'Owl',
+      'Bear',
+      'Deer',
+      'Rabbit',
+      'Wolf',
     ]);
+  });
+
+  it('keeps style template mask and color painting direction in fallback drafts', () => {
+    const [watercolorTemplate] = initialPromptStyleTemplates;
+    if (!watercolorTemplate) {
+      throw new Error('Expected at least one style template.');
+    }
+
+    const draft = createProjectDraftFromInitialPrompt(watercolorTemplate.prompt);
+
+    expect(draft.subjects.map((subject) => subject.name)).toContain('Hedgehog');
+    expect(draft.settings.style).toContain('transparent watercolor washes');
+    expect(draft.settings.style).toContain('Coloring page');
+    expect(draft.settings.style).toContain('no side punch holes');
   });
 
   it('does not inject mocked topics when the initial idea is vague', () => {

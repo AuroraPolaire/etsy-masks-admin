@@ -98,32 +98,40 @@ const cleanIdea = (idea: string): string =>
     .replace(/[.?!]+$/g, '')
     .trim();
 
+const extractPromptLine = (idea: string, label: string): string | undefined => {
+  const match = new RegExp(`${label}:\\s*([^\\n.;]+)`, 'i').exec(idea);
+  const value = match?.[1]?.trim();
+
+  return value && value.length > 0 ? value : undefined;
+};
+
 const extractSubjectNames = (idea: string): string[] => {
-  const normalized = idea.toLowerCase();
-  const matched = KNOWN_SUBJECTS.filter((subject) => normalized.includes(subject));
-
-  if (matched.length > 0) {
-    return [...new Set(matched.map(titleCase))].slice(0, 20);
-  }
-
   const listMatch =
-    /(?:subjects?|topics?|designs?)\s*:\s*([^.;]+)|(?:include|including|with|featuring)\s+([^.;]+)/i.exec(
+    /(?:subjects?|topics?|designs?)\s*:\s*([^.;\n]+)|(?:include|including|with|featuring)\s+([^.;\n]+)/i.exec(
       idea,
     );
   const matchedList = listMatch?.[1] ?? listMatch?.[2];
 
-  if (!matchedList) {
-    return [];
+  if (matchedList) {
+    return matchedList
+      .split(/,| and /i)
+      .map(titleCase)
+      .filter(Boolean)
+      .slice(0, 20);
   }
 
-  return matchedList
-    .split(/,| and /i)
-    .map(titleCase)
-    .filter(Boolean)
-    .slice(0, 20);
+  const normalized = idea.toLowerCase();
+  const matched = KNOWN_SUBJECTS.filter((subject) => normalized.includes(subject));
+
+  return [...new Set(matched.map(titleCase))].slice(0, 20);
 };
 
 const inferTheme = (idea: string): string => {
+  const bundledTheme = extractPromptLine(idea, 'Bundle');
+  if (bundledTheme) {
+    return inferTheme(bundledTheme);
+  }
+
   const cleaned = cleanIdea(idea);
   if (!cleaned) {
     return DRAFT_TEMPLATE_SETTINGS.theme;
@@ -153,6 +161,22 @@ const inferAudience = (idea: string): string => {
 };
 
 const inferStyle = (idea: string): string => {
+  const maskStyle = extractPromptLine(idea, 'Mask style');
+  const colorPainting = extractPromptLine(idea, 'Color painting');
+  const coloringPage = extractPromptLine(idea, 'Coloring page');
+  const templateStyleParts = [
+    maskStyle ? `Mask style: ${maskStyle}` : undefined,
+    colorPainting ? `Color painting: ${colorPainting}` : undefined,
+    coloringPage ? `Coloring page: ${coloringPage}` : undefined,
+  ].filter((part): part is string => Boolean(part));
+
+  if (templateStyleParts.length > 0) {
+    return [
+      ...templateStyleParts,
+      'Only eye holes, white background, front view, no shadows, no black cut outline, no side punch holes, no extra holes.',
+    ].join(' ');
+  }
+
   if (/watercolor/i.test(idea)) {
     return DRAFT_TEMPLATE_SETTINGS.style.replace('Realistic', 'Watercolor');
   }

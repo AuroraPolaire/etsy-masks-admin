@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { initialPromptStyleTemplates } from '../lib/styleTemplates';
 import { AIButton } from './ui/AIButton';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -43,10 +44,38 @@ export const InitialPromptPanel = ({
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-ink-strong">Style templates</h3>
+          <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {initialPromptStyleTemplates.map((template) => {
+              const isSelected = initialPrompt === template.prompt;
+
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  className={`rounded-control border p-3 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 focus:ring-offset-surface-panel disabled:cursor-not-allowed disabled:opacity-55 ${
+                    isSelected
+                      ? 'border-brand-border bg-brand-subtle text-brand-strong'
+                      : 'border-surface-outline bg-surface-raised text-ink-base hover:bg-surface-muted'
+                  }`}
+                  disabled={disabled}
+                  onClick={() => setInitialPrompt(template.prompt)}
+                >
+                  <span className="block font-semibold text-ink-strong">{template.name}</span>
+                  <span className="mt-1 block text-xs leading-5 text-ink-muted">
+                    {template.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <Textarea
           label="Bundle idea"
           name="initialPrompt"
-          rows={4}
+          rows={7}
           placeholder="Example: 10 woodland animal masks for a kids birthday party, watercolor style, classroom friendly."
           value={initialPrompt}
           onChange={(event) => setInitialPrompt(event.target.value)}

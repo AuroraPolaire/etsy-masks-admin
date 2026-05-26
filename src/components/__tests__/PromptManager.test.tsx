@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_OPENAI_IMAGE_SETTINGS, DEFAULT_SETTINGS } from '../../constants';
 import { createPromptItems } from '../../lib/files';
+import { initialPromptStyleTemplates } from '../../lib/styleTemplates';
 import { EtsySeoPanel } from '../EtsySeoPanel';
 import { InitialPromptPanel } from '../InitialPromptPanel';
 import { ProductBriefForm } from '../ProductBriefForm';
@@ -341,6 +342,27 @@ describe('FileInputButton', () => {
 });
 
 describe('InitialPromptPanel', () => {
+  it('fills the bundle idea from a style template', () => {
+    const [watercolorTemplate] = initialPromptStyleTemplates;
+    if (!watercolorTemplate) {
+      throw new Error('Expected at least one style template.');
+    }
+
+    render(
+      <InitialPromptPanel
+        aiReady
+        disabled={false}
+        isGenerating={false}
+        onFillBrief={vi.fn()}
+        onOpenBackendSaves={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Watercolor forest/i }));
+
+    expect(screen.getByLabelText('Bundle idea')).toHaveValue(watercolorTemplate.prompt);
+  });
+
   it('shows the busy label while generating through backend AI', () => {
     render(
       <InitialPromptPanel

@@ -148,6 +148,8 @@ const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> =
         '- Tags must be exactly 13 Etsy tags, diverse, comma-ready, and each 20 characters or fewer.',
         '- Description must be structured with clear buyer benefits, included files, how to use, safety, digital download disclaimer, license, and refund policy.',
         '- Style should guide image generation for realistic/front-view printable masks unless the idea asks for another style.',
+        '- If the idea includes Mask style, Color painting, or Coloring page lines, preserve those choices in the returned style and generated listing direction.',
+        '- Style must describe both the color mask painting treatment and how the matching black-and-white coloring page should simplify the design.',
         '- Style must specify that the mask has only eye holes and no side punch holes, string holes, strap holes, hanging holes, attachment holes, or extra circular cutouts.',
         '- Safety note must mention adult supervision and not intended for children under 3.',
         '- Also return AI Etsy SEO analysis for the generated title, tags, and description.',
