@@ -1,18 +1,20 @@
 # Etsy Masks Admin
 
-Static React admin panel for preparing printable paper mask bundles for Etsy. It runs as a static
-browser app: no backend, no database, no Etsy integration, and no stored secrets.
+Static React admin panel for preparing printable paper mask bundles for Etsy. The production app
+runs on Cloudflare Pages so the free `*.pages.dev` domain can serve both the React app and the
+same-origin `/api/*` backend.
 
 ## Features
 
 - Product brief editor for title, theme, audience, marketplace, style, description, tags, safety
   note, printing instructions, license, and refund policy.
-- Optional initial idea prompt that drafts the listing fields and mask topic list with OpenAI when
-  a session key is pasted, or with a local fallback when no key is present.
+- Initial idea prompt that drafts the listing fields and mask topic list through the backend OpenAI
+  proxy when the Worker is configured.
 - Mask topic list and copyable AI image prompts with expected filenames.
 - Default prompts target realistic, front-view printable masks with clear eye holes, a white
   background, and no shadows.
-- Direct browser-side OpenAI Images API generation with a session-only pasted API key.
+- OpenAI Images API generation through Cloudflare Pages Functions. The frontend never stores OpenAI
+  keys, Worker URLs, or backend tokens.
 - Approximate OpenAI image cost estimates for one mask, missing images, and the full bundle.
 - Drag-and-drop multi-file upload for PNG, JPG, JPEG, WEBP, PDF, ZIP, TXT, and JSON.
 - Image preview, dimension reading, approval/rejection, review notes, and topic mapping.
@@ -22,20 +24,21 @@ browser app: no backend, no database, no Etsy integration, and no stored secrets
 - JSZip export for a full review archive plus nested Etsy upload ZIP.
 - localStorage persistence for project metadata.
 - Project JSON export/import for metadata backup.
+- Cloudflare Pages Functions backend with D1 project metadata, R2 file backups, and a Cloud saves
+  sidebar page for saved-run restore.
 
 ## Privacy
 
 Most processing happens in your browser. Uploaded files are not sent anywhere unless you explicitly
-click OpenAI image generation, which sends the generated text prompt to OpenAI's Images API. The
-initial product brief prompt is also sent to OpenAI when you fill the brief with a pasted session
-key.
+back up to Cloudflare, generate through the backend OpenAI proxy, or export files from the browser.
 
-The OpenAI API key is stored only in React state for the current tab session. It is not saved to
-localStorage, project JSON, ZIP manifests, or exports. The app uses no backend services, no Firebase,
-no Supabase, and no serverless functions.
+OpenAI credentials and backend access policy live only in Cloudflare Pages configuration. The
+frontend calls same-origin `/api/*` endpoints and does not contain browser-entered API keys, Worker
+URLs, or admin tokens.
 
-Uploaded binary files are kept in browser memory only and disappear after refresh. Export the archive
-or re-upload files after refreshing the page.
+Uploaded binary files are kept in browser memory only unless you explicitly use Cloud saves to
+back up to Cloudflare R2. Export the archive, back up to Cloudflare, or re-upload files after
+refreshing the page.
 
 ## Local Setup
 
@@ -62,42 +65,135 @@ npm run lint
 npm run format:check
 npm run typecheck
 npm run test
+npm run test:e2e
 ```
 
-## GitHub Pages Deployment
+## Cloudflare Pages Deployment
 
-The repository includes `.github/workflows/deploy.yml` using GitHub Actions Pages deployment.
+The repository includes `.github/workflows/deploy.yml` for deploying the full app to Cloudflare
+Pages. This is the recommended production target because it works on the free `*.pages.dev` domain
+without buying a custom domain.
 
-1. Push this repo to GitHub.
-2. In repository settings, open **Pages**.
-3. Set **Build and deployment** source to **GitHub Actions**.
-4. Confirm the workflow `VITE_BASE_PATH` matches your repository name.
+For a beginner-friendly production checklist with Cloudflare Pages, cost notes, and smoke
+tests, read [Production Setup Guide For Beginners](docs/production-guide-for-dummies.md).
 
-For a project page hosted at:
+Production URL shape:
 
 ```text
-https://<USERNAME>.github.io/<REPO>/
+https://etsy-masks-admin.pages.dev/       -> React app
+https://etsy-masks-admin.pages.dev/api/*  -> Pages Function backend
 ```
 
-set:
+Create the Cloudflare Pages project once:
 
-```yaml
-VITE_BASE_PATH: '/<REPO>/'
+```bash
+npm run pages:project:create
 ```
 
-The workflow currently uses:
+Then configure D1/R2, set the OpenAI Pages secret, and deploy:
 
-```yaml
-VITE_BASE_PATH: '/etsy-masks-admin/'
+```bash
+npm run pages:migrate:remote
+npm run pages:deploy
 ```
 
-Change that value if you deploy the app from a differently named repository.
+GitHub Pages can still host a browser-only/static fallback, but backend features require
+Cloudflare Pages or another same-origin `/api/*` host.
+
+## Cloudflare Pages Backend
+
+The Cloudflare Pages backend provides:
+
+- `GET /api/health` for Worker capability checks.
+- `GET /api/runs` and `POST /api/runs` for selectable saved run history by idea.
+- `GET /api/runs/:runId` and `DELETE /api/runs/:runId` for one saved run.
+- `PUT /api/runs/:runId/files/:id` and `GET /api/runs/:runId/files/:id` for R2-backed files.
+- `GET /api/project` for latest-run compatibility and `DELETE /api/project` for deleting all
+  backend data.
+- `POST /api/openai/brief` and `POST /api/openai/images` as authenticated OpenAI proxy endpoints.
+
+The first implementation intentionally uses direct uploads up to 50 MB per file. Chunked uploads are
+deferred until real backups hit that limit or unreliable network conditions make retries necessary.
+
+### Cloudflare setup
+
+Install dependencies first:
+
+```bash
+npm install
+```
+
+Create the free-tier Cloudflare resources:
+
+```bash
+npx wrangler d1 create etsy_masks_admin
+npx wrangler r2 bucket create etsy-masks-admin-backups
+```
+
+Copy the returned D1 `database_id` into the root `wrangler.jsonc`. The older standalone Worker
+config in `worker/wrangler.toml` is kept only for direct Worker development.
+
+Create the Cloudflare Pages project and OpenAI secret:
+
+```bash
+npm run pages:project:create
+npm run pages:secret:openai
+```
+
+Configure Cloudflare Access for the Pages backend in production:
+
+1. Create a Cloudflare Access application that protects the Pages app or `/api/*`.
+2. Keep `AUTH_MODE=access` in the root `wrangler.jsonc`.
+3. Set `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD` in root `wrangler.jsonc`.
+4. Optionally set `CLOUDFLARE_ACCESS_ALLOWED_EMAILS` to a comma-separated allowlist.
+
+The Pages Function verifies the `Cf-Access-Jwt-Assertion` JWT. There is no browser-managed backend
+token.
+
+For local Pages development, build the app and start Pages dev:
+
+```bash
+npm run pages:migrate:local
+npm run pages:dev
+```
+
+The Pages dev server serves the built app and Pages Function backend from the same local origin.
+
+Standalone Worker development is still available for backend-only debugging:
+
+```bash
+npm run worker:migrate:local
+npm run worker:dev
+```
+
+Deploy manually when ready:
+
+```bash
+npm run pages:migrate:remote
+npm run pages:deploy
+```
+
+For GitHub Actions deployment, add repository secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+The workflow validates every `main` push. Cloudflare deployment steps run only after those secrets
+exist and the root `wrangler.jsonc` has a real D1 `database_id`. Manual workflow runs fail fast if
+that setup is incomplete.
+
+### Frontend backend connection
+
+The frontend always calls same-origin `/api/*` routes. It does not accept a Worker URL or token.
+
+Cloudflare Pages satisfies this requirement for free because `*.pages.dev` serves both the static app
+and Pages Functions from one origin.
 
 ## Image Generation Workflow
 
-1. Optionally paste an OpenAI API key for the current session.
-2. Paste an initial bundle idea and fill the product brief with AI, or use the local fallback
-   without a key.
+1. Configure the Cloudflare Pages OpenAI proxy.
+2. Paste an initial bundle idea and fill the product brief with backend AI, or write the brief
+   manually.
 3. Edit the product brief and mask topic list.
 4. Generate one topic image or generate all missing images.
 5. Review generated files, repair mappings if needed, and approve or reject each image.
@@ -117,9 +213,12 @@ You can still upload externally generated files manually and map them to topics.
 
 ## Limitations
 
-- Uploaded files do not persist after refresh.
-- The pasted OpenAI API key does not persist after refresh.
-- OpenAI image generation requires a valid API key and network access from the browser.
+- Uploaded files do not persist after refresh unless you explicitly back them up to Cloudflare.
+- OpenAI brief and image generation require a configured Cloudflare Pages OpenAI secret.
+- Backend features require a same-origin `/api/*` route. Cloudflare Pages provides this through
+  Pages Functions on the free `*.pages.dev` URL.
+- Cloudflare direct backup uploads are capped by the Pages `MAX_FILE_BYTES` setting, defaulting to 50
+  MB per file.
 - Large browser ZIP/PDF generation can be slow or fail if source files are very large.
 - Etsy upload ZIPs over 20MB are marked as a blocking QA issue and may need manual splitting or
   smaller source images.
@@ -136,12 +235,14 @@ You can still upload externally generated files manually and map them to topics.
 
 ## Troubleshooting
 
-- Blank page on GitHub Pages usually means the Vite `base` path is wrong. Set `VITE_BASE_PATH` to
-  `"/<REPO>/"`.
+- Blank page after deployment usually means the Vite `base` path is wrong. Cloudflare Pages should
+  use `VITE_BASE_PATH="/"`.
 - Files disappear after refresh because binary files are not persisted.
-- API keys disappear after refresh because they are intentionally session-only.
-- If OpenAI generation fails, check the key, model access, browser network access, and selected
-  transparency/model settings.
+- Cloud backup fails with 401 when Cloudflare Access does not provide a valid Access JWT.
+- Cloud backup fails with 503 when `AUTH_MODE=access` is enabled but Access vars are missing.
+- Cloud backup fails with 413 when a file is larger than the Worker `MAX_FILE_BYTES` setting.
+- If OpenAI generation fails, check the Worker `OPENAI_API_KEY`, model access, Access policy, and
+  selected transparency/model settings.
 - Large ZIP generation can be slow in the browser. Reduce image dimensions or split the upload.
 - If image dimensions are too small for print, regenerate at 3000x3000 or higher.
 - If the generated Etsy upload ZIP is over 20MB, reduce image sizes or split files manually before

@@ -1,21 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { OPENAI_BRIEF_MODEL } from '../../constants';
-import {
-  buildOpenAIProjectBriefRequestBody,
-  normalizeAiProjectDraft,
-  parseOpenAIProjectBriefResponse,
-} from '../openaiBrief';
+import { normalizeAiProjectDraft, parseOpenAIProjectBriefResponse } from '../openaiBrief';
 
 describe('OpenAI brief generation helpers', () => {
-  it('builds a structured Responses API request body', () => {
-    const body = buildOpenAIProjectBriefRequestBody('space masks with astronaut and rocket');
-
-    expect(body.model).toBe(OPENAI_BRIEF_MODEL);
-    expect(JSON.stringify(body)).toContain('json_schema');
-    expect(JSON.stringify(body)).toContain('space masks with astronaut and rocket');
-  });
-
   it('normalizes a project draft from AI JSON', () => {
     const draft = normalizeAiProjectDraft({
       title: 'Space Printable Masks, 6 Kids Paper Masks',

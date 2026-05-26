@@ -9,7 +9,7 @@ export const HowToUse = () => (
       <ol className="space-y-2 text-sm text-ink-base">
         <li>1. Draft the listing brief.</li>
         <li>2. Add mask topics.</li>
-        <li>3. Add a session OpenAI key if you want AI images.</li>
+        <li>3. Use backend AI generation or upload images manually.</li>
         <li>4. Generate or upload images and approve one per topic.</li>
         <li>5. Create PDFs and marketplace previews.</li>
         <li>6. Export the final ZIP for Etsy upload.</li>

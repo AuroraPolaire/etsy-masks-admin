@@ -22,6 +22,7 @@ const busyActionLabels: Record<Exclude<BusyAction, null>, string> = {
   pdfs: 'Creating PDFs',
   previews: 'Creating previews',
   archive: 'Creating archive',
+  'backend-sync': 'Syncing backend',
   'project-json': 'Exporting project JSON',
   import: 'Importing project JSON',
 };

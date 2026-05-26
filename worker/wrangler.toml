@@ -1,0 +1,23 @@
+name = "etsy-masks-admin-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+APP_VERSION = "1.0.0"
+ALLOWED_ORIGINS = "http://localhost:5173,https://aurorapolaire.github.io"
+MAX_FILE_BYTES = "52428800"
+AUTH_MODE = "access"
+# Set these in Cloudflare before production use:
+# CLOUDFLARE_ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
+# CLOUDFLARE_ACCESS_AUD = "your-access-application-aud"
+# CLOUDFLARE_ACCESS_ALLOWED_EMAILS = "owner@example.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "etsy_masks_admin"
+database_id = "replace-with-d1-database-id"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "etsy-masks-admin-backups"

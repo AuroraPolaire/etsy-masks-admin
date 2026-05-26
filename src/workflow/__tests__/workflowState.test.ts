@@ -48,13 +48,13 @@ describe('workflow state', () => {
       project,
       files: [],
       qaResult: createQaResult(),
-      hasOpenAIKey: false,
+      hasAIProvider: false,
       activeStepId: 'brief',
     });
 
     expect(workflow.topicsComplete).toBe(true);
     expect(workflow.imagesComplete).toBe(false);
-    expect(workflow.nextAction).toBe('Add an OpenAI key in Settings or upload images.');
+    expect(workflow.nextAction).toBe('Configure the backend OpenAI proxy or upload images.');
     expect(workflow.stepperItems.map((step) => step.status)).toEqual([
       'active',
       'complete',
@@ -70,7 +70,7 @@ describe('workflow state', () => {
       project,
       files: [createApprovedImage('moon')],
       qaResult: createQaResult(),
-      hasOpenAIKey: true,
+      hasAIProvider: true,
       activeStepId: 'outputs',
     });
 

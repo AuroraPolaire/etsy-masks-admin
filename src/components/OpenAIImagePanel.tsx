@@ -2,7 +2,6 @@ import { getOpenAIImageCostComparison, formatUsdEstimate } from '../lib/openaiIm
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Card, CardBody, CardHeader } from './ui/Card';
-import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Surface } from './ui/Surface';
 
@@ -12,6 +11,7 @@ type OpenAIImagePanelProps = {
   settings: OpenAIImageSettings;
   missingImageCount: number;
   subjectCount: number;
+  backendOpenAIReady: boolean;
   onChange: (settings: OpenAIImageSettings) => void;
 };
 
@@ -19,6 +19,7 @@ export const OpenAIImagePanel = ({
   settings,
   missingImageCount,
   subjectCount,
+  backendOpenAIReady,
   onChange,
 }: OpenAIImagePanelProps) => {
   const update = <Key extends keyof OpenAIImageSettings>(
@@ -27,7 +28,6 @@ export const OpenAIImagePanel = ({
   ) => {
     onChange({ ...settings, [key]: value });
   };
-  const hasApiKey = settings.apiKey.trim().length > 0;
   const transparentUnsupported =
     settings.background === 'transparent' &&
     (settings.model === 'gpt-image-2' ||
@@ -47,28 +47,20 @@ export const OpenAIImagePanel = ({
       <CardHeader>
         <div className="flex flex-col gap-2">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">OpenAI configuration</h2>
+            <h2 className="text-lg font-bold text-ink-strong">Generation defaults</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Add a session-only OpenAI key for brief drafting and image generation.
+              Configure image model, size, quality, background, and output format. Generation runs
+              through the backend OpenAI proxy.
             </p>
           </div>
           <div>
-            <Badge tone={hasApiKey ? 'success' : 'warning'}>
-              {hasApiKey ? 'Session key ready' : 'API key required'}
+            <Badge tone={backendOpenAIReady ? 'success' : 'warning'}>
+              {backendOpenAIReady ? 'Backend proxy ready' : 'Backend required'}
             </Badge>
           </div>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        <Input
-          label="Session OpenAI API key"
-          name="openaiApiKey"
-          type="password"
-          autoComplete="off"
-          value={settings.apiKey}
-          helperText="Kept in memory for this tab only. It is not saved to localStorage, project JSON, manifests, or ZIP files."
-          onChange={(event) => update('apiKey', event.target.value)}
-        />
         <div className="grid gap-4">
           <Select
             label="Image model"

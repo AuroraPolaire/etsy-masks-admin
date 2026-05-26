@@ -52,15 +52,12 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
 };
 
 export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
-  apiKey: '',
   model: 'gpt-image-1.5',
   size: '1024x1024',
   quality: 'high',
   background: 'opaque',
   outputFormat: 'png',
 };
-
-export const OPENAI_BRIEF_MODEL = 'gpt-5.4-mini';
 
 export const PROMPT_NEGATIVE_REQUIREMENTS =
   'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes';

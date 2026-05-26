@@ -15,8 +15,8 @@ export const Header = ({ qaResult }: HeaderProps) => (
         </p>
         <h1 className="mt-1 text-2xl font-bold text-ink-strong md:text-3xl">Mask Bundle Studio</h1>
         <p className="mt-1 max-w-3xl text-sm text-ink-muted">
-          Plan, generate, review, and export a complete Etsy-ready mask bundle in one browser-only
-          workspace.
+          Plan, generate, review, back up, and export a complete Etsy-ready mask bundle from a
+          static workspace.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

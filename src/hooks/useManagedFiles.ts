@@ -166,6 +166,18 @@ export const useManagedFiles = ({
     [addActivity],
   );
 
+  const replaceFiles = useCallback(
+    (managedFiles: ManagedFile[], activityMessage?: string) => {
+      filesRef.current.forEach(revokeObjectUrl);
+      setFiles(managedFiles);
+
+      if (activityMessage) {
+        addActivity('file-added', 'success', activityMessage);
+      }
+    },
+    [addActivity],
+  );
+
   const replaceGeneratedFilesByKind = useCallback(
     (
       generatedFiles: ManagedFile[],
@@ -193,6 +205,7 @@ export const useManagedFiles = ({
     clearAllMappings,
     clearSubjectMapping,
     clearFiles,
+    replaceFiles,
     replaceGeneratedFilesByKind,
   };
 };
