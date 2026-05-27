@@ -2,10 +2,13 @@ export type InitialPromptStyleTemplate = {
   id: string;
   name: string;
   description: string;
+  exampleImageSrc: string;
   prompt: string;
 };
 
-export const initialPromptStyleTemplates: InitialPromptStyleTemplate[] = [
+type InitialPromptStyleTemplateSeed = Omit<InitialPromptStyleTemplate, 'exampleImageSrc'>;
+
+const initialPromptStyleTemplateSeeds: InitialPromptStyleTemplateSeed[] = [
   {
     id: 'fluffy-plush',
     name: 'Fluffy plush',
@@ -295,3 +298,9 @@ export const initialPromptStyleTemplates: InitialPromptStyleTemplate[] = [
     ].join('\n'),
   },
 ];
+
+export const initialPromptStyleTemplates: InitialPromptStyleTemplate[] =
+  initialPromptStyleTemplateSeeds.map((template) => ({
+    ...template,
+    exampleImageSrc: `/style-examples/${template.id}.png`,
+  }));

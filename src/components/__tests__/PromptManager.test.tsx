@@ -341,10 +341,10 @@ describe('FileInputButton', () => {
 });
 
 describe('InitialPromptPanel', () => {
-  it('fills the bundle idea from a style template', () => {
-    const [styleTemplate] = initialPromptStyleTemplates;
+  it('fills the bundle idea from the style prompt wizard', () => {
+    const styleTemplate = initialPromptStyleTemplates[1];
     if (!styleTemplate) {
-      throw new Error('Expected at least one style template.');
+      throw new Error('Expected at least two style templates.');
     }
 
     render(
@@ -357,11 +357,39 @@ describe('InitialPromptPanel', () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Style template' }), {
-      target: { value: styleTemplate.id },
-    });
+    expect(screen.queryByText('Custom idea')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Style template' })).not.toBeInTheDocument();
 
-    expect(screen.getByLabelText('Bundle idea')).toHaveValue(styleTemplate.prompt);
+    fireEvent.click(screen.getByRole('button', { name: 'Open wizard' }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(styleTemplate.name) }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.change(screen.getByLabelText('Bundle idea/theme'), {
+      target: { value: 'Woodland animal masks for a preschool party' },
+    });
+    fireEvent.change(screen.getByLabelText('Topics'), {
+      target: { value: 'Fox, owl, bear, deer' },
+    });
+    fireEvent.change(screen.getByLabelText('SEO/marketplace angle'), {
+      target: { value: 'Printable digital download for Etsy party craft buyers' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Review prompt' }));
+
+    const finalPromptInput = screen.getByLabelText('Final prompt');
+    expect(finalPromptInput).toBeInstanceOf(HTMLTextAreaElement);
+    if (!(finalPromptInput instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected final prompt input to be a textarea.');
+    }
+    expect(finalPromptInput.value).toContain(`using a ${styleTemplate.name} visual preference`);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply prompt' }));
+
+    const bundleIdeaInput = screen.getByLabelText('Bundle idea');
+    expect(bundleIdeaInput).toBeInstanceOf(HTMLTextAreaElement);
+    if (!(bundleIdeaInput instanceof HTMLTextAreaElement)) {
+      throw new Error('Expected bundle idea input to be a textarea.');
+    }
+    expect(bundleIdeaInput.value).toContain('Topics: Fox, owl, bear, deer.');
+    expect(bundleIdeaInput.value).toContain('SEO/marketplace angle: Printable digital download');
   });
 
   it('shows the busy label while generating through backend AI', () => {
