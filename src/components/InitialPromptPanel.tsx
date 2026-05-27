@@ -5,6 +5,8 @@ import { AIButton } from './ui/AIButton';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
+import { Select } from './ui/Select';
+import { Surface } from './ui/Surface';
 import { Textarea } from './ui/Textarea';
 
 type InitialPromptPanelProps = {
@@ -23,9 +25,28 @@ export const InitialPromptPanel = ({
   onOpenBackendSaves,
 }: InitialPromptPanelProps) => {
   const [initialPrompt, setInitialPrompt] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const selectedTemplate = initialPromptStyleTemplates.find(
+    (template) => template.id === selectedTemplateId,
+  );
 
   const applyDraft = () => {
     onFillBrief(initialPrompt);
+  };
+
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const template = initialPromptStyleTemplates.find((item) => item.id === templateId);
+    if (template) {
+      setInitialPrompt(template.prompt);
+    }
+  };
+
+  const updateInitialPrompt = (value: string) => {
+    setInitialPrompt(value);
+    if (selectedTemplate && value !== selectedTemplate.prompt) {
+      setSelectedTemplateId('');
+    }
   };
 
   return (
@@ -44,33 +65,35 @@ export const InitialPromptPanel = ({
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold text-ink-strong">Style templates</h3>
-          <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {initialPromptStyleTemplates.map((template) => {
-              const isSelected = initialPrompt === template.prompt;
-
-              return (
-                <button
-                  key={template.id}
-                  type="button"
-                  aria-pressed={isSelected}
-                  className={`rounded-control border p-3 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-brand/20 focus:ring-offset-2 focus:ring-offset-surface-panel disabled:cursor-not-allowed disabled:opacity-55 ${
-                    isSelected
-                      ? 'border-brand-border bg-brand-subtle text-brand-strong'
-                      : 'border-surface-outline bg-surface-raised text-ink-base hover:bg-surface-muted'
-                  }`}
-                  disabled={disabled}
-                  onClick={() => setInitialPrompt(template.prompt)}
-                >
-                  <span className="block font-semibold text-ink-strong">{template.name}</span>
-                  <span className="mt-1 block text-xs leading-5 text-ink-muted">
-                    {template.description}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.8fr)]">
+          <Select
+            label="Style template"
+            name="styleTemplate"
+            value={selectedTemplateId}
+            disabled={disabled}
+            options={[
+              { value: '', label: `Choose from ${initialPromptStyleTemplates.length} styles` },
+              ...initialPromptStyleTemplates.map((template) => ({
+                value: template.id,
+                label: template.name,
+              })),
+            ]}
+            onChange={(event) => handleTemplateChange(event.target.value)}
+          />
+          <Surface variant="default" className="min-h-20 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-ink-strong">
+                {selectedTemplate?.name ?? 'Custom idea'}
+              </p>
+              <Badge tone={selectedTemplate ? 'success' : 'neutral'}>
+                {selectedTemplate ? 'Template' : 'Manual'}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm leading-5 text-ink-muted">
+              {selectedTemplate?.description ??
+                'Write the bundle idea directly, or choose a style template.'}
+            </p>
+          </Surface>
         </div>
         <Textarea
           label="Bundle idea"
@@ -78,7 +101,7 @@ export const InitialPromptPanel = ({
           rows={7}
           placeholder="Example: 10 woodland animal masks for a kids birthday party, watercolor style, classroom friendly."
           value={initialPrompt}
-          onChange={(event) => setInitialPrompt(event.target.value)}
+          onChange={(event) => updateInitialPrompt(event.target.value)}
         />
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {!aiReady ? <Button onClick={onOpenBackendSaves}>Open Cloud</Button> : <span />}

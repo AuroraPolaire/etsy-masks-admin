@@ -118,12 +118,19 @@ export const MarketingAssetsPanel = ({
   const maskSheets = getLatestFiles(files, 'mask-sheet', 'final', 20);
   const childrenPreviews = getLatestFiles(files, 'children-scene', 'preview', 3);
   const childrenFinals = getLatestFiles(files, 'children-scene', 'final', 3);
-  const selectedChildrenSubjectIds = project.marketingSettings.childrenSceneSubjectIds;
+  const sourceSubjectIds = new Set(
+    sourceMasks
+      .map((file) => file.mappedSubjectId)
+      .filter((subjectId): subjectId is string => Boolean(subjectId)),
+  );
+  const selectedChildrenSubjectIds = project.marketingSettings.childrenSceneSubjectIds.filter(
+    (subjectId) => sourceSubjectIds.has(subjectId),
+  );
   const selectedCount = selectedChildrenSubjectIds.length;
 
   const toggleChildrenSubject = (subjectId: string, checked: boolean) => {
     const nextIds = checked
-      ? [...selectedChildrenSubjectIds, subjectId].slice(0, 3)
+      ? Array.from(new Set([...selectedChildrenSubjectIds, subjectId])).slice(0, 3)
       : selectedChildrenSubjectIds.filter((id) => id !== subjectId);
 
     onMarketingSettingsChange({

@@ -18,7 +18,6 @@ const modelOptions = [
 ];
 
 const previewSizeOptions = [
-  { value: '512x512', label: '512 x 512' },
   { value: '1024x1024', label: '1024 x 1024' },
   { value: '1536x1024', label: '1536 x 1024' },
   { value: '1024x1536', label: '1024 x 1536' },
@@ -119,7 +118,7 @@ export const MarketingSettingsPanel = ({
               <div>
                 <h3 className="text-sm font-bold text-ink-strong">Preview generation</h3>
                 <p className="mt-1 text-sm text-ink-muted">
-                  Defaults to {maskSettings.model} with a 512 x 512 preview size and{' '}
+                  Defaults to {maskSettings.model} with a 1024 x 1024 preview size and{' '}
                   {maskSettings.quality === 'high' ? 'medium cap' : maskSettings.quality} quality.
                 </p>
               </div>
@@ -128,7 +127,7 @@ export const MarketingSettingsPanel = ({
                 name="marketingPreviewMode"
                 value={settings.preview.mode}
                 options={[
-                  { value: 'inherit-mask', label: 'Mask model with 512 preview size' },
+                  { value: 'inherit-mask', label: 'Mask model with 1024 preview size' },
                   { value: 'custom', label: 'Custom marketing preview settings' },
                 ]}
                 onChange={(event) =>

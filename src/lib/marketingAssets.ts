@@ -7,6 +7,7 @@ import type {
   MarketingAssetMetadata,
   MarketingAssetStage,
   MarketingAssetType,
+  MarketingGenerationRecipe,
   MarketingImageSettings,
   MarketingSettings,
   OpenAIImageSettings,
@@ -49,6 +50,7 @@ export const normalizeMarketingImageSettings = (
   settings: OpenAIImageSettings | MarketingImageSettings,
 ): MarketingImageSettings => ({
   ...settings,
+  size: settings.size === '512x512' ? '1024x1024' : settings.size,
   quality: settings.quality === 'high' ? 'medium' : settings.quality,
 });
 
@@ -107,6 +109,57 @@ export const getFinalMarketingAssetFiles = (files: ManagedFile[]): ManagedFile[]
   getMarketingAssetFiles(files, undefined, 'final').filter(
     (file) => file.reviewState === 'approved' && isImageFile(file),
   );
+
+const haveSameValues = (left: string[], right: string[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
+const haveSameMarketingImageSettings = (
+  left: MarketingImageSettings,
+  right: MarketingImageSettings,
+): boolean => {
+  const normalizedLeft = normalizeMarketingImageSettings(left);
+  const normalizedRight = normalizeMarketingImageSettings(right);
+
+  return (
+    normalizedLeft.model === normalizedRight.model &&
+    normalizedLeft.size === normalizedRight.size &&
+    normalizedLeft.quality === normalizedRight.quality &&
+    normalizedLeft.background === normalizedRight.background &&
+    normalizedLeft.outputFormat === normalizedRight.outputFormat
+  );
+};
+
+export const findReusableFinalMarketingAsset = ({
+  files,
+  type,
+  recipe,
+  sourceMasks,
+  settings,
+}: {
+  files: ManagedFile[];
+  type: MarketingAssetType;
+  recipe: MarketingGenerationRecipe;
+  sourceMasks: ManagedFile[];
+  settings: MarketingImageSettings;
+}): ManagedFile | undefined => {
+  const sourceFileIds = sourceMasks.map((file) => file.id);
+
+  return files.find((file) => {
+    const metadata = file.marketingAsset;
+
+    return (
+      file.reviewState === 'approved' &&
+      isImageFile(file) &&
+      isMarketingAssetFile(file) &&
+      metadata?.type === type &&
+      metadata.stage === 'final' &&
+      metadata.recipeId === recipe.id &&
+      metadata.optionIndex === recipe.optionIndex &&
+      haveSameValues(metadata.sourceFileIds, sourceFileIds) &&
+      haveSameMarketingImageSettings(metadata.generatedFromSettings, settings)
+    );
+  });
+};
 
 export const isMarketingAssetStale = (
   file: ManagedFile,

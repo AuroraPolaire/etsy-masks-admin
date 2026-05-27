@@ -39,7 +39,7 @@ describe('brief prompt drafting', () => {
     const ids = new Set(initialPromptStyleTemplates.map((template) => template.id));
     const prompts = new Set(initialPromptStyleTemplates.map((template) => template.prompt));
 
-    expect(initialPromptStyleTemplates.length).toBeGreaterThanOrEqual(16);
+    expect(initialPromptStyleTemplates.length).toBeGreaterThanOrEqual(24);
     expect(ids.size).toBe(initialPromptStyleTemplates.length);
     expect(prompts.size).toBe(initialPromptStyleTemplates.length);
     for (const template of initialPromptStyleTemplates) {
