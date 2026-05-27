@@ -800,7 +800,7 @@ test.describe('production workflow', () => {
     await expect(page.getByText('Draft').first()).toBeVisible();
     await page.getByRole('button', { name: 'Open full-size color mask preview for Moon' }).click();
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toBeVisible();
-    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Close image preview' }).click();
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Approve mask' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(0);
