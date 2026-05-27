@@ -69,27 +69,30 @@ export const RunHistoryStatus = ({
   const [label, setLabel] = useState('');
   const latestRevision = revisions[0];
   const canSave = busyAction === null;
+  const canShowManualCheckpoint =
+    autosaveState.status !== 'saving' && autosaveState.status !== 'restoring';
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-bold text-ink-strong">Run history</h2>
           <Badge tone={getSaveStateTone(autosaveState)}>{getSaveStateLabel(autosaveState)}</Badge>
         </div>
       </CardHeader>
-      <CardBody className="space-y-3">
-        <div className="rounded-control border border-surface-divider bg-surface-muted px-3 py-2 text-sm">
-          <p className="font-semibold text-ink-strong">
-            {latestRevision ? latestRevision.label : 'No checkpoints yet'}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            {latestRevision
-              ? `${revisions.length} checkpoint${
-                  revisions.length === 1 ? '' : 's'
-                } - ${formatCloudSaveDateTime(latestRevision.createdAt)}`
-              : 'The first cloud save will create a restore point.'}
-          </p>
+      <CardBody className="space-y-2 px-4 py-3">
+        <div className="rounded-control border border-surface-divider bg-surface-muted px-3 py-1.5 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate font-semibold text-ink-strong">
+              {latestRevision ? latestRevision.label : 'No checkpoints yet'}
+            </p>
+            <Badge>{revisions.length}</Badge>
+          </div>
+          {latestRevision ? (
+            <p className="mt-1 text-xs text-ink-muted">
+              {formatCloudSaveDateTime(latestRevision.createdAt)}
+            </p>
+          ) : null}
         </div>
         {autosaveState.status === 'error' ? (
           <div className="rounded-control border border-feedback-danger-border bg-feedback-danger-bg px-3 py-2 text-xs text-feedback-danger-fg">
@@ -103,26 +106,36 @@ export const RunHistoryStatus = ({
           </div>
         ) : null}
         {historyError ? <p className="text-xs text-feedback-danger-fg">{historyError}</p> : null}
-        <Input
-          label="Checkpoint label"
-          name="checkpointLabel"
-          value={label}
-          placeholder="Before redoing slogans"
-          helperText="Manual checkpoints stay pinned in history."
-          onChange={(event) => setLabel(event.target.value)}
-        />
+        {canShowManualCheckpoint ? (
+          <details className="rounded-control border border-surface-divider bg-surface-muted">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-ink-strong">
+              Manual checkpoint
+            </summary>
+            <div className="space-y-2 border-t border-surface-divider p-3">
+              <Input
+                label="Checkpoint label"
+                name="checkpointLabel"
+                value={label}
+                placeholder="Before redoing slogans"
+                helperText="Manual checkpoints stay pinned in history."
+                onChange={(event) => setLabel(event.target.value)}
+              />
+              <Button
+                className="w-full"
+                disabled={!canSave || historyBusy}
+                variant="primary"
+                onClick={() => {
+                  onSaveCheckpoint(label.trim() || 'Manual checkpoint');
+                  setLabel('');
+                }}
+              >
+                <Save aria-hidden="true" className="mr-2" size={17} />
+                Save checkpoint
+              </Button>
+            </div>
+          </details>
+        ) : null}
         <div className="grid gap-2">
-          <Button
-            disabled={!canSave || historyBusy}
-            variant="primary"
-            onClick={() => {
-              onSaveCheckpoint(label.trim() || 'Manual checkpoint');
-              setLabel('');
-            }}
-          >
-            <Save aria-hidden="true" className="mr-2" size={17} />
-            Save checkpoint
-          </Button>
           <Button disabled={historyBusy} onClick={onOpenHistory}>
             <History aria-hidden="true" className="mr-2" size={17} />
             History

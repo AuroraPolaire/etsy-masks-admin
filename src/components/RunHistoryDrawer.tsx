@@ -49,19 +49,21 @@ export const RunHistoryDrawer = ({
 }: RunHistoryDrawerProps) => {
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredRevisions = useMemo(
-    () =>
-      revisions.filter((revision) => {
-        if (!normalizedQuery) {
-          return true;
-        }
+  const filteredRevisions = useMemo(() => {
+    if (!open) {
+      return [];
+    }
 
-        return `${revision.label} ${revision.description ?? ''} ${revision.stage} ${revision.kind}`
-          .toLowerCase()
-          .includes(normalizedQuery);
-      }),
-    [normalizedQuery, revisions],
-  );
+    return revisions.filter((revision) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return `${revision.label} ${revision.description ?? ''} ${revision.stage} ${revision.kind}`
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+  }, [normalizedQuery, open, revisions]);
   const groups = useMemo(() => groupRunRevisionsByStage(filteredRevisions), [filteredRevisions]);
 
   if (!open) {
