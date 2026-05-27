@@ -10,7 +10,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 5187',
+    command: 'npm run dev -- --host 127.0.0.1 --port 5187 --mode e2e',
     url: 'http://127.0.0.1:5187',
     reuseExistingServer: !process.env.CI,
   },
