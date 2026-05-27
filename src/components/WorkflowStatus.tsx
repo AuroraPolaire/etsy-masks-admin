@@ -35,7 +35,7 @@ export const WorkflowStatus = ({
 }: WorkflowStatusProps) => {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-bold text-ink-strong">Next action</h2>
           <Badge tone={qaResult.status === 'etsy-ready' ? 'success' : 'warning'}>
@@ -43,12 +43,12 @@ export const WorkflowStatus = ({
           </Badge>
         </div>
       </CardHeader>
-      <CardBody className="space-y-3">
-        <Alert tone="brand" className="font-semibold">
+      <CardBody className="space-y-2 px-4 py-3">
+        <Alert tone="brand" density="compact" className="font-semibold">
           {workflow.nextAction}
         </Alert>
         {busyAction ? (
-          <Alert tone="info">
+          <Alert tone="info" density="compact">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-semibold">{busyActionLabels[busyAction]}</p>

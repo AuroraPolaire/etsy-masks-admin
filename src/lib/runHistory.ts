@@ -33,6 +33,41 @@ const stageOrder: RunRevisionStage[] = [
   'restore',
 ];
 
+const stageValues = new Set<RunRevisionStage>(stageOrder);
+const kindValues = new Set<RunRevisionSummary['kind']>([
+  'autosave',
+  'manual',
+  'generation',
+  'restore-safety',
+  'restore',
+  'export',
+]);
+
+export const isRunRevisionSummary = (value: unknown): value is RunRevisionSummary => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const revision = value as Partial<RunRevisionSummary>;
+
+  return (
+    typeof revision.id === 'string' &&
+    typeof revision.runId === 'string' &&
+    typeof revision.projectId === 'string' &&
+    typeof revision.sequenceNumber === 'number' &&
+    typeof revision.stage === 'string' &&
+    stageValues.has(revision.stage) &&
+    typeof revision.kind === 'string' &&
+    kindValues.has(revision.kind) &&
+    typeof revision.label === 'string' &&
+    typeof revision.fileCount === 'number' &&
+    typeof revision.totalSizeBytes === 'number' &&
+    typeof revision.isManual === 'boolean' &&
+    typeof revision.isPinned === 'boolean' &&
+    typeof revision.createdAt === 'string'
+  );
+};
+
 export const getRunRevisionStageLabel = (stage: RunRevisionStage): string => stageLabels[stage];
 
 export const inferRunRevisionStage = (project: Project, files: ManagedFile[]): RunRevisionStage => {
@@ -103,7 +138,7 @@ export const createAutosaveRevisionInput = (
 export const groupRunRevisionsByStage = (revisions: RunRevisionSummary[]): RunHistoryGroup[] => {
   const groups = new Map<RunRevisionStage, RunRevisionSummary[]>();
 
-  for (const revision of revisions) {
+  for (const revision of revisions.filter(isRunRevisionSummary)) {
     groups.set(revision.stage, [...(groups.get(revision.stage) ?? []), revision]);
   }
 

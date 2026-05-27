@@ -27,7 +27,11 @@ import {
   syncBackendRunFiles,
 } from '../lib/backendSync';
 import { discardGeneratedFileBackups } from '../lib/generatedFileRecovery';
-import { createAutosaveRevisionInput, inferRunRevisionStage } from '../lib/runHistory';
+import {
+  createAutosaveRevisionInput,
+  inferRunRevisionStage,
+  isRunRevisionSummary,
+} from '../lib/runHistory';
 
 import type { BackendRunCacheState } from '../lib/backendSync';
 import type {
@@ -175,7 +179,7 @@ export const useBackendCache = ({
       setHistoryBusy(true);
       try {
         const { revisions } = await client.listRunRevisions(runId, signal);
-        setRunRevisions(revisions);
+        setRunRevisions(Array.isArray(revisions) ? revisions.filter(isRunRevisionSummary) : []);
         setHistoryError(null);
       } catch (error) {
         if (!isAbortError(error)) {
@@ -237,6 +241,10 @@ export const useBackendCache = ({
 
       try {
         const { revision } = await client.createRunRevision(runId, input, signal);
+        if (!isRunRevisionSummary(revision)) {
+          return null;
+        }
+
         setRunRevisions((currentRevisions) => [
           revision,
           ...currentRevisions.filter((item) => item.id !== revision.id),

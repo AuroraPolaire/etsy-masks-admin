@@ -99,4 +99,15 @@ describe('run history helpers', () => {
     expect(groups.map((group) => group.stage)).toEqual(['brief', 'marketing']);
     expect(groups[1]?.revisions.map((revision) => revision.sequenceNumber)).toEqual([2, 1]);
   });
+
+  it('ignores malformed revision records while grouping history', () => {
+    const groups = groupRunRevisionsByStage([
+      undefined as unknown as RunRevisionSummary,
+      { id: 'bad-revision' } as unknown as RunRevisionSummary,
+      createRevision(1, 'brief'),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.revisions.map((revision) => revision.id)).toEqual(['revision-1']);
+  });
 });
