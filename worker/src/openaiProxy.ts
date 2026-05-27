@@ -42,6 +42,14 @@ type OutputFormat = (typeof OUTPUT_FORMATS)[number];
 type MarketingAssetType = (typeof MARKETING_ASSET_TYPES)[number];
 type MarketingAssetStage = (typeof MARKETING_ASSET_STAGES)[number];
 
+const normalizeOpenAIRequestSize = (size: ImageSize): ImageSize => {
+  if (size === '512x512') {
+    return '1024x1024';
+  }
+
+  return size;
+};
+
 type ImageSettings = {
   model: ImageModel;
   size: ImageSize;
@@ -380,7 +388,7 @@ const buildImageRequestBody = (
     model: settings.model,
     prompt: `${promptItem.prompt}\n\nNegative requirements: ${promptItem.negativeRequirements}`,
     n: 1,
-    size: settings.size,
+    size: normalizeOpenAIRequestSize(settings.size),
     quality: settings.quality,
     background,
     output_format: settings.outputFormat,
@@ -539,7 +547,7 @@ const buildColoringPageEditFormData = ({
   formData.append('image', image, promptItem.expectedFilename);
   formData.append('prompt', buildColoringPagePrompt(promptItem));
   formData.append('n', '1');
-  formData.append('size', settings.size);
+  formData.append('size', normalizeOpenAIRequestSize(settings.size));
   formData.append('quality', settings.quality);
   formData.append('background', 'opaque');
   formData.append('output_format', 'png');
@@ -589,13 +597,15 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
     'Asset type: children scene.',
     `Create ${recipe.maskCount} fully clothed fictional children in a thematic party, classroom, or play setting.`,
     'Use AI to place the provided mask references naturally on the children faces.',
-    'The masks should look worn in the scene, correctly scaled, centered, and aligned to the faces.',
+    'The masks should clearly look like printable paper masks made from A4 paper or light cardstock: flat cutout surface, matte printed texture, slight paper thickness, visible cut edges, eye holes, and optional elastic or string.',
+    'The masks should look worn in the scene, correctly scaled, centered, and aligned to the faces while still reading as flat paper craft masks.',
     'Keep the composition warm, child-safe, and useful as an Etsy listing preview.',
     recipe.optionIndex === 0
       ? 'Variant style: party table scene.'
       : recipe.optionIndex === 1
         ? 'Variant style: classroom craft scene.'
         : 'Variant style: cozy play-corner scene.',
+    'Do not render masks as molded plastic, rubber, plush fabric, helmets, face paint, makeup, AR filters, or realistic animal heads.',
     'Do not add text, logos, watermarks, brand characters, celebrities, unsafe behavior, scary expressions, or distorted faces.',
   ].join('\n');
 };
@@ -624,7 +634,7 @@ export const buildMarketingSceneEditFormData = (input: MarketingSceneInput): For
   }
   formData.append('prompt', buildMarketingScenePrompt(input));
   formData.append('n', '1');
-  formData.append('size', input.settings.size);
+  formData.append('size', normalizeOpenAIRequestSize(input.settings.size));
   formData.append('quality', input.settings.quality === 'high' ? 'medium' : input.settings.quality);
   formData.append('background', 'opaque');
   formData.append('output_format', input.settings.outputFormat);

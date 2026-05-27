@@ -13,6 +13,23 @@ export type Env = {
 
 export type ProjectRunStatus = 'draft';
 
+export type RunRevisionStage =
+  | 'brief'
+  | 'masks'
+  | 'approval'
+  | 'coloring'
+  | 'marketing'
+  | 'export'
+  | 'restore';
+
+export type RunRevisionKind =
+  | 'autosave'
+  | 'manual'
+  | 'generation'
+  | 'restore-safety'
+  | 'restore'
+  | 'export';
+
 export type ProjectRunRow = {
   id: string;
   project_id: string;
@@ -27,6 +44,7 @@ export type FileRow = {
   id: string;
   run_id: string;
   project_id: string;
+  object_id: string | null;
   r2_key: string;
   name: string;
   original_name: string;
@@ -48,6 +66,42 @@ export type FileRow = {
   thumbnail_type: string | null;
   thumbnail_updated_at: string | null;
   updated_at: string;
+};
+
+export type FileObjectRow = {
+  id: string;
+  run_id: string;
+  project_id: string;
+  file_id: string;
+  r2_key: string;
+  thumbnail_r2_key: string | null;
+  name: string;
+  size: number;
+  type: string;
+  sha256: string | null;
+  created_at: string;
+};
+
+export type RunRevisionRow = {
+  id: string;
+  run_id: string;
+  project_id: string;
+  parent_revision_id: string | null;
+  sequence_number: number;
+  stage: RunRevisionStage;
+  kind: RunRevisionKind;
+  label: string;
+  description: string | null;
+  project_json: string;
+  file_manifest_json: string;
+  change_summary_json: string | null;
+  thumbnail_file_id: string | null;
+  file_count: number;
+  total_size_bytes: number;
+  is_manual: number;
+  is_pinned: number;
+  restored_from_revision_id: string | null;
+  created_at: string;
 };
 
 export type BackendEventRow = {

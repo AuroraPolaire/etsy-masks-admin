@@ -19,15 +19,23 @@ import {
 } from './openaiProxy';
 import {
   createRun,
+  createRunRevision,
   deleteAllRuns,
   deleteRun,
   deleteRunFile,
   getRunFile,
   getRunFileThumbnail,
+  getRunRevision,
   getRunSnapshot,
+  listRunRevisions,
+  parseCreateRunRevisionInput,
+  parseRestoreRunRevisionInput,
+  parseUpdateRunRevisionInput,
   listRuns,
   putRunFile,
+  restoreRunRevision,
   updateRun,
+  updateRunRevision,
 } from './storage';
 
 import type { Env } from './types';
@@ -102,6 +110,71 @@ const getRun = async (request: Request, env: Env, runId?: string): Promise<Respo
     updatedAt: snapshot?.updatedAt,
     files: snapshot?.files ?? [],
     events: snapshot?.events ?? [],
+  });
+};
+
+const listRevisions = async (request: Request, env: Env, runId: string): Promise<Response> =>
+  jsonResponse(request, env, {
+    revisions: await listRunRevisions(env, runId),
+  });
+
+const createRevision = async (request: Request, env: Env, runId: string): Promise<Response> => {
+  const body = await readJsonObject(request);
+  const revision = await createRunRevision(env, runId, parseCreateRunRevisionInput(body));
+
+  return jsonResponse(request, env, {
+    ok: true,
+    revision,
+  });
+};
+
+const getRevision = async (
+  request: Request,
+  env: Env,
+  runId: string,
+  revisionId: string,
+): Promise<Response> =>
+  jsonResponse(request, env, {
+    revision: await getRunRevision(env, runId, revisionId),
+  });
+
+const updateRevision = async (
+  request: Request,
+  env: Env,
+  runId: string,
+  revisionId: string,
+): Promise<Response> => {
+  const body = await readJsonObject(request);
+  const revision = await updateRunRevision(
+    env,
+    runId,
+    revisionId,
+    parseUpdateRunRevisionInput(body),
+  );
+
+  return jsonResponse(request, env, {
+    ok: true,
+    revision,
+  });
+};
+
+const restoreRevision = async (
+  request: Request,
+  env: Env,
+  runId: string,
+  revisionId: string,
+): Promise<Response> => {
+  const body = await readJsonObject(request);
+  const result = await restoreRunRevision(
+    env,
+    runId,
+    revisionId,
+    parseRestoreRunRevisionInput(body),
+  );
+
+  return jsonResponse(request, env, {
+    ok: true,
+    ...result,
   });
 };
 
@@ -190,6 +263,33 @@ const routeAuthenticatedRequest = async (
   if (runId && parts.length === 3 && request.method === 'DELETE') {
     await deleteRun(env, runId);
     return jsonResponse(request, env, { ok: true });
+  }
+
+  const revisionId = runId && parts[3] === 'revisions' ? parts[4] : undefined;
+  if (runId && parts[3] === 'revisions' && parts.length === 4 && request.method === 'GET') {
+    return listRevisions(request, env, runId);
+  }
+
+  if (runId && parts[3] === 'revisions' && parts.length === 4 && request.method === 'POST') {
+    return createRevision(request, env, runId);
+  }
+
+  if (runId && revisionId && parts.length === 5 && request.method === 'GET') {
+    return getRevision(request, env, runId, revisionId);
+  }
+
+  if (runId && revisionId && parts.length === 5 && request.method === 'PATCH') {
+    return updateRevision(request, env, runId, revisionId);
+  }
+
+  if (
+    runId &&
+    revisionId &&
+    parts[5] === 'restore' &&
+    parts.length === 6 &&
+    request.method === 'POST'
+  ) {
+    return restoreRevision(request, env, runId, revisionId);
   }
 
   const fileId = runId && parts[3] === 'files' ? parts[4] : undefined;

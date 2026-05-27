@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppAside } from './components/AppAside';
 import { AppMainLayout } from './components/AppMainLayout';
@@ -9,6 +9,7 @@ import { Header } from './components/Header';
 import { HomeWorkflowView } from './components/HomeWorkflowView';
 import { MarketingSettingsPanel } from './components/MarketingSettingsPanel';
 import { OpenAIImagePanel } from './components/OpenAIImagePanel';
+import { RunHistoryDrawer } from './components/RunHistoryDrawer';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { useToast } from './components/ui/toastContext';
 import { useActivityLog } from './hooks/useActivityLog';
@@ -26,6 +27,11 @@ import {
   getCurrentColoringPageForSubject,
   getFileForSubject,
 } from './lib/files';
+import {
+  discardGeneratedFileBackups,
+  loadGeneratedFileBackups,
+  persistGeneratedFileBackups,
+} from './lib/generatedFileRecovery';
 import { runQA } from './lib/qa';
 import { createWorkflowState } from './workflow/workflowState';
 
@@ -86,10 +92,12 @@ export const App = () => {
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('brief');
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isRunHistoryOpen, setIsRunHistoryOpen] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
   const generatedCloudSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const recoveredGeneratedProjectsRef = useRef(new Set<string>());
   const {
     project,
     replaceProject,
@@ -154,10 +162,74 @@ export const App = () => {
     runBusyAction,
     confirmAction: requestConfirmation,
   });
+
+  useEffect(() => {
+    if (
+      backendCache.autosaveState.status === 'restoring' ||
+      recoveredGeneratedProjectsRef.current.has(project.id)
+    ) {
+      return;
+    }
+
+    recoveredGeneratedProjectsRef.current.add(project.id);
+    void loadGeneratedFileBackups(project.id)
+      .then((recoveredFiles) => {
+        const existingIds = new Set(filesRef.current.map((file) => file.id));
+        const duplicateIds = recoveredFiles
+          .filter((file) => existingIds.has(file.id))
+          .map((file) => file.id);
+        const missingFiles = recoveredFiles.filter((file) => !existingIds.has(file.id));
+
+        if (duplicateIds.length > 0) {
+          void discardGeneratedFileBackups(duplicateIds);
+        }
+
+        if (missingFiles.length === 0) {
+          return;
+        }
+
+        const nextFiles = [...filesRef.current, ...missingFiles];
+        filesRef.current = nextFiles;
+        appendFiles(missingFiles);
+        addActivity(
+          'cloud-synced',
+          'warning',
+          `Recovered ${missingFiles.length} generated file${
+            missingFiles.length === 1 ? '' : 's'
+          } that had not reached Cloud yet. Retrying cloud save.`,
+        );
+        window.setTimeout(() => backendCache.retryCloudSave(), 0);
+      })
+      .catch((error) => {
+        addActivity(
+          'error',
+          'error',
+          `Could not read local generated file recovery data: ${getErrorMessage(
+            error,
+            'Recovery store is unavailable.',
+          )}`,
+        );
+      });
+  }, [addActivity, appendFiles, backendCache, filesRef, project.id]);
+
   const appendGeneratedFiles = useCallback(
     async (managedFiles: ManagedFile[], context?: BusyActionContext) => {
       if (managedFiles.length === 0) {
         return;
+      }
+
+      try {
+        context?.setProgress('Saving generated files locally for recovery...');
+        await persistGeneratedFileBackups(project.id, managedFiles);
+      } catch (error) {
+        addActivity(
+          'error',
+          'error',
+          `Generated files were created, but local recovery backup failed: ${getErrorMessage(
+            error,
+            'Could not save generated files in this browser.',
+          )}`,
+        );
       }
 
       const nextFiles = [...filesRef.current, ...managedFiles];
@@ -525,6 +597,7 @@ export const App = () => {
 
         if (shouldDelete) {
           deleteFile(fileId);
+          void discardGeneratedFileBackups([fileId]);
         }
       })();
     },
@@ -683,7 +756,14 @@ export const App = () => {
       qaResult={qaResult}
       busyAction={busyAction}
       busyProgress={busyProgress}
+      autosaveState={backendCache.autosaveState}
+      runRevisions={backendCache.runRevisions}
+      historyBusy={backendCache.historyBusy}
+      historyError={backendCache.historyError}
       onCancelBusyAction={cancelBusyAction}
+      onOpenHistory={() => setIsRunHistoryOpen(true)}
+      onSaveCheckpoint={backendCache.saveManualCheckpoint}
+      onRetryCloudSave={backendCache.retryCloudSave}
     />
   );
 
@@ -799,6 +879,13 @@ export const App = () => {
         <Header qaResult={qaResult} />
         {renderActiveSection()}
       </div>
+      <RunHistoryDrawer
+        open={isRunHistoryOpen}
+        revisions={backendCache.runRevisions}
+        historyBusy={backendCache.historyBusy || busyAction === 'backend-sync'}
+        onClose={() => setIsRunHistoryOpen(false)}
+        onRestoreRevision={backendCache.restoreRevision}
+      />
       {confirmRequest ? (
         <ConfirmDialog
           open

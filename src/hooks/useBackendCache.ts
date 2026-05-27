@@ -26,6 +26,8 @@ import {
   loadBackendRunCache,
   syncBackendRunFiles,
 } from '../lib/backendSync';
+import { discardGeneratedFileBackups } from '../lib/generatedFileRecovery';
+import { createAutosaveRevisionInput, inferRunRevisionStage } from '../lib/runHistory';
 
 import type { BackendRunCacheState } from '../lib/backendSync';
 import type {
@@ -42,6 +44,7 @@ import type {
   Project,
   ProjectDraft,
   PromptItem,
+  RunRevisionSummary,
   RunBusyAction,
 } from '../types';
 
@@ -79,6 +82,9 @@ export const useBackendCache = ({
   const [runs, setRuns] = useState<BackendRunSummary[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [snapshot, setSnapshot] = useState<BackendProjectSnapshot | null>(null);
+  const [runRevisions, setRunRevisions] = useState<RunRevisionSummary[]>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [saveIdea, setSaveIdea] = useState(suggestedIdea);
   const [lastSuggestedIdea, setLastSuggestedIdea] = useState(suggestedIdea);
   const [initialActiveDraftRunId] = useState(() => loadActiveBackendDraftRunId(project.id));
@@ -157,6 +163,98 @@ export const useBackendCache = ({
     async (preferredRunId: string | undefined, context: BusyActionContext) =>
       applyRunCache(await loadBackendRunCache(client, preferredRunId, context)),
     [applyRunCache, client],
+  );
+
+  const refreshRunHistory = useCallback(
+    async (runId: string, signal?: AbortSignal) => {
+      if (!runId) {
+        setRunRevisions([]);
+        return;
+      }
+
+      setHistoryBusy(true);
+      try {
+        const { revisions } = await client.listRunRevisions(runId, signal);
+        setRunRevisions(revisions);
+        setHistoryError(null);
+      } catch (error) {
+        if (!isAbortError(error)) {
+          const message = getErrorMessage(error, 'Could not load run history.');
+          setHistoryError(message);
+        }
+      } finally {
+        setHistoryBusy(false);
+      }
+    },
+    [client],
+  );
+
+  useEffect(() => {
+    if (!activeDraftRunId) {
+      setRunRevisions([]);
+      setHistoryError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    void refreshRunHistory(activeDraftRunId, controller.signal);
+    return () => controller.abort();
+  }, [activeDraftRunId, refreshRunHistory]);
+
+  const createRevisionCheckpoint = useCallback(
+    async (
+      runId: string,
+      projectOverride: Project,
+      filesOverride: ManagedFile[],
+      {
+        signal,
+        label,
+        isManual = false,
+        isPinned = false,
+      }: {
+        signal?: AbortSignal;
+        label?: string;
+        isManual?: boolean;
+        isPinned?: boolean;
+      } = {},
+    ) => {
+      if (!runId) {
+        return null;
+      }
+
+      const checkpointLabel = label?.trim();
+      const input = isManual
+        ? {
+            stage: inferRunRevisionStage(projectOverride, filesOverride),
+            kind: 'manual' as const,
+            label:
+              checkpointLabel && checkpointLabel.length > 0 ? checkpointLabel : 'Manual checkpoint',
+            description: 'Manual checkpoint saved from the workflow history panel.',
+            isManual: true,
+            isPinned,
+          }
+        : createAutosaveRevisionInput(projectOverride, filesOverride);
+
+      try {
+        const { revision } = await client.createRunRevision(runId, input, signal);
+        setRunRevisions((currentRevisions) => [
+          revision,
+          ...currentRevisions.filter((item) => item.id !== revision.id),
+        ]);
+        setHistoryError(null);
+        return revision;
+      } catch (error) {
+        if (isAbortError(error)) {
+          return null;
+        }
+
+        const message = getErrorMessage(error, 'Could not save a run checkpoint.');
+        setHistoryError(message);
+        addActivity('cloud-synced', 'warning', message);
+        return null;
+      }
+    },
+    [addActivity, client],
   );
 
   const syncRunToBackend = useCallback(
@@ -238,6 +336,11 @@ export const useBackendCache = ({
               forceUpload,
               deleteMissingRemoteFiles,
             });
+      if (filesOverride.length > 0) {
+        await discardGeneratedFileBackups(filesOverride.map((file) => file.id)).catch(() => {
+          // Cloud is authoritative after a successful sync; stale local recovery can be cleaned later.
+        });
+      }
 
       if (currentProjectIdRef.current === projectOverride.id) {
         const { runs: nextRuns } = await client.listRuns(signal);
@@ -253,11 +356,14 @@ export const useBackendCache = ({
   );
 
   const syncDraftRun = useCallback(
-    (signal: AbortSignal) =>
-      syncRunToBackend({
+    async (signal: AbortSignal) => {
+      const result = await syncRunToBackend({
         signal,
-      }),
-    [syncRunToBackend],
+      });
+      await createRevisionCheckpoint(result.runId, project, files, { signal });
+      return result;
+    },
+    [createRevisionCheckpoint, files, project, syncRunToBackend],
   );
 
   const {
@@ -267,6 +373,7 @@ export const useBackendCache = ({
     markDraftRestoreFailed,
     clearAutosaveTracking,
     markCurrentStateDeleted,
+    requestAutosaveRetry,
   } = useBackendDraftAutosave({
     project,
     files,
@@ -284,12 +391,16 @@ export const useBackendCache = ({
       signal,
       setProgress,
       deleteMissingRemoteFiles = true,
+      checkpointLabel,
+      manualCheckpoint = false,
     }: {
       projectOverride?: Project;
       filesOverride?: ManagedFile[];
       signal?: AbortSignal;
       setProgress?: (message: string | null) => void;
       deleteMissingRemoteFiles?: boolean;
+      checkpointLabel?: string;
+      manualCheckpoint?: boolean;
     } = {}): Promise<{ runId: string; snapshot: BackendProjectSnapshot }> => {
       const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
       const result = await syncRunToBackend({
@@ -303,9 +414,15 @@ export const useBackendCache = ({
       if (currentProjectIdRef.current === projectOverride.id) {
         markDraftSaved(projectOverride, filesOverride, idea, result.runId);
       }
+      await createRevisionCheckpoint(result.runId, projectOverride, filesOverride, {
+        ...(signal ? { signal } : {}),
+        ...(checkpointLabel ? { label: checkpointLabel } : {}),
+        isManual: manualCheckpoint,
+        isPinned: manualCheckpoint,
+      });
       return result;
     },
-    [files, markDraftSaved, project, saveIdea, syncRunToBackend],
+    [createRevisionCheckpoint, files, markDraftSaved, project, saveIdea, syncRunToBackend],
   );
 
   const startFreshDraft = useCallback(
@@ -314,6 +431,23 @@ export const useBackendCache = ({
       clearAutosaveTracking();
     },
     [clearAutosaveTracking, setActiveDraftRun],
+  );
+
+  const saveManualCheckpoint = useCallback(
+    (label: string) => {
+      void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
+        setProgress('Saving manual checkpoint...');
+        const result = await saveDraftNow({
+          signal,
+          setProgress,
+          checkpointLabel: label,
+          manualCheckpoint: true,
+        });
+        await refreshRunHistory(result.runId, signal);
+        addActivity('cloud-synced', 'success', `Saved checkpoint "${label.trim()}".`);
+      });
+    },
+    [addActivity, refreshRunHistory, runBusyAction, saveDraftNow],
   );
 
   useBackendDraftAutoRestore({
@@ -524,6 +658,136 @@ export const useBackendCache = ({
     restoreRun();
   }, [restoreRun]);
 
+  const restoreRevision = useCallback(
+    (revisionId: string) => {
+      void (async () => {
+        const targetRunId = activeDraftRunId || selectedRunId;
+        if (!targetRunId) {
+          addActivity('cloud-synced', 'warning', 'Save this run before restoring history.');
+          return;
+        }
+
+        const revision = runRevisions.find((item) => item.id === revisionId);
+        const shouldRestore = await confirmAction({
+          title: 'Restore checkpoint?',
+          description: `This replaces the current browser project and session files with "${
+            revision?.label ?? 'the selected checkpoint'
+          }". The current state is saved as a safety checkpoint first.`,
+          confirmLabel: 'Restore checkpoint',
+        });
+
+        if (!shouldRestore) {
+          return;
+        }
+
+        void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
+          try {
+            setProgress('Saving current state before restoring history...');
+            await saveDraftNow({
+              signal,
+              setProgress: (message) => {
+                setProgress(message ? `Saving current state: ${message}` : null);
+              },
+              checkpointLabel: 'Before history restore',
+            });
+
+            setDraftRestoreStatus('restoring');
+            setProgress('Restoring checkpoint metadata...');
+            const restoreStartedAt = getBackendRestoreNowMs();
+            const { snapshot: nextSnapshot } = await client.restoreRunRevision(
+              targetRunId,
+              revisionId,
+              'full',
+              signal,
+            );
+            setSnapshot(nextSnapshot);
+
+            if (!nextSnapshot.project) {
+              addActivity('cloud-synced', 'warning', 'The selected checkpoint no longer exists.');
+              return;
+            }
+
+            const restoredIdea = nextSnapshot.idea ?? getProjectIdeaLabel(nextSnapshot.project);
+            setActiveDraftRun(targetRunId, nextSnapshot.project.id);
+            setSelectedRunId(targetRunId);
+            setSaveIdea(restoredIdea);
+            replaceProject(nextSnapshot.project);
+            replaceFiles([]);
+
+            const metadataFetchMs = getBackendRestoreNowMs() - restoreStartedAt;
+            let firstFileAppendedMs: number | null = null;
+            const result = await downloadBackendRunFiles(client, targetRunId, nextSnapshot, {
+              signal,
+              setProgress,
+              onFileRestored: (file) => {
+                firstFileAppendedMs ??= getBackendRestoreNowMs() - restoreStartedAt;
+                appendFiles([file]);
+              },
+            });
+            logBackendRestoreInstrumentation({
+              label: 'revision',
+              metadataFetchMs,
+              firstFileAppendedMs,
+              totalRestoreMs: getBackendRestoreNowMs() - restoreStartedAt,
+              result,
+            });
+
+            if (result.cancelled || result.failedFiles.length > 0) {
+              const message = result.cancelled
+                ? 'Checkpoint restore was cancelled. Autosave is paused to protect cloud files.'
+                : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
+              markDraftRestoreFailed(message, targetRunId);
+              setDraftRestoreStatus('failed');
+              addActivity(
+                result.cancelled ? 'cloud-synced' : 'error',
+                result.cancelled ? 'warning' : 'error',
+                message,
+              );
+              return;
+            }
+
+            markDraftRestored(nextSnapshot.project, result.files, restoredIdea, targetRunId);
+            setDraftRestoreStatus('complete');
+            await refreshRunHistory(targetRunId, signal);
+            addActivity(
+              'cloud-synced',
+              'success',
+              `Restored checkpoint "${revision?.label ?? 'selected checkpoint'}".`,
+            );
+          } catch (error) {
+            if (isAbortError(error)) {
+              setDraftRestoreStatus('complete');
+              addActivity('cloud-synced', 'warning', 'Checkpoint restore was cancelled.');
+              return;
+            }
+
+            const message = getErrorMessage(error, 'Could not restore the selected checkpoint.');
+            markDraftRestoreFailed(message, targetRunId);
+            setDraftRestoreStatus('failed');
+            addActivity('error', 'error', message);
+          }
+        });
+      })();
+    },
+    [
+      activeDraftRunId,
+      addActivity,
+      appendFiles,
+      client,
+      confirmAction,
+      markDraftRestored,
+      markDraftRestoreFailed,
+      refreshRunHistory,
+      replaceFiles,
+      replaceProject,
+      runBusyAction,
+      runRevisions,
+      saveDraftNow,
+      selectedRunId,
+      setActiveDraftRun,
+    ],
+  );
+
   const deleteRun = useCallback(
     (runId: string) => {
       void (async () => {
@@ -551,6 +815,7 @@ export const useBackendCache = ({
             if (runId === activeDraftRunId) {
               setActiveDraftRun('', project.id);
               markCurrentStateDeleted(project, files, resolvedSaveIdea);
+              setRunRevisions([]);
             }
             const { runs: nextRuns } = await client.listRuns(context.signal);
             setRuns(nextRuns);
@@ -611,6 +876,7 @@ export const useBackendCache = ({
           setRuns([]);
           setSelectedRunId('');
           setSnapshot(null);
+          setRunRevisions([]);
           setActiveDraftRun('', project.id);
           markCurrentStateDeleted(project, files, resolvedSaveIdea);
           addActivity('cloud-synced', 'warning', 'Deleted all Cloudflare data.');
@@ -689,6 +955,9 @@ export const useBackendCache = ({
     runs,
     selectedRunId,
     snapshot,
+    runRevisions,
+    historyBusy,
+    historyError,
     activeDraftRunId,
     autosaveState,
     saveIdea,
@@ -696,6 +965,10 @@ export const useBackendCache = ({
     canUseOpenAIProxy,
     setSaveIdea,
     saveDraftNow,
+    saveManualCheckpoint,
+    retryCloudSave: requestAutosaveRetry,
+    refreshRunHistory,
+    restoreRevision,
     startFreshDraft,
     testConnection,
     selectRun,

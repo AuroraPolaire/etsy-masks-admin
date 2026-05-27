@@ -1,6 +1,7 @@
+import { RunHistoryStatus } from './RunHistoryStatus';
 import { WorkflowStatus } from './WorkflowStatus';
 
-import type { BusyAction, QAResult } from '../types';
+import type { BackendAutosaveState, BusyAction, QAResult, RunRevisionSummary } from '../types';
 import type { WorkflowState } from '../workflow/workflowState';
 
 type AppAsideProps = {
@@ -8,7 +9,14 @@ type AppAsideProps = {
   qaResult: QAResult;
   busyAction: BusyAction;
   busyProgress: string | null;
+  autosaveState: BackendAutosaveState;
+  runRevisions: RunRevisionSummary[];
+  historyBusy: boolean;
+  historyError: string | null;
   onCancelBusyAction: () => void;
+  onOpenHistory: () => void;
+  onSaveCheckpoint: (label: string) => void;
+  onRetryCloudSave: () => void;
 };
 
 export const AppAside = ({
@@ -16,7 +24,14 @@ export const AppAside = ({
   qaResult,
   busyAction,
   busyProgress,
+  autosaveState,
+  runRevisions,
+  historyBusy,
+  historyError,
   onCancelBusyAction,
+  onOpenHistory,
+  onSaveCheckpoint,
+  onRetryCloudSave,
 }: AppAsideProps) => (
   <aside
     aria-label="Workflow summary"
@@ -28,6 +43,16 @@ export const AppAside = ({
       busyAction={busyAction}
       busyProgress={busyProgress}
       onCancelBusyAction={onCancelBusyAction}
+    />
+    <RunHistoryStatus
+      autosaveState={autosaveState}
+      revisions={runRevisions}
+      historyBusy={historyBusy}
+      historyError={historyError}
+      busyAction={busyAction}
+      onOpenHistory={onOpenHistory}
+      onSaveCheckpoint={onSaveCheckpoint}
+      onRetryCloudSave={onRetryCloudSave}
     />
   </aside>
 );
