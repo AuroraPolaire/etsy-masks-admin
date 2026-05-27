@@ -20,12 +20,21 @@ type RunHistoryDrawerProps = {
 };
 
 const kindLabels: Record<RunRevisionSummary['kind'], string> = {
-  autosave: 'Auto',
-  manual: 'Manual',
-  generation: 'Generated',
-  'restore-safety': 'Safety',
-  restore: 'Restore',
+  autosave: 'Auto save',
+  manual: 'Named point',
+  generation: 'Generated files',
+  'restore-safety': 'Before restore',
+  restore: 'Restored point',
   export: 'Export',
+};
+
+const kindDescriptions: Record<RunRevisionSummary['kind'], string> = {
+  autosave: 'Saved automatically after a meaningful edit.',
+  manual: 'Named by you before a risky change.',
+  generation: 'Saved after files or assets were generated.',
+  'restore-safety': 'Saved automatically before restoring an older point.',
+  restore: 'Saved after a restore finished.',
+  export: 'Saved around export work.',
 };
 
 const getKindTone = (kind: RunRevisionSummary['kind']) => {
@@ -73,15 +82,16 @@ export const RunHistoryDrawer = ({
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-ink-strong/35">
       <aside
-        aria-label="Run history"
+        aria-label="Version history"
         className="flex size-full max-w-3xl flex-col border-l border-surface-outline bg-surface-panel shadow-panel"
       >
         <div className="flex items-start justify-between gap-4 border-b border-surface-divider p-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-brand">History</p>
-            <h2 className="mt-1 text-xl font-bold text-ink-strong">Run checkpoints</h2>
+            <p className="text-xs font-bold uppercase tracking-wide text-brand">Version history</p>
+            <h2 className="mt-1 text-xl font-bold text-ink-strong">Restore points for this run</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Restore a previous stage without deleting the current state.
+              Pick a saved point to go back. The app saves your current work first, so newer work
+              remains reachable.
             </p>
           </div>
           <IconButton icon={X} label="Close history" variant="ghost" onClick={onClose} />
@@ -89,12 +99,12 @@ export const RunHistoryDrawer = ({
 
         <div className="border-b border-surface-divider p-5">
           <Input
-            label="Search history"
+            label="Search restore points"
             name="runHistorySearch"
             type="search"
             value={query}
-            placeholder="Stage, label, or type"
-            helperText={`${filteredRevisions.length}/${revisions.length} checkpoints shown`}
+            placeholder="Name, stage, or save type"
+            helperText={`${filteredRevisions.length}/${revisions.length} restore points shown`}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
@@ -103,8 +113,8 @@ export const RunHistoryDrawer = ({
           {groups.length === 0 ? (
             <div className="rounded-control border border-surface-divider bg-surface-muted p-4 text-sm text-ink-muted">
               {revisions.length === 0
-                ? 'No checkpoints yet. Save a checkpoint or generate an asset after cloud sync.'
-                : 'No checkpoints match the search.'}
+                ? 'No restore points yet. Cloud autosave creates them after this run is saved.'
+                : 'No restore points match the search.'}
             </div>
           ) : (
             <div className="space-y-6">
@@ -145,12 +155,12 @@ export const RunHistoryDrawer = ({
                             <h4 className="mt-2 text-base font-bold text-ink-strong">
                               {revision.label}
                             </h4>
-                            {revision.description ? (
-                              <p className="mt-1 text-sm text-ink-muted">{revision.description}</p>
-                            ) : null}
+                            <p className="mt-1 text-sm text-ink-muted">
+                              {revision.description ?? kindDescriptions[revision.kind]}
+                            </p>
                             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                               <div className="rounded-control bg-surface-muted px-3 py-2">
-                                <dt className="text-xs uppercase text-ink-muted">Step</dt>
+                                <dt className="text-xs uppercase text-ink-muted">Save order</dt>
                                 <dd className="font-semibold text-ink-strong">
                                   #{revision.sequenceNumber}
                                 </dd>
@@ -162,7 +172,7 @@ export const RunHistoryDrawer = ({
                                 </dd>
                               </div>
                               <div className="rounded-control bg-surface-muted px-3 py-2">
-                                <dt className="text-xs uppercase text-ink-muted">Size</dt>
+                                <dt className="text-xs uppercase text-ink-muted">Storage</dt>
                                 <dd className="font-semibold text-ink-strong">
                                   {formatBytes(revision.totalSizeBytes)}
                                 </dd>
@@ -176,7 +186,7 @@ export const RunHistoryDrawer = ({
                             onClick={() => onRestoreRevision(revision.id)}
                           >
                             <RotateCcw aria-hidden="true" className="mr-2" size={17} />
-                            Restore
+                            Restore this point
                           </Button>
                         </div>
                       </article>
@@ -190,7 +200,7 @@ export const RunHistoryDrawer = ({
 
         <div className="border-t border-surface-divider p-4 text-xs text-ink-muted">
           <Search aria-hidden="true" className="mr-1 inline" size={13} />
-          Restore creates a safety checkpoint first, so the current state remains reachable.
+          Restoring creates a safety restore point first, so the current state remains reachable.
         </div>
       </aside>
     </div>

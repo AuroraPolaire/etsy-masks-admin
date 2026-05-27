@@ -232,8 +232,10 @@ export const useBackendCache = ({
             stage: inferRunRevisionStage(projectOverride, filesOverride),
             kind: 'manual' as const,
             label:
-              checkpointLabel && checkpointLabel.length > 0 ? checkpointLabel : 'Manual checkpoint',
-            description: 'Manual checkpoint saved from the workflow history panel.',
+              checkpointLabel && checkpointLabel.length > 0
+                ? checkpointLabel
+                : 'Named restore point',
+            description: 'Named restore point saved from the workflow sidebar.',
             isManual: true,
             isPinned,
           }
@@ -256,7 +258,7 @@ export const useBackendCache = ({
           return null;
         }
 
-        const message = getErrorMessage(error, 'Could not save a run checkpoint.');
+        const message = getErrorMessage(error, 'Could not save a restore point.');
         setHistoryError(message);
         addActivity('cloud-synced', 'warning', message);
         return null;
@@ -444,7 +446,7 @@ export const useBackendCache = ({
   const saveManualCheckpoint = useCallback(
     (label: string) => {
       void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
-        setProgress('Saving manual checkpoint...');
+        setProgress('Saving named restore point...');
         const result = await saveDraftNow({
           signal,
           setProgress,
@@ -452,7 +454,7 @@ export const useBackendCache = ({
           manualCheckpoint: true,
         });
         await refreshRunHistory(result.runId, signal);
-        addActivity('cloud-synced', 'success', `Saved checkpoint "${label.trim()}".`);
+        addActivity('cloud-synced', 'success', `Saved restore point "${label.trim()}".`);
       });
     },
     [addActivity, refreshRunHistory, runBusyAction, saveDraftNow],
@@ -671,17 +673,17 @@ export const useBackendCache = ({
       void (async () => {
         const targetRunId = activeDraftRunId || selectedRunId;
         if (!targetRunId) {
-          addActivity('cloud-synced', 'warning', 'Save this run before restoring history.');
+          addActivity('cloud-synced', 'warning', 'Save this run before restoring a point.');
           return;
         }
 
         const revision = runRevisions.find((item) => item.id === revisionId);
         const shouldRestore = await confirmAction({
-          title: 'Restore checkpoint?',
+          title: 'Restore this point?',
           description: `This replaces the current browser project and session files with "${
-            revision?.label ?? 'the selected checkpoint'
-          }". The current state is saved as a safety checkpoint first.`,
-          confirmLabel: 'Restore checkpoint',
+            revision?.label ?? 'the selected restore point'
+          }". Before restoring, the app saves your current work as "Before restoring older point" so you can return to it.`,
+          confirmLabel: 'Restore this point',
         });
 
         if (!shouldRestore) {
@@ -690,17 +692,17 @@ export const useBackendCache = ({
 
         void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
           try {
-            setProgress('Saving current state before restoring history...');
+            setProgress('Saving current state before restore...');
             await saveDraftNow({
               signal,
               setProgress: (message) => {
                 setProgress(message ? `Saving current state: ${message}` : null);
               },
-              checkpointLabel: 'Before history restore',
+              checkpointLabel: 'Before restoring older point',
             });
 
             setDraftRestoreStatus('restoring');
-            setProgress('Restoring checkpoint metadata...');
+            setProgress('Restoring saved point metadata...');
             const restoreStartedAt = getBackendRestoreNowMs();
             const { snapshot: nextSnapshot } = await client.restoreRunRevision(
               targetRunId,
@@ -711,7 +713,11 @@ export const useBackendCache = ({
             setSnapshot(nextSnapshot);
 
             if (!nextSnapshot.project) {
-              addActivity('cloud-synced', 'warning', 'The selected checkpoint no longer exists.');
+              addActivity(
+                'cloud-synced',
+                'warning',
+                'The selected restore point no longer exists.',
+              );
               return;
             }
 
@@ -742,8 +748,8 @@ export const useBackendCache = ({
 
             if (result.cancelled || result.failedFiles.length > 0) {
               const message = result.cancelled
-                ? 'Checkpoint restore was cancelled. Autosave is paused to protect cloud files.'
-                : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
+                ? 'Restore point load was cancelled. Autosave is paused to protect cloud files.'
+                : `Loaded ${result.files.length}/${nextSnapshot.files.length} file(s) from the restore point; ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
               markDraftRestoreFailed(message, targetRunId);
               setDraftRestoreStatus('failed');
               addActivity(
@@ -760,16 +766,16 @@ export const useBackendCache = ({
             addActivity(
               'cloud-synced',
               'success',
-              `Restored checkpoint "${revision?.label ?? 'selected checkpoint'}".`,
+              `Restored point "${revision?.label ?? 'selected restore point'}".`,
             );
           } catch (error) {
             if (isAbortError(error)) {
               setDraftRestoreStatus('complete');
-              addActivity('cloud-synced', 'warning', 'Checkpoint restore was cancelled.');
+              addActivity('cloud-synced', 'warning', 'Restore point load was cancelled.');
               return;
             }
 
-            const message = getErrorMessage(error, 'Could not restore the selected checkpoint.');
+            const message = getErrorMessage(error, 'Could not restore the selected point.');
             markDraftRestoreFailed(message, targetRunId);
             setDraftRestoreStatus('failed');
             addActivity('error', 'error', message);

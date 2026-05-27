@@ -70,7 +70,7 @@ describe('run history helpers', () => {
     ).toBe('marketing');
   });
 
-  it('creates autosave checkpoint metadata with variant counts', () => {
+  it('creates autosave restore point metadata with variant counts', () => {
     const project = createDefaultProject();
     const input = createAutosaveRevisionInput(project, [
       createFile({ reviewState: 'approved' }),
