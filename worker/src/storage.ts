@@ -716,14 +716,48 @@ const getNextRevisionSequence = async (env: Env, runId: string): Promise<number>
   return (row?.sequence_number ?? 0) + 1;
 };
 
-const getLatestRevisionId = async (env: Env, runId: string): Promise<string | null> => {
+const getLatestRevisionRow = async (env: Env, runId: string): Promise<RunRevisionRow | null> => {
   const row = await env.DB.prepare(
-    'SELECT id FROM run_revisions WHERE run_id = ? ORDER BY sequence_number DESC LIMIT 1',
+    'SELECT * FROM run_revisions WHERE run_id = ? ORDER BY sequence_number DESC LIMIT 1',
   )
     .bind(runId)
-    .first<Pick<RunRevisionRow, 'id'>>();
+    .first<RunRevisionRow>();
 
-  return row?.id ?? null;
+  return row ?? null;
+};
+
+const automaticSnapshotRevisionKinds: RunRevisionKind[] = ['autosave', 'generation', 'export'];
+
+type RevisionSnapshot = {
+  projectJson: string;
+  fileManifestJson: string;
+  fileCount: number;
+  totalSizeBytes: number;
+};
+
+export const shouldCreateRunRevisionForSnapshot = (
+  input: Pick<CreateRunRevisionInput, 'kind' | 'isManual' | 'restoredFromRevisionId'>,
+  latestRevision: RunRevisionRow | null,
+  snapshot: RevisionSnapshot,
+): boolean => {
+  if (
+    input.isManual ||
+    input.restoredFromRevisionId ||
+    !automaticSnapshotRevisionKinds.includes(input.kind)
+  ) {
+    return true;
+  }
+
+  if (!latestRevision) {
+    return true;
+  }
+
+  return (
+    latestRevision.project_json !== snapshot.projectJson ||
+    latestRevision.file_manifest_json !== snapshot.fileManifestJson ||
+    latestRevision.file_count !== snapshot.fileCount ||
+    latestRevision.total_size_bytes !== snapshot.totalSizeBytes
+  );
 };
 
 export const createRunRevision = async (
@@ -739,11 +773,25 @@ export const createRunRevision = async (
     .all<FileRow>();
   const files = fileRows.results ?? [];
   const manifest = createRunRevisionFileManifest(files);
+  const fileManifestJson = JSON.stringify(manifest);
+  const totalSizeBytes = files.reduce((total, file) => total + file.size, 0);
+  const latestRevision = await getLatestRevisionRow(env, runId);
+
+  const shouldCreateRevision = shouldCreateRunRevisionForSnapshot(input, latestRevision, {
+    projectJson: run.project_json,
+    fileManifestJson,
+    fileCount: files.length,
+    totalSizeBytes,
+  });
+
+  if (!shouldCreateRevision && latestRevision) {
+    return revisionSummaryFromRow(latestRevision);
+  }
+
   const revisionId = crypto.randomUUID();
   const sequenceNumber = await getNextRevisionSequence(env, runId);
   const timestamp = nowIso();
-  const parentRevisionId = await getLatestRevisionId(env, runId);
-  const totalSizeBytes = files.reduce((total, file) => total + file.size, 0);
+  const parentRevisionId = latestRevision?.id ?? null;
 
   await env.DB.prepare(
     `INSERT INTO run_revisions (
@@ -764,7 +812,7 @@ export const createRunRevision = async (
       input.label,
       input.description ?? null,
       run.project_json,
-      JSON.stringify(manifest),
+      fileManifestJson,
       input.changeSummary ? JSON.stringify(input.changeSummary) : null,
       input.thumbnailFileId ?? null,
       files.length,

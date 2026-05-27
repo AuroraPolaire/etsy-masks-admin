@@ -35,10 +35,10 @@ export const loadBackendRunCache = async (
   preferredRunId: string | undefined,
   { signal, setProgress }: BusyActionContext,
 ): Promise<BackendRunCacheState> => {
-  setProgress('Checking Cloudflare Worker health...');
+  setProgress('Checking online save status...');
   const health = await client.getHealth(signal);
 
-  setProgress('Reading saved runs from D1...');
+  setProgress('Reading saved projects...');
   const { runs } = await client.listRuns(signal);
   const selectedRunId =
     preferredRunId && runs.some((run) => run.id === preferredRunId)
@@ -49,7 +49,7 @@ export const loadBackendRunCache = async (
     return { health, runs, selectedRunId, snapshot: null };
   }
 
-  setProgress('Reading selected run metadata...');
+  setProgress('Reading selected project details...');
   const snapshot = await client.getRun(selectedRunId, signal);
 
   return { health, runs, selectedRunId, snapshot };
@@ -164,7 +164,7 @@ export const syncBackendRunFiles = async (
       }
 
       if (!localFileIds.has(remoteFile.id)) {
-        setProgress?.(`Removing cloud file ${remoteFile.name}...`);
+        setProgress?.(`Removing saved file ${remoteFile.name}...`);
         await client.deleteFile(runId, remoteFile.id, signal);
       }
     }

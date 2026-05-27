@@ -201,7 +201,7 @@ export const useBackendDraftAutosave = ({
             setAutosaveState((currentState) => ({
               ...currentState,
               status: 'error',
-              lastError: getErrorMessage(error, 'Cloud draft autosave failed.'),
+              lastError: getErrorMessage(error, 'Online draft autosave failed.'),
               retryAttempt,
               nextRetryAt,
             }));

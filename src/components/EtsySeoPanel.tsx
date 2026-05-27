@@ -37,6 +37,8 @@ export const EtsySeoPanel = ({
   const titleWordCount = analysis?.titleWordCount ?? 'AI required';
   const tagCount = analysis?.tags.length ?? 'AI required';
   const repeatedWordCount = analysis?.repeatedTitleWords.length ?? 'AI required';
+  const failedSeoChecks = analysis?.checks.filter((check) => !check.passed) ?? [];
+  const passedSeoChecks = analysis?.checks.filter((check) => check.passed) ?? [];
 
   const updateSettings = (patch: Partial<ProjectSettings>) => {
     onChange({
@@ -45,6 +47,16 @@ export const EtsySeoPanel = ({
     });
   };
 
+  const renderSeoCheck = (check: NonNullable<typeof analysis>['checks'][number]) => (
+    <Surface as="li" key={check.id} variant="muted" className="p-3 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <span className="font-semibold text-ink-strong">{check.label}</span>
+        <Badge tone={check.passed ? 'success' : 'warning'}>{check.passed ? 'Pass' : 'Fix'}</Badge>
+      </div>
+      <p className="mt-1 text-ink-muted">{check.details}</p>
+    </Surface>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -52,7 +64,7 @@ export const EtsySeoPanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Etsy SEO</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Use Cloud AI to review title, tags, description, safety, and marketplace risk.
+              Use online AI to review title, tags, description, safety, and marketplace risk.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 self-start">
@@ -94,12 +106,12 @@ export const EtsySeoPanel = ({
         </div>
         {!canAnalyzeWithAI ? (
           <Alert tone="warning">
-            Cloud AI is not ready. Open Cloud and refresh the connection before running listing
-            review.
+            Online AI is not ready. Open Saved work and refresh the connection before running
+            listing review.
           </Alert>
         ) : null}
         <dl className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
-          <StatCard label="Checks passed" value={checkCountLabel} />
+          <StatCard label="SEO checks" value={checkCountLabel} />
           <StatCard label="Title words" value={titleWordCount} />
           <StatCard label="Tag count" value={tagCount} />
           <StatCard label="Repeated title words" value={repeatedWordCount} />
@@ -187,19 +199,23 @@ export const EtsySeoPanel = ({
               ) : null}
             </Surface>
 
-            <ul className="space-y-2">
-              {analysis.checks.map((check) => (
-                <Surface as="li" key={check.id} variant="muted" className="p-3 text-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="font-semibold text-ink-strong">{check.label}</span>
-                    <Badge tone={check.passed ? 'success' : 'warning'}>
-                      {check.passed ? 'Pass' : 'Fix'}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-ink-muted">{check.details}</p>
-                </Surface>
-              ))}
-            </ul>
+            {failedSeoChecks.length > 0 ? (
+              <div>
+                <h3 className="text-sm font-bold text-ink-strong">SEO fixes</h3>
+                <ul className="mt-2 space-y-2">{failedSeoChecks.map(renderSeoCheck)}</ul>
+              </div>
+            ) : null}
+
+            {passedSeoChecks.length > 0 ? (
+              <details className="rounded-control border border-surface-outline bg-surface-raised">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-ink-strong">
+                  Passed SEO checks ({passedSeoChecks.length})
+                </summary>
+                <ul className="space-y-2 border-t border-surface-outline p-3">
+                  {passedSeoChecks.map(renderSeoCheck)}
+                </ul>
+              </details>
+            ) : null}
           </div>
         ) : null}
       </CardBody>

@@ -39,6 +39,7 @@ import type {
   BackendHealth,
   BackendProjectSnapshot,
   BackendRunSummary,
+  BriefReferenceImage,
   BusyActionContext,
   EtsySeoAnalysis,
   ManagedFile,
@@ -103,6 +104,8 @@ export const useBackendCache = ({
   const shouldPauseDraftAutosave = shouldPauseBackendDraftAutosave(draftRestoreStatus);
   const currentProjectIdRef = useRef(project.id);
   const previousProjectIdRef = useRef(project.id);
+  const hasLoadedRunCacheRef = useRef(false);
+  const isLoadingRunCacheRef = useRef(false);
 
   const setActiveDraftRun = useCallback(
     (runId: string, projectId = project.id) => {
@@ -157,6 +160,7 @@ export const useBackendCache = ({
   }, [lastSuggestedIdea, suggestedIdea]);
 
   const applyRunCache = useCallback((nextCache: BackendRunCacheState) => {
+    hasLoadedRunCacheRef.current = true;
     setHealth(nextCache.health);
     setRuns(nextCache.runs);
     setSelectedRunId(nextCache.selectedRunId);
@@ -283,13 +287,13 @@ export const useBackendCache = ({
       forceUpload?: boolean;
       deleteMissingRemoteFiles?: boolean;
     }): Promise<{ runId: string; snapshot: BackendProjectSnapshot }> => {
-      setProgress?.('Checking cloud upload limits...');
+      setProgress?.('Checking online save limits...');
       const nextHealth = healthRef.current ?? (await client.getHealth(signal));
       setHealth(nextHealth);
 
       const oversizedFiles = getOversizedFiles(filesOverride, nextHealth.maxFileBytes);
       if (oversizedFiles.length > 0) {
-        throw new Error(`${oversizedFiles.length} file(s) exceed the cloud upload limit.`);
+        throw new Error(`${oversizedFiles.length} file(s) exceed the online save limit.`);
       }
 
       const idea = saveIdea.trim() || getProjectIdeaLabel(projectOverride);
@@ -443,23 +447,6 @@ export const useBackendCache = ({
     [clearAutosaveTracking, setActiveDraftRun],
   );
 
-  const saveManualCheckpoint = useCallback(
-    (label: string) => {
-      void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
-        setProgress('Saving named restore point...');
-        const result = await saveDraftNow({
-          signal,
-          setProgress,
-          checkpointLabel: label,
-          manualCheckpoint: true,
-        });
-        await refreshRunHistory(result.runId, signal);
-        addActivity('cloud-synced', 'success', `Saved restore point "${label.trim()}".`);
-      });
-    },
-    [addActivity, refreshRunHistory, runBusyAction, saveDraftNow],
-  );
-
   useBackendDraftAutoRestore({
     client,
     initialDraftRunId: initialActiveDraftRunId,
@@ -479,21 +466,50 @@ export const useBackendCache = ({
     setRestoreStatus: setDraftRestoreStatus,
   });
 
-  const testConnection = useCallback(() => {
-    void runBusyAction('backend-sync', async (context) => {
-      try {
-        await loadRunCache(selectedRunId || undefined, context);
-        addActivity('cloud-synced', 'success', 'Cloudflare Worker and run cache are reachable.');
-      } catch (error) {
-        if (isAbortError(error)) {
-          addActivity('cloud-synced', 'warning', 'Cloud connection check was cancelled.');
-          return;
-        }
-
-        addActivity('error', 'error', getErrorMessage(error, 'Could not connect to Cloudflare.'));
+  const loadSavedRuns = useCallback(
+    ({ force = false, showSuccess = false } = {}) => {
+      if (!force && hasLoadedRunCacheRef.current) {
+        return;
       }
-    });
-  }, [addActivity, loadRunCache, runBusyAction, selectedRunId]);
+      if (isLoadingRunCacheRef.current) {
+        return;
+      }
+
+      isLoadingRunCacheRef.current = true;
+      void runBusyAction('backend-sync', async (context) => {
+        try {
+          await loadRunCache(selectedRunId || undefined, context);
+          if (showSuccess) {
+            addActivity('cloud-synced', 'success', 'Online save and saved projects are reachable.');
+          }
+        } catch (error) {
+          if (isAbortError(error)) {
+            if (showSuccess) {
+              addActivity('cloud-synced', 'warning', 'Online save check was cancelled.');
+            }
+            return;
+          }
+
+          addActivity(
+            'error',
+            'error',
+            getErrorMessage(error, 'Could not connect to online save.'),
+          );
+        } finally {
+          isLoadingRunCacheRef.current = false;
+        }
+      });
+    },
+    [addActivity, loadRunCache, runBusyAction, selectedRunId],
+  );
+
+  const testConnection = useCallback(() => {
+    loadSavedRuns({ force: true, showSuccess: true });
+  }, [loadSavedRuns]);
+
+  const ensureSavedRunsLoaded = useCallback(() => {
+    loadSavedRuns();
+  }, [loadSavedRuns]);
 
   const selectRun = useCallback(
     (runId: string) => {
@@ -505,18 +521,18 @@ export const useBackendCache = ({
 
       void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
         try {
-          setProgress('Reading selected run...');
+          setProgress('Reading selected project...');
           setSnapshot(await client.getRun(runId, signal));
         } catch (error) {
           if (isAbortError(error)) {
-            addActivity('cloud-synced', 'warning', 'Run loading was cancelled.');
+            addActivity('cloud-synced', 'warning', 'Project loading was cancelled.');
             return;
           }
 
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'Could not load the selected cloud run.'),
+            getErrorMessage(error, 'Could not load the selected project.'),
           );
         }
       });
@@ -530,17 +546,17 @@ export const useBackendCache = ({
 
       void (async () => {
         if (!targetRunId) {
-          addActivity('cloud-synced', 'warning', 'Select a saved cloud run first.');
+          addActivity('cloud-synced', 'warning', 'Select a saved project first.');
           return;
         }
 
         const selectedRun = runs.find((run) => run.id === targetRunId);
         const shouldRestore = await confirmAction({
-          title: 'Restore selected run?',
+          title: 'Restore selected project?',
           description: `This replaces the current browser project and session files with "${
-            selectedRun?.idea ?? 'the selected Cloudflare run'
+            selectedRun?.idea ?? 'the selected saved project'
           }".`,
-          confirmLabel: 'Restore run',
+          confirmLabel: 'Restore project',
         });
 
         if (!shouldRestore) {
@@ -553,14 +569,16 @@ export const useBackendCache = ({
             let firstFileAppendedMs: number | null = null;
 
             if (files.length > 0 && targetRunId !== activeDraftRunId) {
-              setProgress('Saving current run before restoring...');
+              setProgress('Saving current project before restoring...');
               const idea = saveIdea.trim() || getProjectIdeaLabel(project);
               const savedRun = await syncRunToBackend({
                 projectOverride: project,
                 filesOverride: files,
                 signal,
                 setProgress: (message) => {
-                  setProgress(message ? `Saving current run before restoring: ${message}` : null);
+                  setProgress(
+                    message ? `Saving current project before restoring: ${message}` : null,
+                  );
                 },
               });
               markDraftSaved(project, files, idea, savedRun.runId);
@@ -568,14 +586,14 @@ export const useBackendCache = ({
 
             setDraftRestoreStatus('restoring');
             setSelectedRunId(targetRunId);
-            setProgress('Reading selected run metadata...');
+            setProgress('Reading selected project details...');
             const metadataStartedAt = getBackendRestoreNowMs();
             const nextSnapshot = await client.getRun(targetRunId, signal);
             const metadataFetchMs = getBackendRestoreNowMs() - metadataStartedAt;
             setSnapshot(nextSnapshot);
 
             if (!nextSnapshot.project) {
-              addActivity('cloud-synced', 'warning', 'The selected run no longer exists.');
+              addActivity('cloud-synced', 'warning', 'The selected project no longer exists.');
               return;
             }
 
@@ -604,8 +622,8 @@ export const useBackendCache = ({
 
             if (result.cancelled || result.failedFiles.length > 0) {
               const message = result.cancelled
-                ? 'Cloud restore was cancelled. Autosave is paused to protect cloud files.'
-                : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
+                ? 'Project restore was cancelled. Autosave is paused to protect saved files.'
+                : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect saved files.`;
               markDraftRestoreFailed(message, targetRunId);
               setDraftRestoreStatus('failed');
               addActivity(
@@ -622,19 +640,16 @@ export const useBackendCache = ({
             addActivity(
               'cloud-synced',
               'success',
-              `Restored ${result.files.length} file(s) from "${nextSnapshot.idea ?? 'saved run'}".`,
+              `Restored ${result.files.length} file(s) from "${nextSnapshot.idea ?? 'saved project'}".`,
             );
           } catch (error) {
             if (isAbortError(error)) {
               setDraftRestoreStatus('complete');
-              addActivity('cloud-synced', 'warning', 'Cloud restore was cancelled.');
+              addActivity('cloud-synced', 'warning', 'Project restore was cancelled.');
               return;
             }
 
-            const message = getErrorMessage(
-              error,
-              'Could not restore the selected Cloudflare run.',
-            );
+            const message = getErrorMessage(error, 'Could not restore the selected project.');
             markDraftRestoreFailed(message, targetRunId);
             setDraftRestoreStatus('failed');
             addActivity('error', 'error', message);
@@ -673,7 +688,7 @@ export const useBackendCache = ({
       void (async () => {
         const targetRunId = activeDraftRunId || selectedRunId;
         if (!targetRunId) {
-          addActivity('cloud-synced', 'warning', 'Save this run before restoring a point.');
+          addActivity('cloud-synced', 'warning', 'Save this project before restoring a point.');
           return;
         }
 
@@ -748,8 +763,8 @@ export const useBackendCache = ({
 
             if (result.cancelled || result.failedFiles.length > 0) {
               const message = result.cancelled
-                ? 'Restore point load was cancelled. Autosave is paused to protect cloud files.'
-                : `Loaded ${result.files.length}/${nextSnapshot.files.length} file(s) from the restore point; ${result.failedFiles.length} failed. Autosave is paused to protect cloud files.`;
+                ? 'Restore point load was cancelled. Autosave is paused to protect saved files.'
+                : `Loaded ${result.files.length}/${nextSnapshot.files.length} file(s) from the restore point; ${result.failedFiles.length} failed. Autosave is paused to protect saved files.`;
               markDraftRestoreFailed(message, targetRunId);
               setDraftRestoreStatus('failed');
               addActivity(
@@ -806,15 +821,15 @@ export const useBackendCache = ({
     (runId: string) => {
       void (async () => {
         if (!runId) {
-          addActivity('cloud-synced', 'warning', 'Choose a saved cloud run first.');
+          addActivity('cloud-synced', 'warning', 'Choose a saved project first.');
           return;
         }
 
         const selectedRun = runs.find((run) => run.id === runId);
         const shouldDelete = await confirmAction({
-          title: 'Delete saved run?',
-          description: `This deletes "${selectedRun?.idea ?? 'the selected run'}" from D1 and R2.`,
-          confirmLabel: 'Delete run',
+          title: 'Delete saved project?',
+          description: `This permanently deletes "${selectedRun?.idea ?? 'the selected project'}" and its stored files.`,
+          confirmLabel: 'Delete project',
           tone: 'danger',
         });
 
@@ -824,7 +839,7 @@ export const useBackendCache = ({
 
         void runBusyAction('backend-sync', async (context) => {
           try {
-            context.setProgress('Deleting Cloudflare run...');
+            context.setProgress('Deleting saved project...');
             await client.deleteRun(runId, context.signal);
             if (runId === activeDraftRunId) {
               setActiveDraftRun('', project.id);
@@ -837,17 +852,17 @@ export const useBackendCache = ({
               setSelectedRunId('');
               setSnapshot(null);
             }
-            addActivity('cloud-synced', 'warning', 'Deleted the saved Cloudflare run.');
+            addActivity('cloud-synced', 'warning', 'Deleted the saved project.');
           } catch (error) {
             if (isAbortError(error)) {
-              addActivity('cloud-synced', 'warning', 'Run deletion was cancelled.');
+              addActivity('cloud-synced', 'warning', 'Project deletion was cancelled.');
               return;
             }
 
             addActivity(
               'error',
               'error',
-              getErrorMessage(error, 'Could not delete the Cloudflare run.'),
+              getErrorMessage(error, 'Could not delete the saved project.'),
             );
           }
         });
@@ -872,10 +887,10 @@ export const useBackendCache = ({
   const deleteAllCloudData = useCallback(() => {
     void (async () => {
       const shouldDelete = await confirmAction({
-        title: 'Delete all Cloudflare data?',
+        title: 'Delete all saved work?',
         description:
-          'This deletes every saved run, D1 project metadata, file metadata, event log, and R2 file object. Local browser data is not changed.',
-        confirmLabel: 'Delete all cloud data',
+          'This deletes every saved project, file, and restore point stored online. Local browser data is not changed.',
+        confirmLabel: 'Delete all saved work',
         tone: 'danger',
       });
 
@@ -885,7 +900,7 @@ export const useBackendCache = ({
 
       void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
         try {
-          setProgress('Deleting all Cloudflare data...');
+          setProgress('Deleting all saved work...');
           await client.deleteProject(signal);
           setRuns([]);
           setSelectedRunId('');
@@ -893,18 +908,14 @@ export const useBackendCache = ({
           setRunRevisions([]);
           setActiveDraftRun('', project.id);
           markCurrentStateDeleted(project, files, resolvedSaveIdea);
-          addActivity('cloud-synced', 'warning', 'Deleted all Cloudflare data.');
+          addActivity('cloud-synced', 'warning', 'Deleted all saved work.');
         } catch (error) {
           if (isAbortError(error)) {
-            addActivity('cloud-synced', 'warning', 'Cloud deletion was cancelled.');
+            addActivity('cloud-synced', 'warning', 'Saved work deletion was cancelled.');
             return;
           }
 
-          addActivity(
-            'error',
-            'error',
-            getErrorMessage(error, 'Could not delete Cloudflare data.'),
-          );
+          addActivity('error', 'error', getErrorMessage(error, 'Could not delete saved work.'));
         }
       });
     })();
@@ -921,8 +932,11 @@ export const useBackendCache = ({
   ]);
 
   const generateProjectDraft = useCallback(
-    (initialPrompt: string, signal?: AbortSignal): Promise<ProjectDraft> =>
-      client.generateProjectDraft(initialPrompt, signal),
+    (
+      initialPrompt: string,
+      referenceImages: BriefReferenceImage[] = [],
+      signal?: AbortSignal,
+    ): Promise<ProjectDraft> => client.generateProjectDraft(initialPrompt, referenceImages, signal),
     [client],
   );
 
@@ -979,11 +993,11 @@ export const useBackendCache = ({
     canUseOpenAIProxy,
     setSaveIdea,
     saveDraftNow,
-    saveManualCheckpoint,
     retryCloudSave: requestAutosaveRetry,
     refreshRunHistory,
     restoreRevision,
     startFreshDraft,
+    ensureSavedRunsLoaded,
     testConnection,
     selectRun,
     restoreSelectedRun,

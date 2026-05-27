@@ -12,6 +12,7 @@ import { StepAdvanceButton, StepSection } from './ui/StepSection';
 
 import type {
   BrowserSupportResult,
+  BriefReferenceImage,
   BusyAction,
   ManagedFile,
   Project,
@@ -38,7 +39,7 @@ type HomeWorkflowViewProps = {
   imageGenerationHint: string;
   onStepSelected: (stepId: WorkflowStepId) => void;
   onOpenCloudSaves: () => void;
-  onFillProductBrief: (initialPrompt: string) => void;
+  onFillProductBrief: (initialPrompt: string, referenceImages: BriefReferenceImage[]) => void;
   onAnalyzeListingWithAI: () => void;
   onUpdateSettings: (settings: ProjectSettings) => void;
   onUpdateMarketingSettings: (settings: MarketingSettings) => void;
@@ -51,8 +52,6 @@ type HomeWorkflowViewProps = {
   onGenerateSloganPreviews: () => void;
   onGenerateMaskSheets: () => void;
   onGenerateChildrenScenePreviews: () => void;
-  onApproveAllFiles: (fileIds: string[]) => void;
-  onApproveFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
   onCopyPrompt: (message: string) => void;
   onExportArchive: () => void;
@@ -87,8 +86,6 @@ export const HomeWorkflowView = ({
   onGenerateSloganPreviews,
   onGenerateMaskSheets,
   onGenerateChildrenScenePreviews,
-  onApproveAllFiles,
-  onApproveFile,
   onDeleteFile,
   onCopyPrompt,
   onExportArchive,
@@ -147,8 +144,8 @@ export const HomeWorkflowView = ({
                   tone="info"
                   className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <span>Configure the Cloud OpenAI proxy before generating mask images.</span>
-                  <Button onClick={onOpenCloudSaves}>Open Cloud</Button>
+                  <span>Connect online AI before generating mask images.</span>
+                  <Button onClick={onOpenCloudSaves}>Open saved work</Button>
                 </Alert>
               ) : null}
               <PromptManager
@@ -167,8 +164,6 @@ export const HomeWorkflowView = ({
                 onGenerateMissingImages={onGenerateMissingImages}
                 onGenerateColoringPage={onGenerateColoringPage}
                 onGenerateMissingColoringPages={onGenerateMissingColoringPages}
-                onApproveAll={onApproveAllFiles}
-                onApprove={onApproveFile}
                 onDelete={onDeleteFile}
                 onCopy={onCopyPrompt}
               />

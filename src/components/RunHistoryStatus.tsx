@@ -1,22 +1,18 @@
-import { History, Save } from 'lucide-react';
-import { useState } from 'react';
+import { History } from 'lucide-react';
 
 import { formatCloudSaveDateTime } from './cloud-saves/cloudSaveUtils';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
-import { Input } from './ui/Input';
 
-import type { BackendAutosaveState, BusyAction, RunRevisionSummary } from '../types';
+import type { BackendAutosaveState, RunRevisionSummary } from '../types';
 
 type RunHistoryStatusProps = {
   autosaveState: BackendAutosaveState;
   revisions: RunRevisionSummary[];
   historyBusy: boolean;
   historyError: string | null;
-  busyAction: BusyAction;
   onOpenHistory: () => void;
-  onSaveCheckpoint: (label: string) => void;
   onRetryCloudSave: () => void;
 };
 
@@ -61,16 +57,10 @@ export const RunHistoryStatus = ({
   revisions,
   historyBusy,
   historyError,
-  busyAction,
   onOpenHistory,
-  onSaveCheckpoint,
   onRetryCloudSave,
 }: RunHistoryStatusProps) => {
-  const [label, setLabel] = useState('');
   const latestRevision = revisions[0];
-  const canSave = busyAction === null;
-  const canShowManualCheckpoint =
-    autosaveState.status !== 'saving' && autosaveState.status !== 'restoring';
 
   return (
     <Card>
@@ -94,13 +84,13 @@ export const RunHistoryStatus = ({
             </p>
           ) : (
             <p className="mt-1 text-xs text-ink-muted">
-              Cloud autosave creates points you can restore.
+              Online autosave creates points you can restore.
             </p>
           )}
         </div>
         {autosaveState.status === 'error' ? (
           <div className="rounded-control border border-feedback-danger-border bg-feedback-danger-bg px-3 py-2 text-xs text-feedback-danger-fg">
-            <p className="font-semibold">Cloud save failed. Files are still in this tab.</p>
+            <p className="font-semibold">Online save failed. Files are still in this tab.</p>
             <p className="mt-1">
               {autosaveState.lastError ?? 'The app will retry automatically.'}
               {autosaveState.nextRetryAt
@@ -110,43 +100,14 @@ export const RunHistoryStatus = ({
           </div>
         ) : null}
         {historyError ? <p className="text-xs text-feedback-danger-fg">{historyError}</p> : null}
-        {canShowManualCheckpoint ? (
-          <details className="rounded-control border border-surface-divider bg-surface-muted">
-            <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-ink-strong">
-              Save named restore point
-            </summary>
-            <div className="space-y-2 border-t border-surface-divider p-3">
-              <Input
-                label="Restore point name"
-                name="checkpointLabel"
-                value={label}
-                placeholder="Before redoing slogans"
-                helperText="Use this before regenerating or replacing work."
-                onChange={(event) => setLabel(event.target.value)}
-              />
-              <Button
-                className="w-full"
-                disabled={!canSave || historyBusy}
-                variant="primary"
-                onClick={() => {
-                  onSaveCheckpoint(label.trim() || 'Named restore point');
-                  setLabel('');
-                }}
-              >
-                <Save aria-hidden="true" className="mr-2" size={17} />
-                Save restore point
-              </Button>
-            </div>
-          </details>
-        ) : null}
         <div className="grid gap-2">
           <Button disabled={historyBusy} onClick={onOpenHistory}>
             <History aria-hidden="true" className="mr-2" size={17} />
             View restore points
           </Button>
           {autosaveState.status === 'error' ? (
-            <Button disabled={!canSave} variant="danger" onClick={onRetryCloudSave}>
-              Retry cloud save
+            <Button variant="danger" onClick={onRetryCloudSave}>
+              Retry online save
             </Button>
           ) : null}
         </div>

@@ -25,7 +25,6 @@ type BackendDataPanelProps = {
   suggestedIdea: string;
   files: ManagedFile[];
   busyAction: BusyAction;
-  onSaveIdeaChange: (idea: string) => void;
   onRunSelected: (runId: string) => void;
   onRestoreRun: (runId: string) => void;
   onTestConnection: () => void;
@@ -44,7 +43,6 @@ export const BackendDataPanel = ({
   suggestedIdea,
   files,
   busyAction,
-  onSaveIdeaChange,
   onRunSelected,
   onRestoreRun,
   onTestConnection,
@@ -72,7 +70,6 @@ export const BackendDataPanel = ({
         autosaveState={autosaveState}
         maxFileBytes={maxFileBytes}
         oversizedFiles={oversizedFiles}
-        onSaveIdeaChange={onSaveIdeaChange}
         onTestConnection={onTestConnection}
       />
       <SavedRunsTable

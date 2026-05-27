@@ -41,6 +41,8 @@ export const isImageFile = (file: File | ManagedFile): boolean => {
   return type.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(name);
 };
 
+export const isUsableFile = (file: ManagedFile): boolean => file.reviewState !== 'rejected';
+
 export const formatBytes = (bytes: number): string => {
   if (bytes === 0) {
     return '0 B';
@@ -157,26 +159,60 @@ export const createPromptItems = (
     negativeRequirements: PROMPT_NEGATIVE_REQUIREMENTS,
   }));
 
+const getFileAddedAtTime = (file: ManagedFile): number => {
+  const timestamp = Date.parse(file.addedAt);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const isNewerFileCandidate = (
+  file: ManagedFile,
+  index: number,
+  current: { file: ManagedFile; index: number } | undefined,
+): boolean => {
+  if (!current) {
+    return true;
+  }
+
+  const fileTime = getFileAddedAtTime(file);
+  const currentTime = getFileAddedAtTime(current.file);
+
+  return fileTime > currentTime || (fileTime === currentTime && index > current.index);
+};
+
+const sortFilesNewestFirst = (files: ManagedFile[]): ManagedFile[] =>
+  files
+    .map((file, index) => ({ file, index }))
+    .sort((first, second) => {
+      const timeDifference = getFileAddedAtTime(second.file) - getFileAddedAtTime(first.file);
+
+      return timeDifference !== 0 ? timeDifference : second.index - first.index;
+    })
+    .map(({ file }) => file);
+
 export const getFileForSubject = (
   files: ManagedFile[],
   subjectId: string,
-  state: ManagedFile['reviewState'] = 'approved',
+  state?: ManagedFile['reviewState'],
   assetVariant: FileAssetVariant = 'color',
 ): ManagedFile | undefined => {
-  for (let index = files.length - 1; index >= 0; index -= 1) {
+  let newestMatch: { file: ManagedFile; index: number } | undefined;
+
+  for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     if (
       file?.kind === 'uploaded' &&
       isImageFile(file) &&
       file.mappedSubjectId === subjectId &&
-      file.reviewState === state &&
+      (state ? file.reviewState === state : isUsableFile(file)) &&
       file.assetVariant === assetVariant
     ) {
-      return file;
+      if (isNewerFileCandidate(file, index, newestMatch)) {
+        newestMatch = { file, index };
+      }
     }
   }
 
-  return undefined;
+  return newestMatch?.file;
 };
 
 export const isColoringPageCurrentForSource = (
@@ -190,22 +226,26 @@ export const getCurrentColoringPageForSubject = (
   files: ManagedFile[],
   subjectId: string,
   sourceFile: ManagedFile,
-  state: ManagedFile['reviewState'] = 'approved',
+  state?: ManagedFile['reviewState'],
 ): ManagedFile | undefined => {
-  for (let index = files.length - 1; index >= 0; index -= 1) {
+  let newestMatch: { file: ManagedFile; index: number } | undefined;
+
+  for (let index = 0; index < files.length; index += 1) {
     const file = files[index];
     if (
       file?.kind === 'uploaded' &&
       isImageFile(file) &&
       file.mappedSubjectId === subjectId &&
-      file.reviewState === state &&
+      (state ? file.reviewState === state : isUsableFile(file)) &&
       isColoringPageCurrentForSource(file, sourceFile)
     ) {
-      return file;
+      if (isNewerFileCandidate(file, index, newestMatch)) {
+        newestMatch = { file, index };
+      }
     }
   }
 
-  return undefined;
+  return newestMatch?.file;
 };
 
 export const groupFilesForExport = (
@@ -215,14 +255,14 @@ export const groupFilesForExport = (
   const validSubjectIds = new Set(subjects.map((subject) => subject.id));
   const usedColorSubjectIds = new Set<string>();
   const usedColoringPageSubjectIds = new Set<string>();
-  const newestFiles = [...files].reverse();
+  const newestFiles = sortFilesNewestFirst(files);
 
   const approvedMapped = newestFiles.filter((file) => {
     if (
       file.kind !== 'uploaded' ||
       !isImageFile(file) ||
       file.assetVariant !== 'color' ||
-      file.reviewState !== 'approved' ||
+      !isUsableFile(file) ||
       !file.mappedSubjectId ||
       !validSubjectIds.has(file.mappedSubjectId) ||
       usedColorSubjectIds.has(file.mappedSubjectId)
@@ -248,7 +288,7 @@ export const groupFilesForExport = (
       file.kind !== 'uploaded' ||
       !isImageFile(file) ||
       file.assetVariant !== 'coloring-page' ||
-      file.reviewState !== 'approved' ||
+      !isUsableFile(file) ||
       !file.mappedSubjectId ||
       !validSubjectIds.has(file.mappedSubjectId) ||
       !approvedColorFile ||

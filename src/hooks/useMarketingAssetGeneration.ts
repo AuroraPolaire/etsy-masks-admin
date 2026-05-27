@@ -7,10 +7,12 @@ import {
   getApprovedMarketingSourceMasks,
   getChildrenSceneRecipe,
   getMarketingAssetFiles,
+  getMaskSheetPageSlices,
   getSelectedChildrenSceneMasks,
-  MASK_SHEET_PAGE_SIZE,
   resolveMarketingPreviewSettings,
 } from '../lib/marketingAssets';
+import { createScriptedMaskSheetFile } from '../lib/scriptedMaskSheet';
+import { createScriptedSloganPosterFile } from '../lib/scriptedSloganPoster';
 
 import type {
   AddActivity,
@@ -65,7 +67,7 @@ const createGeneratedMarketingFile = async ({
     reviewState,
     explicitlyConfirmed: reviewState === 'approved',
     marketingAsset: metadata,
-    reviewNotes: 'Marketing asset generated from approved masks.',
+    reviewNotes: 'Marketing asset generated from ready masks.',
   };
 };
 
@@ -147,12 +149,6 @@ export const useMarketingAssetGeneration = ({
 
   const generateSloganPreviews = useCallback(
     async (context?: BusyActionContext) => {
-      const sourceMasks = getApprovedMarketingSourceMasks(project, filesRef.current);
-      if (sourceMasks.length === 0) {
-        addActivity('marketing-generated', 'warning', 'Approve at least one color mask first.');
-        return;
-      }
-
       try {
         const settings = resolveMarketingPreviewSettings(project);
         const reservedNames = getReservedNames(filesRef.current);
@@ -171,25 +167,23 @@ export const useMarketingAssetGeneration = ({
             id: `slogan-${optionIndex + 1}`,
             optionIndex,
             stage: 'final',
-            maskCount: sourceMasks.length,
+            maskCount: 0,
             ...(customPrompt ? { customPrompt } : {}),
           };
 
-          context?.setProgress(`Generating AI slogan suggestion ${offset + 1}/3...`);
-          const file = await generateMarketingSceneFile(
+          context?.setProgress(`Creating slogan variation ${offset + 1}/3...`);
+          const file = await createScriptedSloganPosterFile({
             settings,
             project,
-            sourceMasks,
             recipe,
-            context?.signal,
-          );
+          });
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
           const managedFile = await createAiMarketingFile({
             file: uniqueFile,
             project,
             type: 'slogan-poster',
             recipe,
-            sourceMasks,
+            sourceMasks: [],
             settings,
             reviewState: 'approved',
           });
@@ -216,53 +210,47 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendVisibleMarketingFile, filesRef, project],
   );
 
   const generateMaskSheets = useCallback(
     async (context?: BusyActionContext) => {
       const sourceMasks = getApprovedMarketingSourceMasks(project, filesRef.current);
       if (sourceMasks.length === 0) {
-        addActivity('marketing-generated', 'warning', 'Approve at least one color mask first.');
+        addActivity('marketing-generated', 'warning', 'Generate at least one color mask first.');
         return;
       }
 
       try {
         const settings = resolveMarketingPreviewSettings(project);
-        const pageCount = Math.ceil(sourceMasks.length / MASK_SHEET_PAGE_SIZE);
+        const maskSheetPages = getMaskSheetPageSlices(sourceMasks);
+        const pageCount = maskSheetPages.length;
         const reservedNames = getReservedNames(filesRef.current);
         const optionStart = getExistingAssetCount(filesRef.current, 'mask-sheet');
-        const customPrompt = getAdditionalPrompt(project);
         let generatedCount = 0;
 
-        for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+        for (const [pageIndex, pageMasks] of maskSheetPages.entries()) {
           if (context?.signal.aborted) {
             throw new DOMException('Marketing generation cancelled', 'AbortError');
           }
 
-          const pageMasks = sourceMasks.slice(
-            pageIndex * MASK_SHEET_PAGE_SIZE,
-            (pageIndex + 1) * MASK_SHEET_PAGE_SIZE,
-          );
           const recipe: MarketingGenerationRecipe = {
             type: 'mask-sheet',
             id: `mask-sheet-${optionStart + pageIndex + 1}`,
             optionIndex: optionStart + pageIndex,
             stage: 'final',
             maskCount: pageMasks.length,
-            ...(customPrompt ? { customPrompt } : {}),
             pageIndex,
             pageCount,
           };
 
-          context?.setProgress(`Generating AI mask sheet ${pageIndex + 1}/${pageCount}...`);
-          const file = await generateMarketingSceneFile(
+          context?.setProgress(`Creating mask sheet ${pageIndex + 1}/${pageCount}...`);
+          const file = await createScriptedMaskSheetFile({
             settings,
             project,
-            pageMasks,
             recipe,
-            context?.signal,
-          );
+            sourceMasks: pageMasks,
+          });
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
           const managedFile = await createAiMarketingFile({
             file: uniqueFile,
@@ -296,7 +284,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendVisibleMarketingFile, filesRef, project],
   );
 
   const generateChildrenScenePreviews = useCallback(
@@ -306,7 +294,7 @@ export const useMarketingAssetGeneration = ({
         getApprovedMarketingSourceMasks(project, filesRef.current),
       );
       if (sourceMasks.length === 0) {
-        addActivity('marketing-generated', 'warning', 'Approve at least one color mask first.');
+        addActivity('marketing-generated', 'warning', 'Generate at least one color mask first.');
         return;
       }
 

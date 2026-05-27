@@ -1,16 +1,19 @@
-import { CheckCheck, FilePenLine, X } from 'lucide-react';
+import { FilePenLine, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PhotoProvider } from 'react-photo-view';
 
-import { PromptCard } from './prompts/PromptCard';
 import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/files';
+import { PromptCard } from './prompts/PromptCard';
 import { AIButton } from './ui/AIButton';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { Input } from './ui/Input';
+import { Surface } from './ui/Surface';
 
 import type { SubjectItem, ManagedFile, PromptItem } from '../types';
+
+type PromptReviewFilter = 'all' | 'needs-work' | 'complete';
 
 type PromptManagerProps = {
   subjects: SubjectItem[];
@@ -29,11 +32,15 @@ type PromptManagerProps = {
   onGenerateMissingImages?: () => void;
   onGenerateColoringPage: (subjectId: string) => void;
   onGenerateMissingColoringPages?: () => void;
-  onApproveAll: (fileIds: string[]) => void;
-  onApprove: (fileId: string) => void;
   onDelete: (fileId: string) => void;
   onCopy: (label: string) => void;
 };
+
+const reviewFilters: Array<{ id: PromptReviewFilter; label: string }> = [
+  { id: 'needs-work', label: 'Needs attention' },
+  { id: 'all', label: 'All topics' },
+  { id: 'complete', label: 'Complete' },
+];
 
 const PhotoPreviewControls = ({ onClose }: { onClose: () => void }) => {
   useEffect(() => {
@@ -77,26 +84,42 @@ export const PromptManager = ({
   onGenerateMissingImages,
   onGenerateColoringPage,
   onGenerateMissingColoringPages,
-  onApproveAll,
-  onApprove,
   onDelete,
   onCopy,
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
-  const filesReadyForApproval = prompts
-    .flatMap((prompt) => {
-      const colorFile = getFileForSubject(files, prompt.subjectId, 'pending');
-      const approvedColorFile = getFileForSubject(files, prompt.subjectId);
-      const coloringPageFile = approvedColorFile
-        ? getCurrentColoringPageForSubject(files, prompt.subjectId, approvedColorFile, 'pending')
-        : undefined;
-
-      return [colorFile, coloringPageFile];
-    })
-    .filter((file): file is ManagedFile => Boolean(file));
-  const fileIdsReadyForApproval = [...new Set(filesReadyForApproval.map((file) => file.id))];
+  const [reviewFilter, setReviewFilter] = useState<PromptReviewFilter>('all');
+  const [expandedCompleteSubjectIds, setExpandedCompleteSubjectIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const isGeneratingImages =
     generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
+  const promptStates = prompts.map((prompt) => {
+    const colorFile = getFileForSubject(files, prompt.subjectId);
+    const coloringPageFile = colorFile
+      ? getCurrentColoringPageForSubject(files, prompt.subjectId, colorFile)
+      : undefined;
+
+    return {
+      prompt,
+      colorFile,
+      coloringPageFile,
+      complete: Boolean(colorFile && coloringPageFile),
+    };
+  });
+  const completeCount = promptStates.filter((item) => item.complete).length;
+  const needsWorkCount = promptStates.length - completeCount;
+  const visiblePromptStates = promptStates.filter((item) => {
+    if (reviewFilter === 'complete') {
+      return item.complete;
+    }
+
+    if (reviewFilter === 'needs-work') {
+      return !item.complete;
+    }
+
+    return true;
+  });
 
   const addSubject = () => {
     const trimmedName = subjectName.trim();
@@ -134,13 +157,6 @@ export const PromptManager = ({
                     {isGeneratingImages ? 'Generating' : 'Generate missing images'}
                   </AIButton>
                   <Button
-                    disabled={fileIdsReadyForApproval.length === 0}
-                    onClick={() => onApproveAll(fileIdsReadyForApproval)}
-                  >
-                    <CheckCheck aria-hidden="true" className="mr-2" size={17} />
-                    Approve all
-                  </Button>
-                  <Button
                     disabled={
                       !onGenerateMissingColoringPages ||
                       !canGenerateImages ||
@@ -155,7 +171,7 @@ export const PromptManager = ({
                 </div>
                 <p className="max-w-sm text-sm text-ink-muted lg:text-right">
                   {imageGenerationHint ??
-                    `${missingImageCount} topic${missingImageCount === 1 ? '' : 's'} still need an approved image.`}
+                    `${missingImageCount} topic${missingImageCount === 1 ? '' : 's'} still need a color mask.`}
                 </p>
               </div>
             ) : null}
@@ -191,25 +207,84 @@ export const PromptManager = ({
           <PhotoProvider
             toolbarRender={({ onClose }) => <PhotoPreviewControls onClose={onClose} />}
           >
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-ink-muted">
+                {needsWorkCount === 0
+                  ? 'All topics are complete.'
+                  : `${needsWorkCount} topic${needsWorkCount === 1 ? '' : 's'} need attention.`}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {reviewFilters.map((filter) => (
+                  <Button
+                    key={filter.id}
+                    variant={reviewFilter === filter.id ? 'primary' : 'secondary'}
+                    onClick={() => setReviewFilter(filter.id)}
+                  >
+                    {filter.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="grid gap-4">
-              {prompts.map((prompt) => (
-                <PromptCard
-                  key={prompt.subjectId}
-                  prompt={prompt}
-                  subjects={subjects}
-                  files={files}
-                  canGenerateImages={canGenerateImages}
-                  generatingSubjectIds={generatingSubjectIds}
-                  generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
-                  allowTopicEditing={allowTopicEditing}
-                  onRemoveSubject={onRemoveSubject}
-                  onGenerateImage={onGenerateImage}
-                  onGenerateColoringPage={onGenerateColoringPage}
-                  onApprove={onApprove}
-                  onDelete={onDelete}
-                  onCopy={onCopy}
-                />
-              ))}
+              {visiblePromptStates.length === 0 ? (
+                <EmptyState>
+                  {reviewFilter === 'needs-work'
+                    ? 'No topics need attention.'
+                    : 'No topics match this filter.'}
+                </EmptyState>
+              ) : (
+                visiblePromptStates.map(({ prompt, colorFile, coloringPageFile, complete }) => {
+                  const isExpanded = expandedCompleteSubjectIds.has(prompt.subjectId);
+                  if (complete && !isExpanded) {
+                    return (
+                      <Surface as="article" key={prompt.subjectId} variant="muted" className="p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-bold text-ink-strong">
+                                {prompt.subjectName}
+                              </h3>
+                              <span className="rounded-badge border border-feedback-success-border bg-feedback-success-bg px-2.5 py-1 text-xs font-semibold text-feedback-success-fg">
+                                Complete
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate font-mono text-sm text-ink-muted">
+                              {colorFile?.name} + {coloringPageFile?.name}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() =>
+                              setExpandedCompleteSubjectIds((currentIds) =>
+                                new Set(currentIds).add(prompt.subjectId),
+                              )
+                            }
+                          >
+                            Open
+                          </Button>
+                        </div>
+                      </Surface>
+                    );
+                  }
+
+                  return (
+                    <PromptCard
+                      key={prompt.subjectId}
+                      prompt={prompt}
+                      subjects={subjects}
+                      files={files}
+                      canGenerateImages={canGenerateImages}
+                      generatingSubjectIds={generatingSubjectIds}
+                      generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+                      allowTopicEditing={allowTopicEditing}
+                      onRemoveSubject={onRemoveSubject}
+                      onGenerateImage={onGenerateImage}
+                      onGenerateColoringPage={onGenerateColoringPage}
+                      onDelete={onDelete}
+                      onCopy={onCopy}
+                    />
+                  );
+                })
+              )}
             </div>
           </PhotoProvider>
         )}

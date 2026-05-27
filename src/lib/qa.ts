@@ -112,19 +112,19 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'approved-images',
       'critical',
       maskCount > 0 && everySubjectHasApprovedImage,
-      'Every topic has an approved image',
+      'Every topic has a color mask',
       maskCount === 0
-        ? 'Add mask topics before approving images.'
-        : `${approvedImages.length} of ${maskCount} topics have an approved image.`,
+        ? 'Add mask topics before generating images.'
+        : `${approvedImages.length} of ${maskCount} topics have a color mask.`,
     ),
     createCheck(
       'approved-coloring-pages',
       'critical',
       maskCount > 0 && everySubjectHasColoringPage,
-      'Every approved mask has a coloring page',
+      'Every color mask has a coloring page',
       maskCount === 0
         ? 'Add topics before preparing coloring pages.'
-        : `${approvedColoringPageSubjectIds.size} of ${maskCount} topics have an approved coloring page.`,
+        : `${approvedColoringPageSubjectIds.size} of ${maskCount} topics have a coloring page.`,
     ),
     createCheck(
       'nested-etsy-size',
@@ -139,10 +139,10 @@ export const runQA = (project: Project, files: ManagedFile[]): QAResult => {
       'mapping-assignments',
       'critical',
       !duplicateApprovedMappings && !hasInvalidApprovedMapping,
-      'Approved images are assigned correctly',
+      'Images are assigned correctly',
       duplicateApprovedMappings || hasInvalidApprovedMapping
         ? 'Fix duplicate or missing topic assignments.'
-        : 'Each approved image is assigned to one topic.',
+        : 'Each image is assigned to one topic.',
     ),
     createCheck(
       'image-min-size',

@@ -15,7 +15,6 @@ type AppAsideProps = {
   historyError: string | null;
   onCancelBusyAction: () => void;
   onOpenHistory: () => void;
-  onSaveCheckpoint: (label: string) => void;
   onRetryCloudSave: () => void;
 };
 
@@ -30,7 +29,6 @@ export const AppAside = ({
   historyError,
   onCancelBusyAction,
   onOpenHistory,
-  onSaveCheckpoint,
   onRetryCloudSave,
 }: AppAsideProps) => (
   <aside
@@ -49,9 +47,7 @@ export const AppAside = ({
       revisions={runRevisions}
       historyBusy={historyBusy}
       historyError={historyError}
-      busyAction={busyAction}
       onOpenHistory={onOpenHistory}
-      onSaveCheckpoint={onSaveCheckpoint}
       onRetryCloudSave={onRetryCloudSave}
     />
   </aside>

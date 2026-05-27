@@ -6,6 +6,7 @@ import {
   getApprovedMarketingSourceMasks,
   getFinalMarketingAssetFiles,
   getMaskSheetPageCount,
+  getMaskSheetPageSlices,
   normalizeMarketingImageSettings,
   resolveMarketingPreviewSettings,
 } from '../marketingAssets';
@@ -159,6 +160,13 @@ describe('marketing asset helpers', () => {
     expect(getMaskSheetPageCount(16)).toBe(1);
     expect(getMaskSheetPageCount(17)).toBe(2);
     expect(getMaskSheetPageCount(33)).toBe(3);
+    expect(getMaskSheetPageCount(49)).toBe(3);
+  });
+
+  it('splits mask sheets into at most three balanced pages', () => {
+    const masks = Array.from({ length: 49 }, (_, index) => `mask-${index + 1}`);
+
+    expect(getMaskSheetPageSlices(masks).map((page) => page.length)).toEqual([17, 17, 15]);
   });
 
   it('returns only approved final marketing files for archive export', () => {

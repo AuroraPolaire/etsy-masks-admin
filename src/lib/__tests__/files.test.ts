@@ -128,8 +128,12 @@ describe('file helpers', () => {
 
   it('treats duplicate approved subject mappings as unused after the newest file', () => {
     const files = [
-      makeFile('first', 'lion-a.png', 'approved', 'lion'),
-      makeFile('second', 'lion-b.png', 'approved', 'lion'),
+      makeFile('first', 'lion-a.png', 'approved', 'lion', {
+        addedAt: '2026-05-27T10:00:00.000Z',
+      }),
+      makeFile('second', 'lion-b.png', 'approved', 'lion', {
+        addedAt: '2026-05-27T10:01:00.000Z',
+      }),
     ];
 
     const groups = groupFilesForExport(files, subjects);
@@ -137,5 +141,36 @@ describe('file helpers', () => {
     expect(groups.approvedMapped.map((file) => file.id)).toEqual(['second']);
     expect(groups.unused.map((file) => file.id)).toEqual(['first']);
     expect(getFileForSubject(files, 'lion')?.id).toBe('second');
+  });
+
+  it('uses addedAt to pick the latest mask variant even when files are not sorted', () => {
+    const newestColorFile = makeFile('new-color', 'lion-new.png', 'approved', 'lion', {
+      addedAt: '2026-05-27T10:02:00.000Z',
+    });
+    const files = [
+      newestColorFile,
+      makeFile('old-color', 'lion-old.png', 'approved', 'lion', {
+        addedAt: '2026-05-27T10:00:00.000Z',
+      }),
+      makeFile('stale-coloring', 'lion-coloring-page.png', 'approved', 'lion', {
+        addedAt: '2026-05-27T10:01:00.000Z',
+        assetVariant: 'coloring-page',
+        sourceFileId: 'old-color',
+      }),
+      makeFile('current-coloring', 'lion-coloring-page-2.png', 'approved', 'lion', {
+        addedAt: '2026-05-27T10:03:00.000Z',
+        assetVariant: 'coloring-page',
+        sourceFileId: 'new-color',
+      }),
+    ];
+
+    const groups = groupFilesForExport(files, subjects);
+
+    expect(getFileForSubject(files, 'lion')?.id).toBe('new-color');
+    expect(getCurrentColoringPageForSubject(files, 'lion', newestColorFile)?.id).toBe(
+      'current-coloring',
+    );
+    expect(groups.approvedMapped.map((file) => file.id)).toEqual(['new-color']);
+    expect(groups.approvedColoringPages.map((file) => file.id)).toEqual(['current-coloring']);
   });
 });

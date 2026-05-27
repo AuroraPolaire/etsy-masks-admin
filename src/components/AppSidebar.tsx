@@ -19,7 +19,7 @@ type SidebarItem = {
 
 const sidebarItems: SidebarItem[] = [
   { id: 'home', label: 'Home', icon: Home },
-  { id: 'backend', label: 'Cloud', icon: Cloud },
+  { id: 'backend', label: 'Saved work', icon: Cloud },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

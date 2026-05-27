@@ -19,6 +19,7 @@ const modelOptions = [
 
 const previewSizeOptions = [
   { value: '1024x1024', label: '1024 x 1024' },
+  { value: '1536x1536', label: '1536 x 1536' },
   { value: '1536x1024', label: '1536 x 1024' },
   { value: '1024x1536', label: '1024 x 1536' },
   { value: 'auto', label: 'Auto' },
@@ -86,8 +87,8 @@ export const MarketingSettingsPanel = ({
         <div>
           <h2 className="text-lg font-bold text-ink-strong">Marketing asset generation</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Configure cost-controlled AI settings for listing graphics. Generated marketing
-            suggestions are saved as usable assets immediately.
+            Keep listing graphics on recommended settings, or open advanced controls for exact AI
+            image settings.
           </p>
         </div>
       </CardHeader>
@@ -107,8 +108,8 @@ export const MarketingSettingsPanel = ({
               name="marketingPreviewMode"
               value={settings.preview.mode}
               options={[
-                { value: 'inherit-mask', label: 'Mask model with 1024 marketing size' },
-                { value: 'custom', label: 'Custom marketing settings' },
+                { value: 'inherit-mask', label: 'Recommended listing graphics' },
+                { value: 'custom', label: 'Advanced marketing image settings' },
               ]}
               onChange={(event) =>
                 update({

@@ -33,15 +33,15 @@ export const ArchiveActions = ({
       </CardHeader>
       <CardBody className="space-y-3">
         {!canExportFinalFiles ? (
-          <Alert tone="info">Approve at least one topic image before exporting the ZIP.</Alert>
+          <Alert tone="info">Generate at least one topic image before exporting the ZIP.</Alert>
         ) : null}
         <Surface variant="muted" className="p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink-strong">ZIP package</p>
               <p className="mt-1 text-xs text-ink-muted">
-                Exports available approved color mask PNGs, matching coloring-page PNGs, and one
-                listing details PDF.
+                Exports available color mask PNGs, matching coloring-page PNGs, and one listing
+                details PDF.
               </p>
             </div>
             <FileText aria-hidden="true" className="shrink-0 text-ink-muted" size={20} />

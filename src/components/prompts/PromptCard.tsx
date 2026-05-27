@@ -1,8 +1,13 @@
-import { Check, Copy, FileText, RotateCw, Trash2 } from 'lucide-react';
+import { Copy, FileText, RotateCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { copyText } from '../../lib/clipboard';
-import { getCurrentColoringPageForSubject, getFileForSubject, isImageFile } from '../../lib/files';
+import {
+  getCurrentColoringPageForSubject,
+  getFileForSubject,
+  isImageFile,
+  isUsableFile,
+} from '../../lib/files';
 import { AIButton } from '../ui/AIButton';
 import { Alert } from '../ui/Alert';
 import { Badge } from '../ui/Badge';
@@ -13,6 +18,7 @@ import { Surface } from '../ui/Surface';
 import { Textarea } from '../ui/Textarea';
 
 import type { ManagedFile, PromptItem, SubjectItem } from '../../types';
+import type { BadgeTone } from '../ui/Badge';
 
 type PromptCardProps = {
   prompt: PromptItem;
@@ -25,21 +31,19 @@ type PromptCardProps = {
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string, promptOverride?: string) => void;
   onGenerateColoringPage: (subjectId: string) => void;
-  onApprove: (fileId: string) => void;
   onDelete: (fileId: string) => void;
   onCopy: (label: string) => void;
 };
 
-const getDraftTone = (file: ManagedFile | undefined) =>
-  file?.reviewState === 'approved' ? ('success' as const) : ('warning' as const);
-
-const getDraftLabel = (file: ManagedFile | undefined, emptyLabel: string) => {
-  if (!file) {
-    return emptyLabel;
-  }
-
-  return file.reviewState === 'approved' ? 'Approved' : 'Draft';
+type ReadyStatus = {
+  label: string;
+  tone: BadgeTone;
 };
+
+const getReadyTone = (file: ManagedFile | undefined): BadgeTone => (file ? 'success' : 'neutral');
+
+const getReadyLabel = (file: ManagedFile | undefined, readyLabel: string, emptyLabel: string) =>
+  file ? readyLabel : emptyLabel;
 
 export const PromptCard = ({
   prompt,
@@ -52,7 +56,6 @@ export const PromptCard = ({
   onRemoveSubject,
   onGenerateImage,
   onGenerateColoringPage,
-  onApprove,
   onDelete,
   onCopy,
 }: PromptCardProps) => {
@@ -62,13 +65,12 @@ export const PromptCard = ({
     setPromptDraft(prompt.prompt);
   }, [prompt.prompt]);
 
-  const mappedFile = getFileForSubject(files, prompt.subjectId, 'approved');
-  const pendingFile = getFileForSubject(files, prompt.subjectId, 'pending');
+  const mappedFile = getFileForSubject(files, prompt.subjectId);
   const latestColoringPageFile =
-    getFileForSubject(files, prompt.subjectId, 'approved', 'coloring-page') ??
+    getFileForSubject(files, prompt.subjectId, undefined, 'coloring-page') ??
     getFileForSubject(files, prompt.subjectId, 'pending', 'coloring-page');
   const currentColoringPageFile = mappedFile
-    ? (getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'approved') ??
+    ? (getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile) ??
       getCurrentColoringPageForSubject(files, prompt.subjectId, mappedFile, 'pending'))
     : undefined;
   const staleColoringPageFile =
@@ -89,23 +91,24 @@ export const PromptCard = ({
       file.kind === 'uploaded' &&
       file.assetVariant === 'color' &&
       isImageFile(file) &&
+      isUsableFile(file) &&
       file.mappedSubjectId === prompt.subjectId,
   );
-  const previewFile = pendingFile ?? mappedFile ?? subjectFiles.at(-1);
+  const previewFile = mappedFile ?? subjectFiles.at(-1);
   const subject = subjects.find((item) => item.id === prompt.subjectId);
   const isGenerating = generatingSubjectIds.includes(prompt.subjectId);
   const isGeneratingColoringPage = generatingColoringPageSubjectIds.includes(prompt.subjectId);
   const isAnyImageGenerating =
     generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
   const colorStatus = {
-    label: getDraftLabel(previewFile, 'Needs mask'),
-    tone: previewFile ? getDraftTone(previewFile) : ('neutral' as const),
+    label: getReadyLabel(previewFile, 'Mask ready', 'Needs mask'),
+    tone: getReadyTone(previewFile),
   };
-  const coloringPageStatus = isColoringPageStale
-    ? { label: 'Stale coloring page', tone: 'warning' as const }
+  const coloringPageStatus: ReadyStatus = isColoringPageStale
+    ? { label: 'Stale coloring page', tone: 'warning' }
     : {
-        label: getDraftLabel(coloringPageFile, 'Needs coloring page'),
-        tone: coloringPageFile ? getDraftTone(coloringPageFile) : ('neutral' as const),
+        label: getReadyLabel(coloringPageFile, 'Coloring ready', 'Needs coloring page'),
+        tone: getReadyTone(coloringPageFile),
       };
   const promptForGeneration = promptDraft.trim() || prompt.prompt;
 
@@ -195,12 +198,6 @@ export const PromptCard = ({
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {previewFile.reviewState !== 'approved' ? (
-                    <Button variant="primary" onClick={() => onApprove(previewFile.id)}>
-                      <Check aria-hidden="true" className="mr-2" size={17} />
-                      Approve mask
-                    </Button>
-                  ) : null}
                   <Button variant="ghost" onClick={() => onDelete(previewFile.id)}>
                     <Trash2 aria-hidden="true" className="mr-2" size={17} />
                     Discard
@@ -252,7 +249,7 @@ export const PromptCard = ({
                 {isColoringPageStale ? (
                   <Alert tone="warning">
                     This coloring page was generated from an older color mask. Regenerate it from
-                    the current approved mask.
+                    the current mask.
                   </Alert>
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
@@ -264,12 +261,6 @@ export const PromptCard = ({
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {!isColoringPageStale && coloringPageFile.reviewState !== 'approved' ? (
-                    <Button variant="primary" onClick={() => onApprove(coloringPageFile.id)}>
-                      <Check aria-hidden="true" className="mr-2" size={17} />
-                      Approve coloring page
-                    </Button>
-                  ) : null}
                   <Button variant="ghost" onClick={() => onDelete(coloringPageFile.id)}>
                     <Trash2 aria-hidden="true" className="mr-2" size={17} />
                     Discard
@@ -278,7 +269,7 @@ export const PromptCard = ({
               </div>
             ) : (
               <Alert tone="info" className="mt-3">
-                Approve the color mask to auto-create the coloring page.
+                Generate a coloring page after the mask is ready.
               </Alert>
             )}
           </Surface>

@@ -797,12 +797,11 @@ test.describe('production workflow', () => {
 
     await page.getByRole('button', { name: 'Generate mask' }).click();
     await expect.poll(() => backend.getImageRequestCount()).toBe(1);
-    await expect(page.getByText('Draft').first()).toBeVisible();
+    await expect(page.getByText('Mask ready').first()).toBeVisible();
     await page.getByRole('button', { name: 'Open full-size color mask preview for Moon' }).click();
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toBeVisible();
     await page.getByRole('button', { name: 'Close image preview' }).click();
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Approve mask' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(0);
     await expect(page.getByRole('button', { name: 'Generate coloring page' })).toBeEnabled();
     await page.getByRole('button', { name: 'Next: marketing assets' }).click();
@@ -814,15 +813,15 @@ test.describe('production workflow', () => {
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
     await expect(page.getByText('Session OpenAI API key')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Cloud' })).toBeVisible();
-    await expect(page.getByLabel('Search saved runs')).toBeVisible();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Saved work' })).toBeVisible();
+    await expect(page.getByLabel('Search saved projects')).toBeVisible();
     await expect(page.getByText('Worker API URL')).toHaveCount(0);
     await expect(page.getByText('Admin token')).toHaveCount(0);
     await expect(page.getByText('TODO')).toHaveCount(0);
   });
 
-  test('keeps coloring page generation manual after a color mask is approved', async ({ page }) => {
+  test('keeps coloring page generation manual after a color mask is ready', async ({ page }) => {
     await page.unroute('**/api/**');
     const backend = await mockOpenAIImageBackend(page);
 
@@ -839,15 +838,14 @@ test.describe('production workflow', () => {
 
     await page.getByRole('button', { name: 'Generate mask' }).click();
     await expect.poll(() => backend.getImageRequestCount()).toBe(1);
-    await expect(page.getByText('Draft').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Approve mask' }).click();
+    await expect(page.getByText('Mask ready').first()).toBeVisible();
 
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(0);
     await expect(page.getByRole('button', { name: 'Generate coloring page' })).toBeEnabled();
     await page.getByRole('button', { name: 'Generate coloring page' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
-    await expect(page.getByText('Approved').first()).toBeVisible();
+    await expect(page.getByText('Coloring ready').first()).toBeVisible();
   });
 
   test('separates generated files when replacing a run with a new AI brief', async ({ page }) => {
@@ -886,7 +884,7 @@ test.describe('production workflow', () => {
     await expect(page.getByText('moon.png')).toHaveCount(0);
   });
 
-  test('keeps saved cloud files when clearing current tab files', async ({ page }) => {
+  test('keeps saved files when clearing current tab files', async ({ page }) => {
     await page.unroute('**/api/**');
     const backend = await mockOpenAIImageBackend(page);
 
@@ -903,7 +901,7 @@ test.describe('production workflow', () => {
     await expect.poll(() => backend.getImageRequestCount()).toBe(1);
     await expect.poll(() => backend.getUploadFileCount()).toBeGreaterThan(0);
 
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
     await page.getByText('Danger zone').click();
     await page.getByRole('button', { name: 'Clear current tab files' }).click();
     await page
@@ -912,14 +910,14 @@ test.describe('production workflow', () => {
       .click();
 
     await expect(
-      page.getByText('Cleared session files. Previous files remain in the saved cloud run.'),
+      page.getByText('Cleared session files. Previous files remain in saved work.'),
     ).toBeVisible();
     await page.waitForTimeout(2200);
     expect(backend.getDeleteFileCount()).toBe(0);
   });
 
   test('keeps destructive confirmation keyboard accessible', async ({ page }) => {
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
     await page.getByText('Danger zone').click();
     await page.getByRole('button', { name: 'Clear current tab files' }).click();
     const dialog = page.getByRole('dialog', { name: 'Clear session files?' });
@@ -951,8 +949,8 @@ test.describe('production workflow', () => {
   });
 });
 
-test.describe('cloud workflow', () => {
-  test('refreshes saved runs only when Refresh is clicked', async ({ page }) => {
+test.describe('saved work workflow', () => {
+  test('loads saved projects on open and refresh reloads them', async ({ page }) => {
     const backend = await mockSavedRunsBackend(page);
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -963,20 +961,20 @@ test.describe('cloud workflow', () => {
     await expect.poll(() => backend.getHealthRequestCount()).toBeGreaterThan(0);
     const listRunsBeforeOpen = backend.getListRunsRequestCount();
 
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
-    await expect(page.getByText('No cloud runs saved yet.')).toBeVisible();
-    expect(backend.getListRunsRequestCount()).toBe(listRunsBeforeOpen);
-
-    await page.getByRole('button', { name: 'Refresh' }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
     await expect.poll(() => backend.getListRunsRequestCount()).toBeGreaterThan(listRunsBeforeOpen);
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
-    const listRunsAfterFirstOpen = backend.getListRunsRequestCount();
+    const listRunsAfterOpen = backend.getListRunsRequestCount();
+
+    await page.getByRole('button', { name: 'Refresh' }).click();
+    await expect.poll(() => backend.getListRunsRequestCount()).toBeGreaterThan(listRunsAfterOpen);
+    const listRunsAfterRefresh = backend.getListRunsRequestCount();
 
     await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page.getByRole('heading', { name: 'Image generation settings' })).toBeVisible();
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
 
-    expect(backend.getListRunsRequestCount()).toBe(listRunsAfterFirstOpen);
+    expect(backend.getListRunsRequestCount()).toBe(listRunsAfterRefresh);
   });
 
   test('restores an existing project draft on refresh instead of creating a duplicate run', async ({
@@ -1012,7 +1010,7 @@ test.describe('cloud workflow', () => {
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Progressive masks').first()).toBeVisible();
 
@@ -1064,7 +1062,7 @@ test.describe('cloud workflow', () => {
     await page.evaluate(() => window.localStorage.clear());
     await page.reload();
 
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     await expect(page.getByText('Preview', { exact: true })).toHaveCount(0);
@@ -1082,11 +1080,11 @@ test.describe('cloud workflow', () => {
       .click();
     await expect(page.getByText('Ocean Masks, 2 Kids Paper Masks')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Delete saved run Ocean birthday masks' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Delete saved run?' });
+    await page.getByRole('button', { name: 'Delete saved project Ocean birthday masks' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Delete saved project?' });
 
     await expect(dialog).toBeVisible();
-    await page.getByRole('button', { name: 'Delete run' }).click();
+    await page.getByRole('button', { name: 'Delete project' }).click();
     await expect(page.getByText('Ocean birthday masks')).toHaveCount(0);
     await expect(page.getByText('Halloween classroom masks')).toBeVisible();
   });
@@ -1097,13 +1095,13 @@ test.describe('accessibility smoke checks', () => {
     await prepareCleanPage(page);
   });
 
-  test('home, cloud, and settings have no obvious axe violations', async ({ page }) => {
+  test('home, saved work, and settings have no obvious axe violations', async ({ page }) => {
     await waitForUiToSettle(page);
     let results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
 
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Cloud' })).toBeVisible();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Saved work' })).toBeVisible();
     await waitForUiToSettle(page);
     results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     expect(results.violations).toEqual([]);
@@ -1115,7 +1113,7 @@ test.describe('accessibility smoke checks', () => {
   });
 
   test('destructive dialog has no obvious axe violations', async ({ page }) => {
-    await page.getByRole('button', { name: 'Cloud', exact: true }).click();
+    await page.getByRole('button', { name: 'Saved work', exact: true }).click();
     await page.getByText('Danger zone').click();
     await page.getByRole('button', { name: 'Clear current tab files' }).click();
     await waitForUiToSettle(page);

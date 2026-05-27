@@ -42,9 +42,22 @@ export const CHILDREN_SCENE_RECIPES: ChildrenSceneRecipe[] = [
 const DEFAULT_CHILDREN_SCENE_RECIPE = CHILDREN_SCENE_RECIPES[0]!;
 
 export const MASK_SHEET_PAGE_SIZE = 16;
+export const MAX_MASK_SHEET_PAGE_COUNT = 3;
 
 export const getMaskSheetPageCount = (maskCount: number): number =>
-  Math.ceil(Math.max(maskCount, 0) / MASK_SHEET_PAGE_SIZE);
+  Math.min(MAX_MASK_SHEET_PAGE_COUNT, Math.ceil(Math.max(maskCount, 0) / MASK_SHEET_PAGE_SIZE));
+
+export const getMaskSheetPageSlices = <Item>(items: Item[]): Item[][] => {
+  const pageCount = getMaskSheetPageCount(items.length);
+  if (pageCount === 0) {
+    return [];
+  }
+
+  const itemsPerPage = Math.ceil(items.length / pageCount);
+  return Array.from({ length: pageCount }, (_, pageIndex) =>
+    items.slice(pageIndex * itemsPerPage, (pageIndex + 1) * itemsPerPage),
+  ).filter((pageItems) => pageItems.length > 0);
+};
 
 export const normalizeMarketingImageSettings = (
   settings: OpenAIImageSettings | MarketingImageSettings,

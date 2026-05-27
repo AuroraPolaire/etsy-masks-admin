@@ -4,6 +4,7 @@ import {
   isBlobLike,
   isRecord,
   readJsonObject,
+  readOptionalString,
   readRequiredString,
 } from './http';
 
@@ -14,6 +15,7 @@ const IMAGE_MODELS = ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-i
 const IMAGE_SIZES = [
   '512x512',
   '1024x1024',
+  '1536x1536',
   '1536x1024',
   '1024x1536',
   '2048x2048',
@@ -33,6 +35,8 @@ const MARKETING_EDIT_IMAGE_MODELS = [
 ] as const;
 const MARKETING_ASSET_TYPES = ['slogan-poster', 'mask-sheet', 'children-scene'] as const;
 const MARKETING_ASSET_STAGES = ['preview', 'final'] as const;
+const MAX_BRIEF_REFERENCE_IMAGES = 3;
+const MAX_BRIEF_REFERENCE_IMAGE_BYTES = 5 * 1024 * 1024;
 
 type ImageModel = (typeof IMAGE_MODELS)[number];
 type ImageSize = (typeof IMAGE_SIZES)[number];
@@ -90,6 +94,13 @@ type MarketingSceneInput = {
     pageCount?: number;
   };
   images: Blob[];
+};
+
+type BriefReferenceImageInput = {
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
 };
 
 type OpenAIImageGenerationResponse = {
@@ -178,85 +189,164 @@ const etsySeoAnalysisSchema = {
   ],
 };
 
-const buildBriefRequestBody = (initialPrompt: string): Record<string, unknown> => ({
-  model: OPENAI_BRIEF_MODEL,
-  input: [
-    {
-      role: 'developer',
-      content:
-        'You are an Etsy listing strategist for printable kids paper mask bundles. Return only schema-valid JSON. Avoid trademarked, copyrighted, celebrity, and branded topics. Write buyer-readable English copy.',
-    },
-    {
-      role: 'user',
-      content: [
-        'Create a production-ready project brief for a static Etsy mask bundle admin app.',
-        `Initial bundle idea: ${initialPrompt.trim() || 'Printable party masks for kids'}`,
-        'Requirements:',
-        '- Topic list can include any safe mask topic, not only animals.',
-        '- Title must be concise, product-first, under 15 words if possible, and include the mask count.',
-        '- Tags must be exactly 13 Etsy tags, diverse, comma-ready, and each 20 characters or fewer.',
-        '- Description must be structured with clear buyer benefits, included files, how to use, safety, digital download disclaimer, license, and refund policy.',
-        '- Style should guide image generation for realistic/front-view printable masks unless the idea asks for another style.',
-        '- If the idea includes Mask style, Color painting, or Coloring page lines, preserve those choices in the returned style and generated listing direction.',
-        '- Style must describe both the color mask painting treatment and how the matching black-and-white coloring page should simplify the design.',
-        '- Style must specify that the mask has only eye holes and no side punch holes, string holes, strap holes, hanging holes, attachment holes, or extra circular cutouts.',
-        '- Safety note must mention adult supervision and not intended for children under 3.',
-        '- Also return AI Etsy SEO analysis for the generated title, tags, and description.',
-        '- SEO suggestions must be directly usable: one improved title, exactly 13 tags with each tag 20 characters or fewer, and one improved description draft.',
-      ].join('\n'),
-    },
-  ],
-  text: {
-    format: {
-      type: 'json_schema',
-      name: 'etsy_mask_project_brief',
-      strict: true,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          title: createStringSchema('Concise Etsy listing title with mask count.'),
-          theme: createStringSchema('Short theme name for the bundle.'),
-          audience: createStringSchema('Target buyer or user audience.'),
-          marketplace: {
-            type: 'string',
-            enum: ['Etsy', 'Other'],
+const readBriefReferenceImages = (value: unknown): BriefReferenceImageInput[] => {
+  if (value === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new ApiError(400, 'referenceImages must be an array.');
+  }
+
+  if (value.length > MAX_BRIEF_REFERENCE_IMAGES) {
+    throw new ApiError(400, `Use up to ${MAX_BRIEF_REFERENCE_IMAGES} reference images.`);
+  }
+
+  return value.map((item, index) => {
+    if (!isRecord(item)) {
+      throw new ApiError(400, `referenceImages[${index}] must be an object.`);
+    }
+
+    const name = readRequiredString(item.name, `referenceImages[${index}].name`);
+    const mimeType = readRequiredString(item.mimeType, `referenceImages[${index}].mimeType`);
+    const dataUrl = readRequiredString(item.dataUrl, `referenceImages[${index}].dataUrl`);
+    const size = typeof item.size === 'number' && Number.isFinite(item.size) ? item.size : 0;
+
+    if (!mimeType.startsWith('image/')) {
+      throw new ApiError(400, `referenceImages[${index}].mimeType must be an image type.`);
+    }
+
+    if (!dataUrl.startsWith('data:image/')) {
+      throw new ApiError(400, `referenceImages[${index}].dataUrl must be an image data URL.`);
+    }
+
+    if (size > MAX_BRIEF_REFERENCE_IMAGE_BYTES) {
+      throw new ApiError(
+        400,
+        `referenceImages[${index}].size must be ${MAX_BRIEF_REFERENCE_IMAGE_BYTES} bytes or smaller.`,
+      );
+    }
+
+    return {
+      name,
+      mimeType,
+      size,
+      dataUrl,
+    };
+  });
+};
+
+const buildBriefRequestBody = (
+  initialPrompt: string,
+  referenceImages: BriefReferenceImageInput[],
+): Record<string, unknown> => {
+  const referenceImageSummary = referenceImages
+    .map((image, index) => `${index + 1}. ${image.name}`)
+    .join('; ');
+  const promptText = [
+    'Create a production-ready project brief for a static Etsy mask bundle admin app.',
+    `Initial bundle idea: ${
+      initialPrompt.trim() ||
+      'Use the attached image context to infer a safe printable kids mask bundle.'
+    }`,
+    referenceImages.length > 0
+      ? `Attached reference images: ${referenceImageSummary}. Use them for theme, style, colors, and subject inspiration. Do not copy protected characters, logos, celebrities, or brands.`
+      : '',
+    'Requirements:',
+    '- Topic list can include any safe mask topic, not only animals.',
+    '- Title must be concise, product-first, under 15 words if possible, and include the mask count.',
+    '- Tags must be exactly 13 Etsy tags, diverse, comma-ready, and each 20 characters or fewer.',
+    '- Description must be structured with clear buyer benefits, included files, how to use, safety, digital download disclaimer, license, and refund policy.',
+    '- Style should guide image generation for realistic/front-view printable masks unless the idea asks for another style.',
+    '- If the idea includes Mask style, Color painting, or Coloring page lines, preserve those choices in the returned style and generated listing direction.',
+    '- Style must describe both the color mask painting treatment and how the matching black-and-white coloring page should simplify the design.',
+    '- Style must specify that the mask has only eye holes and no side punch holes, string holes, strap holes, hanging holes, attachment holes, or extra circular cutouts.',
+    '- Safety note must mention adult supervision and not intended for children under 3.',
+    '- Also return AI Etsy SEO analysis for the generated title, tags, and description.',
+    '- SEO suggestions must be directly usable: one improved title, exactly 13 tags with each tag 20 characters or fewer, and one improved description draft.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    model: OPENAI_BRIEF_MODEL,
+    input: [
+      {
+        role: 'developer',
+        content:
+          'You are an Etsy listing strategist for printable kids paper mask bundles. Return only schema-valid JSON. Avoid trademarked, copyrighted, celebrity, and branded topics. Write buyer-readable English copy.',
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'input_text',
+            text: promptText,
           },
-          style: createStringSchema('Image generation style for all mask prompts.'),
-          description: createStringSchema('Structured Etsy product description.'),
-          tags: {
-            type: 'array',
-            items: createStringSchema('One Etsy tag, 20 characters or fewer.'),
-          },
-          safetyNote: createStringSchema('Safety note with adult supervision and under 3 warning.'),
-          printingInstructions: createStringSchema('Practical printing and cutting instructions.'),
-          license: createStringSchema('Digital file license terms.'),
-          refundPolicy: createStringSchema('Digital product refund policy.'),
-          subjects: {
-            type: 'array',
-            items: createStringSchema('One safe mask topic name.'),
-          },
-          etsySeoAnalysis: etsySeoAnalysisSchema,
-        },
-        required: [
-          'title',
-          'theme',
-          'audience',
-          'marketplace',
-          'style',
-          'description',
-          'tags',
-          'safetyNote',
-          'printingInstructions',
-          'license',
-          'refundPolicy',
-          'subjects',
-          'etsySeoAnalysis',
+          ...referenceImages.map((image) => ({
+            type: 'input_image',
+            image_url: image.dataUrl,
+            detail: 'low',
+          })),
         ],
       },
+    ],
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'etsy_mask_project_brief',
+        strict: true,
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            title: createStringSchema('Concise Etsy listing title with mask count.'),
+            theme: createStringSchema('Short theme name for the bundle.'),
+            audience: createStringSchema('Target buyer or user audience.'),
+            marketplace: {
+              type: 'string',
+              enum: ['Etsy', 'Other'],
+            },
+            style: createStringSchema('Image generation style for all mask prompts.'),
+            description: createStringSchema('Structured Etsy product description.'),
+            tags: {
+              type: 'array',
+              items: createStringSchema('One Etsy tag, 20 characters or fewer.'),
+            },
+            safetyNote: createStringSchema(
+              'Safety note with adult supervision and under 3 warning.',
+            ),
+            printingInstructions: createStringSchema(
+              'Practical printing and cutting instructions.',
+            ),
+            license: createStringSchema('Digital file license terms.'),
+            refundPolicy: createStringSchema('Digital product refund policy.'),
+            subjects: {
+              type: 'array',
+              items: createStringSchema('One safe mask topic name.'),
+            },
+            etsySeoAnalysis: etsySeoAnalysisSchema,
+          },
+          required: [
+            'title',
+            'theme',
+            'audience',
+            'marketplace',
+            'style',
+            'description',
+            'tags',
+            'safetyNote',
+            'printingInstructions',
+            'license',
+            'refundPolicy',
+            'subjects',
+            'etsySeoAnalysis',
+          ],
+        },
+      },
     },
-  },
-});
+  };
+};
 
 const buildEtsySeoReviewRequestBody = (
   project: Record<string, unknown>,
@@ -635,7 +725,7 @@ const buildMarketingScenePrompt = (input: MarketingSceneInput): string =>
     `Audience: ${input.project.audience}.`,
     `Exact slogan text: ${input.project.slogan}.`,
     `Visual style context: ${input.project.style}.`,
-    `Use the ${input.images.length} provided approved mask image reference${input.images.length === 1 ? '' : 's'} as the product source context.`,
+    `Use the ${input.images.length} provided ready mask image reference${input.images.length === 1 ? '' : 's'} as the product source context.`,
     'Preserve the important mask identity: colors, silhouettes, horn/ear/frill shapes, eye holes, expressions, and texture style.',
     'Do not invent unrelated masks, brands, copyrighted characters, celebrities, logos, or watermarks.',
     getMarketingVariantDirection(input),
@@ -651,7 +741,7 @@ export const buildMarketingSceneEditFormData = (input: MarketingSceneInput): For
 
   formData.append('model', model);
   for (const [index, image] of input.images.entries()) {
-    formData.append('image[]', image, `approved-mask-${index + 1}.png`);
+    formData.append('image[]', image, `ready-mask-${index + 1}.png`);
   }
   formData.append('prompt', buildMarketingScenePrompt(input));
   formData.append('n', '1');
@@ -698,7 +788,12 @@ const readImageGenerationResponse = async (
 
 export const proxyOpenAIBrief = async (request: Request, env: Env): Promise<Response> => {
   const payload = await readJsonObject(request);
-  const initialPrompt = readRequiredString(payload.initialPrompt, 'initialPrompt');
+  const initialPrompt = readOptionalString(payload.initialPrompt) ?? '';
+  const referenceImages = readBriefReferenceImages(payload.referenceImages);
+
+  if (initialPrompt.length === 0 && referenceImages.length === 0) {
+    throw new ApiError(400, 'initialPrompt or referenceImages is required.');
+  }
 
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
@@ -706,7 +801,7 @@ export const proxyOpenAIBrief = async (request: Request, env: Env): Promise<Resp
       Authorization: `Bearer ${getOpenAIKey(env)}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(buildBriefRequestBody(initialPrompt)),
+    body: JSON.stringify(buildBriefRequestBody(initialPrompt, referenceImages)),
   });
 
   return new Response(response.body, {

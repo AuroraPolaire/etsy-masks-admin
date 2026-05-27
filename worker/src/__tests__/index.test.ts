@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { createRunFileHeaders } from '../index';
 import { buildMarketingSceneEditFormData } from '../openaiProxy';
-import { createRunRevisionFileManifest } from '../storage';
+import { createRunRevisionFileManifest, shouldCreateRunRevisionForSnapshot } from '../storage';
 
-import type { FileRow } from '../types';
+import type { CreateRunRevisionInput } from '../storage';
+import type { FileRow, RunRevisionRow } from '../types';
 
 describe('worker file responses', () => {
   it('sets cache validators and private cache headers for versioned file downloads', () => {
@@ -98,10 +99,81 @@ describe('worker run revision manifests', () => {
     });
     expect(manifest?.metadataJson).toContain('marketingAsset');
   });
+
+  it('skips automatic checkpoints when the latest revision has the same saved state', () => {
+    const input: CreateRunRevisionInput = {
+      stage: 'masks',
+      kind: 'generation',
+      label: 'Masks saved',
+    };
+    const latestRevision: RunRevisionRow = {
+      id: 'revision-1',
+      run_id: 'run-1',
+      project_id: 'project-1',
+      parent_revision_id: null,
+      sequence_number: 1,
+      stage: 'masks',
+      kind: 'generation',
+      label: 'Masks saved',
+      description: null,
+      project_json: '{"id":"project-1"}',
+      file_manifest_json: '[{"id":"file-1"}]',
+      change_summary_json: null,
+      thumbnail_file_id: null,
+      file_count: 1,
+      total_size_bytes: 1234,
+      is_manual: 0,
+      is_pinned: 0,
+      restored_from_revision_id: null,
+      created_at: '2026-05-27T10:00:00.000Z',
+    };
+
+    expect(
+      shouldCreateRunRevisionForSnapshot(input, latestRevision, {
+        projectJson: '{"id":"project-1"}',
+        fileManifestJson: '[{"id":"file-1"}]',
+        fileCount: 1,
+        totalSizeBytes: 1234,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldCreateRunRevisionForSnapshot(input, latestRevision, {
+        projectJson: '{"id":"project-1","changed":true}',
+        fileManifestJson: '[{"id":"file-1"}]',
+        fileCount: 1,
+        totalSizeBytes: 1234,
+      }),
+    ).toBe(true);
+  });
+
+  it('always allows manual checkpoints even when saved state matches the latest revision', () => {
+    const input: CreateRunRevisionInput = {
+      stage: 'masks',
+      kind: 'manual',
+      label: 'Named restore point',
+      isManual: true,
+    };
+    const latestRevision = {
+      project_json: '{"id":"project-1"}',
+      file_manifest_json: '[]',
+      file_count: 0,
+      total_size_bytes: 0,
+    } as RunRevisionRow;
+
+    expect(
+      shouldCreateRunRevisionForSnapshot(input, latestRevision, {
+        projectJson: '{"id":"project-1"}',
+        fileManifestJson: '[]',
+        fileCount: 0,
+        totalSizeBytes: 0,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe('worker OpenAI marketing image requests', () => {
-  it('sends approved masks as image array inputs without high quality or input fidelity', () => {
+  it('sends ready masks as image array inputs without high quality or input fidelity', () => {
     const formData = buildMarketingSceneEditFormData({
       settings: {
         model: 'gpt-image-2',

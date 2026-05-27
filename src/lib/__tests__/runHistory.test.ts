@@ -52,7 +52,7 @@ describe('run history helpers', () => {
     const project = createDefaultProject();
 
     expect(inferRunRevisionStage(project, [])).toBe('brief');
-    expect(inferRunRevisionStage(project, [createFile({})])).toBe('masks');
+    expect(inferRunRevisionStage(project, [createFile({})])).toBe('approval');
     expect(
       inferRunRevisionStage(project, [
         createFile({
@@ -82,6 +82,7 @@ describe('run history helpers', () => {
     expect(input.changeSummary).toMatchObject({
       fileCount: 2,
       approvedMaskCount: 1,
+      readyMaskCount: 1,
       filesByVariant: {
         color: 1,
         'coloring-page': 1,

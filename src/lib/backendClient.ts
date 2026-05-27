@@ -7,6 +7,7 @@ import type {
   BackendImageResponse,
   BackendProjectSnapshot,
   CreateRunRevisionInput,
+  BriefReferenceImage,
   BackendRunSummary,
   EtsySeoAnalysis,
   ManagedFile,
@@ -407,6 +408,7 @@ export const createBackendClient = () => ({
 
   generateProjectDraft: async (
     initialPrompt: string,
+    referenceImages: BriefReferenceImage[] = [],
     signal?: AbortSignal,
   ): Promise<ProjectDraft> => {
     const { parseOpenAIProjectBriefResponse } = await import('./openaiBrief');
@@ -414,6 +416,7 @@ export const createBackendClient = () => ({
       method: 'POST',
       body: {
         initialPrompt,
+        referenceImages,
       },
       signal,
     });

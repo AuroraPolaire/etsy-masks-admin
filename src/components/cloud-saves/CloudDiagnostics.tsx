@@ -34,20 +34,20 @@ export const CloudDiagnostics = ({
           <div className="flex items-start gap-3">
             <Cloud aria-hidden="true" className="mt-0.5 text-brand-strong" size={20} />
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-ink-strong">Cloud status</h3>
+              <h3 className="text-sm font-bold text-ink-strong">Online save status</h3>
               <dl className="mt-3 grid gap-2 text-sm text-ink-base">
                 <div className="flex justify-between gap-4">
-                  <dt>Backend runs</dt>
+                  <dt>Saved projects</dt>
                   <dd className="font-semibold">{runs.length}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt>OpenAI proxy</dt>
+                  <dt>AI image service</dt>
                   <dd className="font-semibold">
                     {health?.openaiProxyReady ? 'Ready' : 'Not configured'}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt>Access auth</dt>
+                  <dt>Private access</dt>
                   <dd className="font-semibold">
                     {health?.auth.configured ? health.auth.mode : 'Missing'}
                   </dd>

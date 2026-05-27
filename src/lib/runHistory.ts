@@ -7,6 +7,8 @@ import type {
   RunRevisionSummary,
 } from '../types';
 
+const isReadyFile = (file: ManagedFile): boolean => file.reviewState !== 'rejected';
+
 export type RunHistoryGroup = {
   stage: RunRevisionStage;
   label: string;
@@ -16,7 +18,7 @@ export type RunHistoryGroup = {
 const stageLabels: Record<RunRevisionStage, string> = {
   brief: 'Idea and brief',
   masks: 'Mask drafts',
-  approval: 'Approved masks',
+  approval: 'Ready masks',
   coloring: 'Coloring pages',
   marketing: 'Marketing assets',
   export: 'Exports',
@@ -83,7 +85,7 @@ export const inferRunRevisionStage = (project: Project, files: ManagedFile[]): R
     return 'coloring';
   }
 
-  if (files.some((file) => file.reviewState === 'approved' && file.assetVariant === 'color')) {
+  if (files.some((file) => isReadyFile(file) && file.assetVariant === 'color')) {
     return 'approval';
   }
 
@@ -114,8 +116,8 @@ export const createAutosaveRevisionInput = (
   files: ManagedFile[],
 ): CreateRunRevisionInput => {
   const stage = inferRunRevisionStage(project, files);
-  const approvedCount = files.filter(
-    (file) => file.assetVariant === 'color' && file.reviewState === 'approved',
+  const readyMaskCount = files.filter(
+    (file) => file.assetVariant === 'color' && isReadyFile(file),
   ).length;
 
   return {
@@ -123,13 +125,14 @@ export const createAutosaveRevisionInput = (
     kind: files.length > 0 ? 'generation' : 'autosave',
     label:
       stage === 'approval'
-        ? `Approved masks saved (${approvedCount})`
+        ? `Ready masks saved (${readyMaskCount})`
         : `${stageLabels[stage]} saved`,
-    description: 'Automatic restore point from cloud autosave.',
+    description: 'Automatic restore point from online autosave.',
     changeSummary: {
       subjectCount: project.subjects.length,
       fileCount: files.length,
-      approvedMaskCount: approvedCount,
+      approvedMaskCount: readyMaskCount,
+      readyMaskCount,
       filesByVariant: countFilesByVariant(files),
     },
   };
