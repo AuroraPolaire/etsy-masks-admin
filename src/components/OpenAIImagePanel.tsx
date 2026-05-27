@@ -5,22 +5,26 @@ import { Card, CardBody, CardHeader } from './ui/Card';
 import { Select } from './ui/Select';
 import { Surface } from './ui/Surface';
 
-import type { OpenAIImageSettings } from '../types';
+import type { OpenAIImageQuality, OpenAIImageSettings } from '../types';
 
 type OpenAIImagePanelProps = {
   settings: OpenAIImageSettings;
+  coloringPageQuality: OpenAIImageQuality;
   missingImageCount: number;
   subjectCount: number;
   backendOpenAIReady: boolean;
   onChange: (settings: OpenAIImageSettings) => void;
+  onColoringPageQualityChange: (quality: OpenAIImageQuality) => void;
 };
 
 export const OpenAIImagePanel = ({
   settings,
+  coloringPageQuality,
   missingImageCount,
   subjectCount,
   backendOpenAIReady,
   onChange,
+  onColoringPageQualityChange,
 }: OpenAIImagePanelProps) => {
   const update = <Key extends keyof OpenAIImageSettings>(
     key: Key,
@@ -37,6 +41,7 @@ export const OpenAIImagePanel = ({
     settings.size,
     missingImageCount,
     subjectCount,
+    coloringPageQuality,
   );
   const hasCostFallbackAssumption = costComparison.some(
     (estimate) => estimate.usesFallbackAssumption,
@@ -90,7 +95,7 @@ export const OpenAIImagePanel = ({
             onChange={(event) => update('size', event.target.value as OpenAIImageSettings['size'])}
           />
           <Select
-            label="Quality"
+            label="Mask quality"
             name="openaiQuality"
             value={settings.quality}
             options={[
@@ -101,6 +106,21 @@ export const OpenAIImagePanel = ({
             ]}
             onChange={(event) =>
               update('quality', event.target.value as OpenAIImageSettings['quality'])
+            }
+          />
+          <Select
+            label="Coloring page quality"
+            name="coloringPageQuality"
+            value={coloringPageQuality}
+            options={[
+              { value: 'low', label: 'Low (preferred)' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'auto', label: 'Auto' },
+            ]}
+            helperText="Uses the same model, size, background, and format as masks, with separate quality control."
+            onChange={(event) =>
+              onColoringPageQualityChange(event.target.value as OpenAIImageQuality)
             }
           />
           <Select
@@ -141,11 +161,12 @@ export const OpenAIImagePanel = ({
             <div>
               <h3 className="text-sm font-bold text-ink-strong">Estimated image cost</h3>
               <p className="mt-1 text-xs text-ink-muted">
-                Based on the selected size and quality. Actual OpenAI billing can vary.
+                Based on the selected size and separate mask/coloring quality. Actual OpenAI billing
+                can vary.
               </p>
             </div>
             <Badge tone="neutral">
-              {settings.quality} / {settings.size}
+              masks {settings.quality} / coloring {coloringPageQuality} / {settings.size}
             </Badge>
           </div>
           <div className="mt-4 grid gap-3">

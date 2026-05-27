@@ -4,6 +4,7 @@ import { nowIso } from '../lib/dates';
 import { loadProject, saveProject } from '../lib/storage';
 
 import type {
+  OpenAIImageQuality,
   OpenAIImageSettings,
   MarketingSettings,
   PdfSettings,
@@ -72,6 +73,13 @@ export const useProjectState = () => {
     [updateProject],
   );
 
+  const updateColoringPageQuality = useCallback(
+    (coloringPageQuality: OpenAIImageQuality) => {
+      updateProject((currentProject) => ({ ...currentProject, coloringPageQuality }));
+    },
+    [updateProject],
+  );
+
   const updateMarketingSettings = useCallback(
     (marketingSettings: MarketingSettings) => {
       updateProject((currentProject) => ({ ...currentProject, marketingSettings }));
@@ -88,6 +96,7 @@ export const useProjectState = () => {
         subjects: draft.subjects,
         pdfSettings: currentProject.pdfSettings,
         openAIImageSettings: currentProject.openAIImageSettings,
+        coloringPageQuality: currentProject.coloringPageQuality,
         marketingSettings: currentProject.marketingSettings,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -161,6 +170,7 @@ export const useProjectState = () => {
     updateSettings,
     updatePdfSettings,
     updateOpenAIImageSettings,
+    updateColoringPageQuality,
     updateMarketingSettings,
     applyInitialDraft,
     applyEtsySeoAnalysis,

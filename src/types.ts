@@ -21,6 +21,7 @@ export type MarketingGenerationRecipe = {
   optionIndex: number;
   stage: MarketingAssetStage;
   maskCount: number;
+  customPrompt?: string;
   pageIndex?: number;
   pageCount?: number;
 };
@@ -30,6 +31,7 @@ export type MarketingAssetMetadata = {
   stage: MarketingAssetStage;
   optionIndex?: number;
   recipeId: string;
+  customPrompt?: string;
   sourceFileIds: string[];
   generatedFromSettings: MarketingImageSettings;
   generatedAt: string;
@@ -124,6 +126,7 @@ export type Project = {
   subjects: SubjectItem[];
   pdfSettings: PdfSettings;
   openAIImageSettings: OpenAIImageSettings;
+  coloringPageQuality: OpenAIImageQuality;
   marketingSettings: MarketingSettings;
   createdAt: string;
   updatedAt: string;
@@ -288,7 +291,7 @@ export type MarketingPreviewSettings = {
 export type MarketingSettings = {
   slogan: string;
   preview: MarketingPreviewSettings;
-  final: MarketingImageSettings;
+  additionalPrompt: string;
   childrenSceneSubjectIds: string[];
 };
 

@@ -54,18 +54,15 @@ describe('MarketingAssetsPanel', () => {
         busyAction={null}
         onMarketingSettingsChange={vi.fn()}
         onGenerateSloganPreviews={vi.fn()}
-        onFinalizeSloganPoster={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
-        onFinalizeChildrenScene={vi.fn()}
-        onApprovePreview={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
 
     expect(screen.getByText('1 approved source mask')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate mask sheet' })).toBeEnabled();
-    expect(screen.getAllByRole('button', { name: 'Generate 3 previews' })[0]).toBeEnabled();
+    expect(screen.getAllByRole('button', { name: 'Generate 3 suggestions' })[0]).toBeEnabled();
   });
 
   it('updates the marketing slogan from the main workflow panel', () => {
@@ -80,11 +77,8 @@ describe('MarketingAssetsPanel', () => {
         busyAction={null}
         onMarketingSettingsChange={onMarketingSettingsChange}
         onGenerateSloganPreviews={vi.fn()}
-        onFinalizeSloganPoster={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
-        onFinalizeChildrenScene={vi.fn()}
-        onApprovePreview={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -99,48 +93,74 @@ describe('MarketingAssetsPanel', () => {
     });
   });
 
-  it('approves one preview option and requests final generation', () => {
+  it('updates the additional prompt for future suggestion batches', () => {
     const project = createProject();
-    const onApprovePreview = vi.fn();
-    const onFinalizeSloganPoster = vi.fn();
-    const preview = createFile({
-      id: 'slogan-preview',
-      name: 'slogan-preview.png',
+    const onMarketingSettingsChange = vi.fn();
+
+    render(
+      <MarketingAssetsPanel
+        project={project}
+        files={[createFile({ id: 'dino-mask' })]}
+        hasAIProvider
+        busyAction={null}
+        onMarketingSettingsChange={onMarketingSettingsChange}
+        onGenerateSloganPreviews={vi.fn()}
+        onGenerateMaskSheets={vi.fn()}
+        onGenerateChildrenScenePreviews={vi.fn()}
+        onDeleteFile={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Additional prompt/ }), {
+      target: { value: 'Use a printer table with warm daylight' },
+    });
+
+    expect(onMarketingSettingsChange).toHaveBeenCalledWith({
+      ...project.marketingSettings,
+      additionalPrompt: 'Use a printer table with warm daylight',
+    });
+  });
+
+  it('shows saved marketing suggestions without requiring final approval', () => {
+    const project = createProject();
+    const onDeleteFile = vi.fn();
+    const suggestion = createFile({
+      id: 'slogan-suggestion',
+      name: 'slogan-suggestion.png',
       kind: 'generated-preview',
       assetVariant: 'marketing-slogan',
-      reviewState: 'pending',
+      reviewState: 'approved',
       marketingAsset: {
         type: 'slogan-poster',
-        stage: 'preview',
+        stage: 'final',
         optionIndex: 0,
         recipeId: 'slogan-1',
         sourceFileIds: ['dino-mask'],
         generatedAt: '2026-05-26T10:00:00.000Z',
-        generatedFromSettings: project.marketingSettings.final,
+        generatedFromSettings: project.marketingSettings.preview.customSettings,
       },
     });
 
     render(
       <MarketingAssetsPanel
         project={project}
-        files={[createFile({ id: 'dino-mask' }), preview]}
+        files={[createFile({ id: 'dino-mask' }), suggestion]}
         hasAIProvider
         busyAction={null}
         onMarketingSettingsChange={vi.fn()}
         onGenerateSloganPreviews={vi.fn()}
-        onFinalizeSloganPoster={onFinalizeSloganPoster}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
-        onFinalizeChildrenScene={vi.fn()}
-        onApprovePreview={onApprovePreview}
-        onDeleteFile={vi.fn()}
+        onDeleteFile={onDeleteFile}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Use option' }));
+    expect(screen.getByText('Slogan suggestion 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use option' })).not.toBeInTheDocument();
 
-    expect(onApprovePreview).toHaveBeenCalledWith('slogan-preview');
-    expect(onFinalizeSloganPoster).toHaveBeenCalledWith('slogan-preview');
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(onDeleteFile).toHaveBeenCalledWith('slogan-suggestion');
   });
 
   it('allows selecting three current children scene masks while ignoring stale saved selections', () => {
@@ -178,11 +198,8 @@ describe('MarketingAssetsPanel', () => {
             setProject((currentProject) => ({ ...currentProject, marketingSettings }))
           }
           onGenerateSloganPreviews={vi.fn()}
-          onFinalizeSloganPoster={vi.fn()}
           onGenerateMaskSheets={vi.fn()}
           onGenerateChildrenScenePreviews={vi.fn()}
-          onFinalizeChildrenScene={vi.fn()}
-          onApprovePreview={vi.fn()}
           onDeleteFile={vi.fn()}
         />
       );

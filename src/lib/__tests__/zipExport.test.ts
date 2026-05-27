@@ -34,7 +34,7 @@ const createMarketingFile = (): ManagedFile => {
       recipeId: 'slogan-1',
       sourceFileIds: ['dino-mask'],
       generatedAt: '2026-05-26T10:00:00.000Z',
-      generatedFromSettings: createDefaultProject().marketingSettings.final,
+      generatedFromSettings: createDefaultProject().marketingSettings.preview.customSettings,
     },
   };
 };

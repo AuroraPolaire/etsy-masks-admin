@@ -25,6 +25,14 @@ describe('OpenAI image cost estimates', () => {
     expect(gptImage2?.fullBundleWithColoringPagesUsd).toBeCloseTo(3.96);
   });
 
+  it('estimates color plus coloring page cost with separate coloring quality', () => {
+    const estimates = getOpenAIImageCostComparison('medium', '1024x1024', 0, 10, 'low');
+    const gptImage2 = estimates.find((estimate) => estimate.model === 'gpt-image-2');
+
+    expect(gptImage2?.fullBundleUsd).toBeCloseTo(0.53);
+    expect(gptImage2?.fullBundleWithColoringPagesUsd).toBeCloseTo(0.59);
+  });
+
   it('marks auto settings as estimated with fallback assumptions', () => {
     expect(getEstimatedOpenAIImageCost('gpt-image-2', 'auto', 'auto')).toMatchObject({
       estimatedQuality: 'low',

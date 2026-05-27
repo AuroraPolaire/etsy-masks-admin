@@ -1,4 +1,4 @@
-import { Check, RotateCw, Trash2 } from 'lucide-react';
+import { RotateCw, Trash2 } from 'lucide-react';
 import { PhotoProvider } from 'react-photo-view';
 
 import {
@@ -17,6 +17,7 @@ import { EmptyState } from './ui/EmptyState';
 import { ImagePreviewButton } from './ui/ImagePreviewButton';
 import { Input } from './ui/Input';
 import { Surface } from './ui/Surface';
+import { Textarea } from './ui/Textarea';
 
 import type {
   BusyAction,
@@ -34,21 +35,14 @@ type MarketingAssetsPanelProps = {
   busyAction: BusyAction;
   onMarketingSettingsChange: (settings: MarketingSettings) => void;
   onGenerateSloganPreviews: () => void;
-  onFinalizeSloganPoster: (previewFileId: string) => void;
   onGenerateMaskSheets: () => void;
   onGenerateChildrenScenePreviews: () => void;
-  onFinalizeChildrenScene: (previewFileId: string) => void;
-  onApprovePreview: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
 };
 
-const getLatestFiles = (
-  files: ManagedFile[],
-  type: MarketingAssetType,
-  stage: 'preview' | 'final',
-  limit: number,
-) =>
-  getMarketingAssetFiles(files, type, stage)
+const getSavedAssetFiles = (files: ManagedFile[], type: MarketingAssetType, limit: number) =>
+  getMarketingAssetFiles(files, type, 'final')
+    .filter((file) => file.reviewState === 'approved')
     .sort((left, right) => Date.parse(right.addedAt) - Date.parse(left.addedAt))
     .slice(0, limit)
     .reverse();
@@ -70,16 +64,14 @@ const MarketingFileCard = ({
         <p className="text-sm font-semibold text-ink-strong">{label}</p>
         <p className="mt-1 break-all font-mono text-xs text-ink-muted">{file.name}</p>
       </div>
-      <Badge tone={stale ? 'warning' : file.reviewState === 'approved' ? 'success' : 'neutral'}>
-        {stale ? 'Stale' : file.reviewState === 'approved' ? 'Approved' : 'Preview'}
-      </Badge>
+      <Badge tone={stale ? 'warning' : 'success'}>{stale ? 'Stale' : 'Saved'}</Badge>
     </div>
     {file.objectUrl ? (
       <div className="mt-3">
         <ImagePreviewButton
           src={file.objectUrl}
-          alt={`${label} preview`}
-          label={`Open full-size ${label.toLowerCase()} preview`}
+          alt={label}
+          label={`Open full-size ${label.toLowerCase()}`}
           frameClassName="bg-white"
         />
       </div>
@@ -95,6 +87,15 @@ const MarketingFileCard = ({
   </Surface>
 );
 
+const getChildrenSceneLabel = (file: ManagedFile, fallbackIndex: number): string => {
+  const optionIndex = file.marketingAsset?.optionIndex ?? fallbackIndex;
+  const recipe = CHILDREN_SCENE_RECIPES[optionIndex % CHILDREN_SCENE_RECIPES.length];
+
+  return recipe?.label
+    ? `${recipe.label} suggestion ${fallbackIndex + 1}`
+    : `Scene suggestion ${fallbackIndex + 1}`;
+};
+
 export const MarketingAssetsPanel = ({
   project,
   files,
@@ -102,22 +103,17 @@ export const MarketingAssetsPanel = ({
   busyAction,
   onMarketingSettingsChange,
   onGenerateSloganPreviews,
-  onFinalizeSloganPoster,
   onGenerateMaskSheets,
   onGenerateChildrenScenePreviews,
-  onFinalizeChildrenScene,
-  onApprovePreview,
   onDeleteFile,
 }: MarketingAssetsPanelProps) => {
   const sourceMasks = getApprovedMarketingSourceMasks(project, files);
   const canGenerate = busyAction === null && sourceMasks.length > 0;
   const canGenerateWithAI = canGenerate && hasAIProvider;
   const isGenerating = busyAction === 'marketing-generation';
-  const sloganPreviews = getLatestFiles(files, 'slogan-poster', 'preview', 3);
-  const sloganFinals = getLatestFiles(files, 'slogan-poster', 'final', 3);
-  const maskSheets = getLatestFiles(files, 'mask-sheet', 'final', 20);
-  const childrenPreviews = getLatestFiles(files, 'children-scene', 'preview', 3);
-  const childrenFinals = getLatestFiles(files, 'children-scene', 'final', 3);
+  const sloganAssets = getSavedAssetFiles(files, 'slogan-poster', 24);
+  const maskSheets = getSavedAssetFiles(files, 'mask-sheet', 20);
+  const childrenAssets = getSavedAssetFiles(files, 'children-scene', 24);
   const sourceSubjectIds = new Set(
     sourceMasks
       .map((file) => file.mappedSubjectId)
@@ -143,6 +139,13 @@ export const MarketingAssetsPanel = ({
     onMarketingSettingsChange({
       ...project.marketingSettings,
       slogan,
+    });
+  };
+
+  const updateAdditionalPrompt = (additionalPrompt: string) => {
+    onMarketingSettingsChange({
+      ...project.marketingSettings,
+      additionalPrompt,
     });
   };
 
@@ -212,54 +215,44 @@ export const MarketingAssetsPanel = ({
               helperText="Used on slogan poster assets. If empty, the listing title is used."
               onChange={(event) => updateSlogan(event.target.value)}
             />
+            <Textarea
+              label="Additional prompt for next suggestions"
+              name="marketingAdditionalPrompt"
+              value={project.marketingSettings.additionalPrompt}
+              rows={3}
+              placeholder="Example: brighter classroom scene, more readable printable text, use warm daylight"
+              helperText="Optional direction for the next marketing generation batch. Leave empty for the default recipes."
+              onChange={(event) => updateAdditionalPrompt(event.target.value)}
+            />
+            <Surface variant="muted" className="p-4">
+              <h3 className="text-sm font-bold text-ink-strong">How to use marketing images</h3>
+              <p className="mt-1 text-sm text-ink-muted">
+                Use these images as Etsy listing photos or social posts. Buyers should print the
+                actual mask and coloring-page files from the ZIP at 100% scale on cardstock or thick
+                paper. Helpful overlay text is short and concrete: Printable masks, Print at home,
+                Cut and wear, or Digital download.
+              </p>
+            </Surface>
             <section className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates 3 AI poster concepts from the approved masks, then a larger final
-                    poster.
+                    Creates 3 saved AI poster suggestions from the approved masks. Generate more
+                    when you want a fresh batch.
                   </p>
                 </div>
                 <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
-                  Generate 3 previews
+                  {sloganAssets.length > 0 ? 'Generate +3 more' : 'Generate 3 suggestions'}
                 </AIButton>
               </div>
-              {sloganPreviews.length > 0 ? (
+              {sloganAssets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
-                  {sloganPreviews.map((file, index) => (
+                  {sloganAssets.map((file, index) => (
                     <MarketingFileCard
                       key={file.id}
                       file={file}
-                      label={`Slogan option ${index + 1}`}
-                      stale={isMarketingAssetStale(file, sourceMasks)}
-                    >
-                      <Button
-                        variant="primary"
-                        disabled={!canGenerateWithAI}
-                        onClick={() => {
-                          onApprovePreview(file.id);
-                          onFinalizeSloganPoster(file.id);
-                        }}
-                      >
-                        <Check aria-hidden="true" className="mr-2" size={17} />
-                        Use option
-                      </Button>
-                      <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>
-                        <Trash2 aria-hidden="true" className="mr-2" size={17} />
-                        Discard
-                      </Button>
-                    </MarketingFileCard>
-                  ))}
-                </div>
-              ) : null}
-              {sloganFinals.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-3">
-                  {sloganFinals.map((file, index) => (
-                    <MarketingFileCard
-                      key={file.id}
-                      file={file}
-                      label={`Final slogan ${index + 1}`}
+                      label={`Slogan suggestion ${index + 1}`}
                       stale={isMarketingAssetStale(file, sourceMasks)}
                     >
                       <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>
@@ -306,11 +299,11 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Children scene</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Generates 3 scene concepts with AI-selected mask placement on children.
+                    Generates 3 saved scene suggestions with AI-selected mask placement on children.
                   </p>
                 </div>
                 <AIButton disabled={!canGenerateWithAI} onClick={onGenerateChildrenScenePreviews}>
-                  Generate 3 previews
+                  {childrenAssets.length > 0 ? 'Generate +3 more' : 'Generate 3 suggestions'}
                 </AIButton>
               </div>
               {sourceMasks.length > 0 ? (
@@ -340,45 +333,13 @@ export const MarketingAssetsPanel = ({
               <p className="text-xs text-ink-muted">
                 Select up to 3 masks. If none are selected, the first approved masks are used.
               </p>
-              {childrenPreviews.length > 0 ? (
+              {childrenAssets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
-                  {childrenPreviews.map((file, index) => (
+                  {childrenAssets.map((file, index) => (
                     <MarketingFileCard
                       key={file.id}
                       file={file}
-                      label={
-                        CHILDREN_SCENE_RECIPES[index]?.label
-                          ? `${CHILDREN_SCENE_RECIPES[index].label} option`
-                          : `Scene option ${index + 1}`
-                      }
-                      stale={isMarketingAssetStale(file, sourceMasks)}
-                    >
-                      <Button
-                        variant="primary"
-                        disabled={!canGenerateWithAI}
-                        onClick={() => {
-                          onApprovePreview(file.id);
-                          onFinalizeChildrenScene(file.id);
-                        }}
-                      >
-                        <Check aria-hidden="true" className="mr-2" size={17} />
-                        Use option
-                      </Button>
-                      <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>
-                        <Trash2 aria-hidden="true" className="mr-2" size={17} />
-                        Discard
-                      </Button>
-                    </MarketingFileCard>
-                  ))}
-                </div>
-              ) : null}
-              {childrenFinals.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-3">
-                  {childrenFinals.map((file, index) => (
-                    <MarketingFileCard
-                      key={file.id}
-                      file={file}
-                      label={`Final children scene ${index + 1}`}
+                      label={getChildrenSceneLabel(file, index)}
                       stale={isMarketingAssetStale(file, sourceMasks)}
                     >
                       <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>

@@ -154,13 +154,6 @@ describe('marketing asset helpers', () => {
     });
   });
 
-  it('defaults final marketing settings to medium quality and higher resolution', () => {
-    expect(createDefaultProject().marketingSettings.final).toMatchObject({
-      quality: 'medium',
-      size: '2048x2048',
-    });
-  });
-
   it('paginates mask sheets by 16 masks per page', () => {
     expect(getMaskSheetPageCount(0)).toBe(0);
     expect(getMaskSheetPageCount(16)).toBe(1);
@@ -178,7 +171,7 @@ describe('marketing asset helpers', () => {
         recipeId: 'slogan-1',
         sourceFileIds: ['lion-new'],
         generatedAt: '2026-05-26T10:00:00.000Z',
-        generatedFromSettings: createDefaultProject().marketingSettings.final,
+        generatedFromSettings: createDefaultProject().marketingSettings.preview.customSettings,
       },
     });
     const previewFile = makeImageFile('preview-slogan', 'approved', undefined, {
@@ -190,7 +183,7 @@ describe('marketing asset helpers', () => {
         recipeId: 'slogan-1',
         sourceFileIds: ['lion-new'],
         generatedAt: '2026-05-26T10:00:00.000Z',
-        generatedFromSettings: createDefaultProject().marketingSettings.final,
+        generatedFromSettings: createDefaultProject().marketingSettings.preview.customSettings,
       },
     });
 
@@ -199,8 +192,8 @@ describe('marketing asset helpers', () => {
     ]);
   });
 
-  it('finds reusable final marketing assets with matching recipe, sources, and final settings', () => {
-    const settings = createDefaultProject().marketingSettings.final;
+  it('finds reusable final marketing assets with matching recipe, sources, and generation settings', () => {
+    const settings = createDefaultProject().marketingSettings.preview.customSettings;
     const lionMask = makeImageFile('lion-new', 'approved', 'lion');
     const owlMask = makeImageFile('owl-approved', 'approved', 'owl');
     const finalFile = makeImageFile('final-slogan', 'approved', undefined, {
@@ -234,8 +227,8 @@ describe('marketing asset helpers', () => {
     ).toBe('final-slogan');
   });
 
-  it('does not reuse final marketing assets generated with a different final quality', () => {
-    const settings = createDefaultProject().marketingSettings.final;
+  it('does not reuse final marketing assets generated with a different generation quality', () => {
+    const settings = createDefaultProject().marketingSettings.preview.customSettings;
     const lionMask = makeImageFile('lion-new', 'approved', 'lion');
     const finalFile = makeImageFile('final-slogan', 'approved', undefined, {
       kind: 'generated-preview',
@@ -249,7 +242,7 @@ describe('marketing asset helpers', () => {
         generatedAt: '2026-05-26T10:00:00.000Z',
         generatedFromSettings: {
           ...settings,
-          quality: 'low',
+          quality: 'medium',
         },
       },
     });

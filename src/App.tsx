@@ -103,6 +103,7 @@ export const App = () => {
     replaceProject,
     updateSettings,
     updateOpenAIImageSettings,
+    updateColoringPageQuality,
     updateMarketingSettings,
     applyInitialDraft,
     applyEtsySeoAnalysis,
@@ -359,6 +360,7 @@ export const App = () => {
     prompts,
     missingImagePrompts,
     settings: project.openAIImageSettings,
+    coloringPageQuality: project.coloringPageQuality,
     filesRef,
     appendGeneratedFiles,
     addActivity,
@@ -366,19 +368,14 @@ export const App = () => {
     generateImageFile,
     generateColoringPageFile,
   });
-  const {
-    generateSloganPreviews,
-    finalizeSloganPoster,
-    generateMaskSheets,
-    generateChildrenScenePreviews,
-    finalizeChildrenScene,
-  } = useMarketingAssetGeneration({
-    project,
-    filesRef,
-    appendGeneratedFiles,
-    addActivity,
-    generateMarketingSceneFile,
-  });
+  const { generateSloganPreviews, generateMaskSheets, generateChildrenScenePreviews } =
+    useMarketingAssetGeneration({
+      project,
+      filesRef,
+      appendGeneratedFiles,
+      addActivity,
+      generateMarketingSceneFile,
+    });
   const hasAIProvider = backendCache.canUseOpenAIProxy;
   const workflow = useMemo(
     () =>
@@ -700,15 +697,6 @@ export const App = () => {
     void runBusyAction('marketing-generation', generateSloganPreviews);
   }, [generateSloganPreviews, runBusyAction]);
 
-  const handleFinalizeSloganPoster = useCallback(
-    (previewFileId: string) => {
-      void runBusyAction('marketing-generation', (context) =>
-        finalizeSloganPoster(previewFileId, context),
-      );
-    },
-    [finalizeSloganPoster, runBusyAction],
-  );
-
   const handleGenerateMaskSheets = useCallback(() => {
     void runBusyAction('marketing-generation', generateMaskSheets);
   }, [generateMaskSheets, runBusyAction]);
@@ -716,15 +704,6 @@ export const App = () => {
   const handleGenerateChildrenScenePreviews = useCallback(() => {
     void runBusyAction('marketing-generation', generateChildrenScenePreviews);
   }, [generateChildrenScenePreviews, runBusyAction]);
-
-  const handleFinalizeChildrenScene = useCallback(
-    (previewFileId: string) => {
-      void runBusyAction('marketing-generation', (context) =>
-        finalizeChildrenScene(previewFileId, context),
-      );
-    },
-    [finalizeChildrenScene, runBusyAction],
-  );
 
   const handleApproveFile = useCallback(
     (fileId: string) => {
@@ -743,10 +722,12 @@ export const App = () => {
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
+      coloringPageQuality={project.coloringPageQuality}
       missingImageCount={missingImagePrompts.length}
       subjectCount={project.subjects.length}
       backendOpenAIReady={backendCache.canUseOpenAIProxy}
       onChange={setOpenAISettings}
+      onColoringPageQualityChange={updateColoringPageQuality}
     />
   );
 
@@ -796,10 +777,8 @@ export const App = () => {
         onGenerateColoringPage={handleGenerateSubjectColoringPage}
         onGenerateMissingColoringPages={handleGenerateMissingColoringPages}
         onGenerateSloganPreviews={handleGenerateSloganPreviews}
-        onFinalizeSloganPoster={handleFinalizeSloganPoster}
         onGenerateMaskSheets={handleGenerateMaskSheets}
         onGenerateChildrenScenePreviews={handleGenerateChildrenScenePreviews}
-        onFinalizeChildrenScene={handleFinalizeChildrenScene}
         onApproveAllFiles={handleApproveFiles}
         onApproveFile={handleApproveFile}
         onDeleteFile={handleDeleteFile}
@@ -814,7 +793,7 @@ export const App = () => {
       <AppSectionHeader
         eyebrow="Settings"
         title="Image generation settings"
-        description="Manage the model, API image size, quality, background, output format, and cost estimate used by Cloud AI generation."
+        description="Manage the model, API image size, mask quality, coloring page quality, background, output format, and cost estimate used by Cloud AI generation."
       />
       {renderOpenAIImagePanel()}
       <div className="mt-6">

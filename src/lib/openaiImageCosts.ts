@@ -99,16 +99,21 @@ export const getOpenAIImageCostComparison = (
   size: OpenAIImageSize,
   missingImageCount: number,
   subjectCount: number,
+  coloringPageQuality: OpenAIImageQuality = quality,
 ): ImageCostComparison[] =>
   (['gpt-image-2', 'gpt-image-1.5'] as const).map((model) => {
     const estimate = getEstimatedOpenAIImageCost(model, quality, size);
+    const coloringPageEstimate = getEstimatedOpenAIImageCost(model, coloringPageQuality, size);
 
     return {
       ...estimate,
       oneImageUsd: estimate.costUsd,
       missingImagesUsd: estimate.costUsd * missingImageCount,
       fullBundleUsd: estimate.costUsd * subjectCount,
-      fullBundleWithColoringPagesUsd: estimate.costUsd * subjectCount * 2,
+      fullBundleWithColoringPagesUsd:
+        estimate.costUsd * subjectCount + coloringPageEstimate.costUsd * subjectCount,
+      usesFallbackAssumption:
+        estimate.usesFallbackAssumption || coloringPageEstimate.usesFallbackAssumption,
     };
   });
 

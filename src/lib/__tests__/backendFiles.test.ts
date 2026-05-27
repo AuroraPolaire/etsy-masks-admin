@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_MARKETING_SETTINGS, DEFAULT_OPENAI_IMAGE_SETTINGS } from '../../constants';
+import {
+  DEFAULT_COLORING_PAGE_QUALITY,
+  DEFAULT_MARKETING_SETTINGS,
+  DEFAULT_OPENAI_IMAGE_SETTINGS,
+} from '../../constants';
 import { createManagedFileFromBackendRecord, managedFileToBackendMetadata } from '../backendFiles';
 
 import type { BackendFileRecord, ManagedFile, Project } from '../../types';
@@ -31,6 +35,7 @@ const createProject = (): Project => ({
     includeCalibrationPage: true,
   },
   openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
+  coloringPageQuality: DEFAULT_COLORING_PAGE_QUALITY,
   marketingSettings: DEFAULT_MARKETING_SETTINGS,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -86,7 +91,7 @@ describe('backendFiles', () => {
       optionIndex: 1,
       recipeId: 'slogan-2',
       sourceFileIds: ['moon-color'],
-      generatedFromSettings: project.marketingSettings.final,
+      generatedFromSettings: project.marketingSettings.preview.customSettings,
       generatedAt: '2026-05-26T10:00:00.000Z',
     };
     const managedFile: ManagedFile = {

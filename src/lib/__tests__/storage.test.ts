@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { DEFAULT_OPENAI_IMAGE_SETTINGS, STORAGE_KEY, createDefaultProject } from '../../constants';
+import {
+  DEFAULT_COLORING_PAGE_QUALITY,
+  DEFAULT_OPENAI_IMAGE_SETTINGS,
+  STORAGE_KEY,
+  createDefaultProject,
+} from '../../constants';
 import { loadProject, parseProjectBackup } from '../storage';
 
 import type { Project, ProjectJsonBackup } from '../../types';
@@ -52,9 +57,11 @@ describe('project storage', () => {
     expect(createDefaultProject().subjects).toEqual([]);
     expect(createDefaultProject().settings.title).toBe('');
     expect(createDefaultProject().openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
+    expect(createDefaultProject().coloringPageQuality).toBe(DEFAULT_COLORING_PAGE_QUALITY);
     expect(loadProject().subjects).toEqual([]);
     expect(loadProject().settings.title).toBe('');
     expect(loadProject().openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
+    expect(loadProject().coloringPageQuality).toBe(DEFAULT_COLORING_PAGE_QUALITY);
     expect(loadProject().lastBriefUpdatedAt).toBeUndefined();
   });
 
@@ -114,10 +121,12 @@ describe('project storage', () => {
         background: 'transparent',
         outputFormat: 'webp',
       },
+      coloringPageQuality: 'medium',
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
 
     expect(loadProject().openAIImageSettings).toEqual(project.openAIImageSettings);
+    expect(loadProject().coloringPageQuality).toBe('medium');
   });
 
   it('does not mark untouched default copy as brief progress', () => {
@@ -220,12 +229,14 @@ describe('project storage', () => {
           background: 'neon',
           outputFormat: 'tiff',
         },
+        coloringPageQuality: 'ultra',
       },
     };
 
     const project = parseProjectBackup(JSON.stringify(backup));
 
     expect(project.openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
+    expect(project.coloringPageQuality).toBe(DEFAULT_COLORING_PAGE_QUALITY);
   });
 
   it('normalizes legacy 512 image settings from imported project backups', () => {

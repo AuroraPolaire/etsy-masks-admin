@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../constants';
 import { useMarketingAssetGeneration } from '../useMarketingAssetGeneration';
 
-import type { ManagedFile, Project } from '../../types';
+import type {
+  ManagedFile,
+  MarketingGenerationRecipe,
+  MarketingImageSettings,
+  Project,
+} from '../../types';
 
 const createProject = (): Project => ({
   ...createDefaultProject(),
@@ -60,7 +65,7 @@ const createMarketingFile = (
       recipeId: 'slogan-1',
       optionIndex: 0,
       sourceFileIds: ['dino-mask'],
-      generatedFromSettings: createDefaultProject().marketingSettings.final,
+      generatedFromSettings: createDefaultProject().marketingSettings.preview.customSettings,
       generatedAt: '2026-05-27T10:00:00.000Z',
       ...overrides,
     },
@@ -68,7 +73,7 @@ const createMarketingFile = (
 };
 
 describe('useMarketingAssetGeneration', () => {
-  it('appends slogan preview options as soon as each one is generated', async () => {
+  it('appends saved slogan suggestions as soon as each one is generated', async () => {
     const project = createProject();
     const filesRef = { current: [createApprovedMask()] };
     const resolvers: Array<(file: File) => void> = [];
@@ -115,23 +120,52 @@ describe('useMarketingAssetGeneration', () => {
       await Promise.resolve();
     });
     await waitFor(() => expect(appendGeneratedFiles).toHaveBeenCalledTimes(2));
-    expect(generateMarketingSceneFile).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(generateMarketingSceneFile).toHaveBeenCalledTimes(3));
 
     await act(async () => {
       resolvers[2]?.(new File(['preview-3'], 'preview-3.bin'));
       await generatePromise;
     });
     await waitFor(() => expect(appendGeneratedFiles).toHaveBeenCalledTimes(3));
+    expect(appendGeneratedFiles.mock.calls[0]?.[0][0]).toMatchObject({
+      assetVariant: 'marketing-slogan',
+      reviewState: 'approved',
+      explicitlyConfirmed: true,
+      marketingAsset: {
+        type: 'slogan-poster',
+        stage: 'final',
+        optionIndex: 0,
+      },
+    });
   });
 
-  it('reuses an existing final slogan asset when final settings and source masks match', async () => {
-    const project = createProject();
+  it('generates the next three slogan suggestions with additional prompt context', async () => {
+    const project = {
+      ...createProject(),
+      marketingSettings: {
+        ...createProject().marketingSettings,
+        additionalPrompt: 'Use warmer printer-table styling',
+      },
+    };
     const sourceMask = createApprovedMask();
-    const preview = createMarketingFile('preview-slogan', { stage: 'preview' }, 'pending');
-    const final = createMarketingFile('final-slogan', { stage: 'final' });
-    const filesRef = { current: [sourceMask, preview, final] };
-    const generateMarketingSceneFile = vi.fn();
-    const appendGeneratedFiles = vi.fn(() => Promise.resolve());
+    const existing = createMarketingFile('final-slogan', { stage: 'final' });
+    const filesRef = { current: [sourceMask, existing] };
+    let generatedIndex = 0;
+    const generateMarketingSceneFile = vi.fn<
+      (
+        settings: MarketingImageSettings,
+        project: Project,
+        sourceFiles: ManagedFile[],
+        recipe: MarketingGenerationRecipe,
+      ) => Promise<File>
+    >(() => {
+      generatedIndex += 1;
+      return Promise.resolve(new File(['marketing'], `next-${generatedIndex}.bin`));
+    });
+    const appendGeneratedFiles = vi.fn((files: ManagedFile[]) => {
+      filesRef.current = [...filesRef.current, ...files];
+      return Promise.resolve();
+    });
     const addActivity = vi.fn();
     const { result } = renderHook(() =>
       useMarketingAssetGeneration({
@@ -144,18 +178,22 @@ describe('useMarketingAssetGeneration', () => {
     );
 
     await act(async () => {
-      await result.current.finalizeSloganPoster(preview.id, {
+      await result.current.generateSloganPreviews({
         signal: new AbortController().signal,
         setProgress: vi.fn(),
       });
     });
 
-    expect(generateMarketingSceneFile).not.toHaveBeenCalled();
-    expect(appendGeneratedFiles).not.toHaveBeenCalled();
-    expect(addActivity).toHaveBeenCalledWith(
-      'marketing-generated',
-      'success',
-      'Reused the existing final slogan poster with matching final settings.',
-    );
+    await waitFor(() => expect(generateMarketingSceneFile).toHaveBeenCalledTimes(3));
+    expect(generateMarketingSceneFile.mock.calls.map((call) => call[3])).toMatchObject([
+      { optionIndex: 1, customPrompt: 'Use warmer printer-table styling' },
+      { optionIndex: 2, customPrompt: 'Use warmer printer-table styling' },
+      { optionIndex: 3, customPrompt: 'Use warmer printer-table styling' },
+    ]);
+    expect(appendGeneratedFiles).toHaveBeenCalledTimes(3);
+    expect(appendGeneratedFiles.mock.calls[0]?.[0][0]?.marketingAsset).toMatchObject({
+      optionIndex: 1,
+      customPrompt: 'Use warmer printer-table styling',
+    });
   });
 });

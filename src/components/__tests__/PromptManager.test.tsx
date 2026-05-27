@@ -3,6 +3,7 @@ import { FileInput } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  DEFAULT_COLORING_PAGE_QUALITY,
   DEFAULT_MARKETING_SETTINGS,
   DEFAULT_OPENAI_IMAGE_SETTINGS,
   DEFAULT_SETTINGS,
@@ -206,6 +207,7 @@ describe('EtsySeoPanel', () => {
         includeCalibrationPage: true,
       },
       openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
+      coloringPageQuality: DEFAULT_COLORING_PAGE_QUALITY,
       marketingSettings: DEFAULT_MARKETING_SETTINGS,
       createdAt: '2026-05-25T10:00:00.000Z',
       updatedAt: '2026-05-25T10:00:00.000Z',

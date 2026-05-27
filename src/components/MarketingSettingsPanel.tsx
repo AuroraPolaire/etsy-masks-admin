@@ -24,16 +24,6 @@ const previewSizeOptions = [
   { value: 'auto', label: 'Auto' },
 ];
 
-const finalSizeOptions = [
-  { value: '2048x2048', label: '2048 x 2048' },
-  { value: '2048x1152', label: '2048 x 1152' },
-  { value: '1152x2048', label: '1152 x 2048' },
-  { value: '1024x1024', label: '1024 x 1024' },
-  { value: '1536x1024', label: '1536 x 1024' },
-  { value: '1024x1536', label: '1024 x 1536' },
-  { value: 'auto', label: 'Auto' },
-];
-
 const qualityOptions = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
@@ -66,7 +56,7 @@ const updateImageSetting = <Key extends keyof MarketingImageSettings>(
         [key]: value,
       },
     },
-    final: imageSettings,
+    additionalPrompt: '',
     childrenSceneSubjectIds: [],
   }).preview.customSettings;
 
@@ -90,183 +80,111 @@ export const MarketingSettingsPanel = ({
       },
     });
   };
-  const updateFinal = <Key extends keyof MarketingImageSettings>(
-    key: Key,
-    value: MarketingImageSettings[Key],
-  ) => {
-    update({
-      ...settings,
-      final: updateImageSetting(settings.final, key, value),
-    });
-  };
-
   return (
     <Card>
       <CardHeader>
         <div>
           <h2 className="text-lg font-bold text-ink-strong">Marketing asset generation</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Configure cost-controlled preview and final settings. High quality is not used for
-            marketing assets.
+            Configure cost-controlled AI settings for listing graphics. Generated marketing
+            suggestions are saved as usable assets immediately.
           </p>
         </div>
       </CardHeader>
       <CardBody>
         <div className="space-y-6">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="space-y-4 rounded-control border border-surface-outline bg-surface-raised p-4">
-              <div>
-                <h3 className="text-sm font-bold text-ink-strong">Preview generation</h3>
-                <p className="mt-1 text-sm text-ink-muted">
-                  Defaults to {maskSettings.model} with a 1024 x 1024 preview size and{' '}
-                  {maskSettings.quality === 'high' ? 'medium cap' : maskSettings.quality} quality.
-                </p>
-              </div>
-              <Select
-                label="Preview settings"
-                name="marketingPreviewMode"
-                value={settings.preview.mode}
-                options={[
-                  { value: 'inherit-mask', label: 'Mask model with 1024 preview size' },
-                  { value: 'custom', label: 'Custom marketing preview settings' },
-                ]}
-                onChange={(event) =>
-                  update({
-                    ...settings,
-                    preview: {
-                      ...settings.preview,
-                      mode: event.target.value === 'custom' ? 'custom' : 'inherit-mask',
-                    },
-                  })
-                }
-              />
-              {settings.preview.mode === 'custom' ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Select
-                    label="Preview model"
-                    name="marketingPreviewModel"
-                    value={settings.preview.customSettings.model}
-                    options={modelOptions}
-                    onChange={(event) =>
-                      updatePreviewCustom(
-                        'model',
-                        event.target.value as MarketingImageSettings['model'],
-                      )
-                    }
-                  />
-                  <Select
-                    label="Preview size"
-                    name="marketingPreviewSize"
-                    value={settings.preview.customSettings.size}
-                    options={previewSizeOptions}
-                    onChange={(event) =>
-                      updatePreviewCustom(
-                        'size',
-                        event.target.value as MarketingImageSettings['size'],
-                      )
-                    }
-                  />
-                  <Select
-                    label="Preview quality"
-                    name="marketingPreviewQuality"
-                    value={settings.preview.customSettings.quality}
-                    options={qualityOptions}
-                    onChange={(event) =>
-                      updatePreviewCustom(
-                        'quality',
-                        event.target.value as MarketingImageSettings['quality'],
-                      )
-                    }
-                  />
-                  <Select
-                    label="Preview background"
-                    name="marketingPreviewBackground"
-                    value={settings.preview.customSettings.background}
-                    options={backgroundOptions}
-                    onChange={(event) =>
-                      updatePreviewCustom(
-                        'background',
-                        event.target.value as MarketingImageSettings['background'],
-                      )
-                    }
-                  />
-                  <Select
-                    label="Preview format"
-                    name="marketingPreviewFormat"
-                    value={settings.preview.customSettings.outputFormat}
-                    options={outputFormatOptions}
-                    onChange={(event) =>
-                      updatePreviewCustom(
-                        'outputFormat',
-                        event.target.value as MarketingImageSettings['outputFormat'],
-                      )
-                    }
-                  />
-                </div>
-              ) : null}
-            </section>
-            <section className="space-y-4 rounded-control border border-surface-outline bg-surface-raised p-4">
-              <div>
-                <h3 className="text-sm font-bold text-ink-strong">Final asset generation</h3>
-                <p className="mt-1 text-sm text-ink-muted">
-                  Use a larger size for approved assets while keeping quality capped at medium.
-                </p>
-              </div>
+          <section className="space-y-4 rounded-control border border-surface-outline bg-surface-raised p-4">
+            <div>
+              <h3 className="text-sm font-bold text-ink-strong">Marketing suggestions</h3>
+              <p className="mt-1 text-sm text-ink-muted">
+                Defaults to {maskSettings.model} with a 1024 x 1024 size and{' '}
+                {maskSettings.quality === 'high' ? 'medium cap' : maskSettings.quality} quality.
+                High quality is not used for marketing assets.
+              </p>
+            </div>
+            <Select
+              label="Marketing settings"
+              name="marketingPreviewMode"
+              value={settings.preview.mode}
+              options={[
+                { value: 'inherit-mask', label: 'Mask model with 1024 marketing size' },
+                { value: 'custom', label: 'Custom marketing settings' },
+              ]}
+              onChange={(event) =>
+                update({
+                  ...settings,
+                  preview: {
+                    ...settings.preview,
+                    mode: event.target.value === 'custom' ? 'custom' : 'inherit-mask',
+                  },
+                })
+              }
+            />
+            {settings.preview.mode === 'custom' ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <Select
-                  label="Final model"
-                  name="marketingFinalModel"
-                  value={settings.final.model}
+                  label="Marketing model"
+                  name="marketingPreviewModel"
+                  value={settings.preview.customSettings.model}
                   options={modelOptions}
                   onChange={(event) =>
-                    updateFinal('model', event.target.value as MarketingImageSettings['model'])
+                    updatePreviewCustom(
+                      'model',
+                      event.target.value as MarketingImageSettings['model'],
+                    )
                   }
                 />
                 <Select
-                  label="Final size"
-                  name="marketingFinalSize"
-                  value={settings.final.size}
-                  options={finalSizeOptions}
+                  label="Marketing size"
+                  name="marketingPreviewSize"
+                  value={settings.preview.customSettings.size}
+                  options={previewSizeOptions}
                   onChange={(event) =>
-                    updateFinal('size', event.target.value as MarketingImageSettings['size'])
+                    updatePreviewCustom(
+                      'size',
+                      event.target.value as MarketingImageSettings['size'],
+                    )
                   }
                 />
                 <Select
-                  label="Final quality"
-                  name="marketingFinalQuality"
-                  value={settings.final.quality}
+                  label="Marketing quality"
+                  name="marketingPreviewQuality"
+                  value={settings.preview.customSettings.quality}
                   options={qualityOptions}
                   onChange={(event) =>
-                    updateFinal('quality', event.target.value as MarketingImageSettings['quality'])
+                    updatePreviewCustom(
+                      'quality',
+                      event.target.value as MarketingImageSettings['quality'],
+                    )
                   }
                 />
                 <Select
-                  label="Final background"
-                  name="marketingFinalBackground"
-                  value={settings.final.background}
+                  label="Marketing background"
+                  name="marketingPreviewBackground"
+                  value={settings.preview.customSettings.background}
                   options={backgroundOptions}
                   onChange={(event) =>
-                    updateFinal(
+                    updatePreviewCustom(
                       'background',
                       event.target.value as MarketingImageSettings['background'],
                     )
                   }
                 />
                 <Select
-                  label="Final format"
-                  name="marketingFinalFormat"
-                  value={settings.final.outputFormat}
+                  label="Marketing format"
+                  name="marketingPreviewFormat"
+                  value={settings.preview.customSettings.outputFormat}
                   options={outputFormatOptions}
                   onChange={(event) =>
-                    updateFinal(
+                    updatePreviewCustom(
                       'outputFormat',
                       event.target.value as MarketingImageSettings['outputFormat'],
                     )
                   }
                 />
               </div>
-            </section>
-          </div>
+            ) : null}
+          </section>
         </div>
       </CardBody>
     </Card>

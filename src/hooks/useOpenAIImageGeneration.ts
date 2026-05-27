@@ -13,6 +13,7 @@ import type {
   AddActivity,
   BusyActionContext,
   ManagedFile,
+  OpenAIImageQuality,
   OpenAIImageSettings,
   PromptItem,
   SubjectItem,
@@ -26,6 +27,7 @@ type UseOpenAIImageGenerationParams = {
   prompts: PromptItem[];
   missingImagePrompts: PromptItem[];
   settings: OpenAIImageSettings;
+  coloringPageQuality: OpenAIImageQuality;
   filesRef: MutableRefObject<ManagedFile[]>;
   appendGeneratedFiles: (files: ManagedFile[], context?: BusyActionContext) => Promise<void>;
   addActivity: AddActivity;
@@ -86,6 +88,7 @@ export const useOpenAIImageGeneration = ({
   prompts,
   missingImagePrompts,
   settings,
+  coloringPageQuality,
   filesRef,
   appendGeneratedFiles,
   addActivity,
@@ -302,8 +305,12 @@ export const useOpenAIImageGeneration = ({
       context?.setProgress(`Generating coloring page for ${prompt.subjectName}...`);
 
       try {
+        const coloringPageSettings: OpenAIImageSettings = {
+          ...settings,
+          quality: coloringPageQuality,
+        };
         const generatedFile = await generateColoringPageFile(
-          settings,
+          coloringPageSettings,
           prompt,
           sourceFile.file,
           context?.signal,
@@ -320,7 +327,7 @@ export const useOpenAIImageGeneration = ({
         const mappedFile = await createGeneratedColoringPageFile(
           uniqueFile,
           prompt,
-          settings,
+          coloringPageSettings,
           subjects,
           sourceFile.id,
         );
@@ -349,6 +356,7 @@ export const useOpenAIImageGeneration = ({
       finishGeneratingColoringPage,
       generateColoringPageFile,
       prompts,
+      coloringPageQuality,
       settings,
       startGeneratingColoringPage,
       subjects,

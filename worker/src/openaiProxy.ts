@@ -85,6 +85,7 @@ type MarketingSceneInput = {
     optionIndex: number;
     stage: MarketingAssetStage;
     maskCount: number;
+    customPrompt?: string;
     pageIndex?: number;
     pageCount?: number;
   };
@@ -506,6 +507,10 @@ const readMarketingSceneInput = async (
     typeof recipeJson.pageCount === 'number' && Number.isFinite(recipeJson.pageCount)
       ? Math.max(1, Math.floor(recipeJson.pageCount))
       : undefined;
+  const customPrompt =
+    typeof recipeJson.customPrompt === 'string' && recipeJson.customPrompt.trim()
+      ? recipeJson.customPrompt.trim()
+      : undefined;
 
   return {
     settings: readMarketingImageSettings(readFormJsonObject(formData, 'settings')),
@@ -528,6 +533,7 @@ const readMarketingSceneInput = async (
         typeof recipeJson.maskCount === 'number' && Number.isFinite(recipeJson.maskCount)
           ? Math.max(1, Math.floor(recipeJson.maskCount))
           : images.length,
+      ...(customPrompt ? { customPrompt } : {}),
       ...(pageIndex !== undefined ? { pageIndex } : {}),
       ...(pageCount !== undefined ? { pageCount } : {}),
     },
@@ -563,6 +569,24 @@ const getMarketingEditModel = (
 ): (typeof MARKETING_EDIT_IMAGE_MODELS)[number] =>
   MARKETING_EDIT_IMAGE_MODELS.includes(settings.model) ? settings.model : 'gpt-image-2';
 
+const SLOGAN_VARIANT_DIRECTIONS = [
+  'Variant style: bold centered slogan with masks arranged dynamically around it.',
+  'Variant style: editorial split composition with dramatic product grouping and a clean text area.',
+  'Variant style: playful premium poster with masks layered in depth and strong visual hierarchy.',
+  'Variant style: bright print-at-home value poster with clear buyer-facing text hierarchy.',
+  'Variant style: catalog-cover composition with masks as the hero product and clean supporting copy.',
+  'Variant style: social-ready square ad with energetic mask placement and readable printable-product wording.',
+];
+
+const CHILDREN_SCENE_VARIANT_DIRECTIONS = [
+  'Variant style: party table scene.',
+  'Variant style: classroom craft scene.',
+  'Variant style: cozy play-corner scene.',
+  'Variant style: bright home printer craft table scene with finished paper masks nearby.',
+  'Variant style: birthday photo-booth corner with handmade printable masks worn by children.',
+  'Variant style: teacher resource activity scene with children holding or wearing paper masks.',
+];
+
 const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string => {
   if (recipe.type === 'slogan-poster') {
     return [
@@ -570,12 +594,8 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
       'Create a polished Etsy listing poster that uses the provided mask images as the featured product visuals.',
       'Make the composition feel designed, rich, and marketplace-ready, not like a simple grid.',
       'Include the exact slogan text prominently and keep it readable.',
-      'Do not add unrelated text. Optional small supporting text can mention printable masks only if it improves the design.',
-      recipe.optionIndex === 0
-        ? 'Variant style: bold centered slogan with masks arranged dynamically around it.'
-        : recipe.optionIndex === 1
-          ? 'Variant style: editorial split composition with dramatic product grouping and a clean text area.'
-          : 'Variant style: playful premium poster with masks layered in depth and strong visual hierarchy.',
+      'Do not add unrelated text. Optional small supporting text can mention printable masks, print at home, cut and wear, or digital download only if it improves buyer clarity.',
+      SLOGAN_VARIANT_DIRECTIONS[recipe.optionIndex % SLOGAN_VARIANT_DIRECTIONS.length],
     ].join('\n');
   }
 
@@ -600,11 +620,9 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
     'The masks should clearly look like printable paper masks made from A4 paper or light cardstock: flat cutout surface, matte printed texture, slight paper thickness, visible cut edges, eye holes, and optional elastic or string.',
     'The masks should look worn in the scene, correctly scaled, centered, and aligned to the faces while still reading as flat paper craft masks.',
     'Keep the composition warm, child-safe, and useful as an Etsy listing preview.',
-    recipe.optionIndex === 0
-      ? 'Variant style: party table scene.'
-      : recipe.optionIndex === 1
-        ? 'Variant style: classroom craft scene.'
-        : 'Variant style: cozy play-corner scene.',
+    CHILDREN_SCENE_VARIANT_DIRECTIONS[
+      recipe.optionIndex % CHILDREN_SCENE_VARIANT_DIRECTIONS.length
+    ],
     'Do not render masks as molded plastic, rubber, plush fabric, helmets, face paint, makeup, AR filters, or realistic animal heads.',
     'Do not add text, logos, watermarks, brand characters, celebrities, unsafe behavior, scary expressions, or distorted faces.',
   ].join('\n');
@@ -621,6 +639,9 @@ const buildMarketingScenePrompt = (input: MarketingSceneInput): string =>
     'Preserve the important mask identity: colors, silhouettes, horn/ear/frill shapes, eye holes, expressions, and texture style.',
     'Do not invent unrelated masks, brands, copyrighted characters, celebrities, logos, or watermarks.',
     getMarketingVariantDirection(input),
+    ...(input.recipe.customPrompt
+      ? [`Additional user direction for this suggestion batch: ${input.recipe.customPrompt}.`]
+      : []),
     `Generation variant id: ${input.recipe.id}, option ${input.recipe.optionIndex + 1}, ${input.recipe.stage}.`,
   ].join('\n');
 

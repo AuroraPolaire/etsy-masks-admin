@@ -1,6 +1,7 @@
 import type {
   MarketingImageSettings,
   MarketingSettings,
+  OpenAIImageQuality,
   OpenAIImageSettings,
   PdfSettings,
   Project,
@@ -66,18 +67,12 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
   outputFormat: 'png',
 };
 
+export const DEFAULT_COLORING_PAGE_QUALITY: OpenAIImageQuality = 'low';
+
 export const DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS: MarketingImageSettings = {
   model: 'gpt-image-2',
   size: '1024x1024',
   quality: 'low',
-  background: 'opaque',
-  outputFormat: 'png',
-};
-
-export const DEFAULT_MARKETING_FINAL_IMAGE_SETTINGS: MarketingImageSettings = {
-  model: 'gpt-image-2',
-  size: '2048x2048',
-  quality: 'medium',
   background: 'opaque',
   outputFormat: 'png',
 };
@@ -88,7 +83,7 @@ export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {
     mode: 'inherit-mask',
     customSettings: DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS,
   },
-  final: DEFAULT_MARKETING_FINAL_IMAGE_SETTINGS,
+  additionalPrompt: '',
   childrenSceneSubjectIds: [],
 };
 
@@ -111,6 +106,7 @@ export const createDefaultProject = (): Project => {
     subjects: [],
     pdfSettings: DEFAULT_PDF_SETTINGS,
     openAIImageSettings: DEFAULT_OPENAI_IMAGE_SETTINGS,
+    coloringPageQuality: DEFAULT_COLORING_PAGE_QUALITY,
     marketingSettings: DEFAULT_MARKETING_SETTINGS,
     createdAt: now,
     updatedAt: now,

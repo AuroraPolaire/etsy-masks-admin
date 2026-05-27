@@ -49,10 +49,8 @@ type HomeWorkflowViewProps = {
   onGenerateColoringPage: (subjectId: string) => void;
   onGenerateMissingColoringPages: () => void;
   onGenerateSloganPreviews: () => void;
-  onFinalizeSloganPoster: (previewFileId: string) => void;
   onGenerateMaskSheets: () => void;
   onGenerateChildrenScenePreviews: () => void;
-  onFinalizeChildrenScene: (previewFileId: string) => void;
   onApproveAllFiles: (fileIds: string[]) => void;
   onApproveFile: (fileId: string) => void;
   onDeleteFile: (fileId: string) => void;
@@ -87,10 +85,8 @@ export const HomeWorkflowView = ({
   onGenerateColoringPage,
   onGenerateMissingColoringPages,
   onGenerateSloganPreviews,
-  onFinalizeSloganPoster,
   onGenerateMaskSheets,
   onGenerateChildrenScenePreviews,
-  onFinalizeChildrenScene,
   onApproveAllFiles,
   onApproveFile,
   onDeleteFile,
@@ -193,11 +189,8 @@ export const HomeWorkflowView = ({
                 busyAction={busyAction}
                 onMarketingSettingsChange={onUpdateMarketingSettings}
                 onGenerateSloganPreviews={onGenerateSloganPreviews}
-                onFinalizeSloganPoster={onFinalizeSloganPoster}
                 onGenerateMaskSheets={onGenerateMaskSheets}
                 onGenerateChildrenScenePreviews={onGenerateChildrenScenePreviews}
-                onFinalizeChildrenScene={onFinalizeChildrenScene}
-                onApprovePreview={onApproveFile}
                 onDeleteFile={onDeleteFile}
               />
               <StepAdvanceButton

@@ -229,8 +229,8 @@ const readOpenAIImageSettings = (
 
 const readMarketingImageSettings = (
   settingsLike: unknown,
-  fallback: MarketingSettings['final'],
-): MarketingSettings['final'] => {
+  fallback: MarketingSettings['preview']['customSettings'],
+): MarketingSettings['preview']['customSettings'] => {
   const settings = isRecord(settingsLike) ? settingsLike : {};
   const size = readEnum<OpenAIImageSize>(
     settings.size,
@@ -293,7 +293,7 @@ const readMarketingSettings = (
         fallback.preview.customSettings,
       ),
     },
-    final: readMarketingImageSettings(settings.final, fallback.final),
+    additionalPrompt: readString(settings.additionalPrompt, fallback.additionalPrompt),
     childrenSceneSubjectIds: readStringArray(settings.childrenSceneSubjectIds, 3),
   };
 };
@@ -398,6 +398,11 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
       projectLike.imageGenerationSettings,
     fallback.openAIImageSettings,
   );
+  const coloringPageQuality = readEnum<OpenAIImageQuality>(
+    projectLike.coloringPageQuality,
+    ['low', 'medium', 'high', 'auto'],
+    fallback.coloringPageQuality,
+  );
   const marketingSettings = readMarketingSettings(
     projectLike.marketingSettings,
     fallback.marketingSettings,
@@ -408,6 +413,7 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
       ...fallback,
       pdfSettings,
       openAIImageSettings,
+      coloringPageQuality,
       marketingSettings,
       updatedAt: new Date().toISOString(),
     };
@@ -432,6 +438,7 @@ export const normalizeProject = (projectLike: unknown, fallback: Project): Proje
     subjects,
     pdfSettings,
     openAIImageSettings,
+    coloringPageQuality,
     marketingSettings,
     createdAt: readRequiredString(projectLike.createdAt, fallback.createdAt),
     updatedAt: new Date().toISOString(),

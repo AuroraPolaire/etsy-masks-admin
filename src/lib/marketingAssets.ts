@@ -155,6 +155,7 @@ export const findReusableFinalMarketingAsset = ({
       metadata.stage === 'final' &&
       metadata.recipeId === recipe.id &&
       metadata.optionIndex === recipe.optionIndex &&
+      (metadata.customPrompt ?? '') === (recipe.customPrompt ?? '') &&
       haveSameValues(metadata.sourceFileIds, sourceFileIds) &&
       haveSameMarketingImageSettings(metadata.generatedFromSettings, settings)
     );
@@ -179,6 +180,7 @@ export const createMarketingAssetMetadata = ({
   stage,
   optionIndex,
   recipeId,
+  customPrompt,
   sourceMasks,
   settings,
 }: {
@@ -186,6 +188,7 @@ export const createMarketingAssetMetadata = ({
   stage: MarketingAssetStage;
   optionIndex?: number;
   recipeId: string;
+  customPrompt?: string;
   sourceMasks: ManagedFile[];
   settings: MarketingImageSettings;
 }): MarketingAssetMetadata => ({
@@ -193,20 +196,22 @@ export const createMarketingAssetMetadata = ({
   stage,
   ...(optionIndex !== undefined ? { optionIndex } : {}),
   recipeId,
+  ...(customPrompt ? { customPrompt } : {}),
   sourceFileIds: sourceMasks.map((file) => file.id),
   generatedFromSettings: normalizeMarketingImageSettings(settings),
   generatedAt: new Date().toISOString(),
 });
 
 export const getChildrenSceneRecipe = (optionIndex: number): ChildrenSceneRecipe =>
-  CHILDREN_SCENE_RECIPES[optionIndex] ?? DEFAULT_CHILDREN_SCENE_RECIPE;
+  CHILDREN_SCENE_RECIPES[optionIndex % CHILDREN_SCENE_RECIPES.length] ??
+  DEFAULT_CHILDREN_SCENE_RECIPE;
 
 export const sanitizeMarketingSettings = (settings: MarketingSettings): MarketingSettings => ({
   ...settings,
+  additionalPrompt: (settings.additionalPrompt ?? '').trimStart(),
   preview: {
     ...settings.preview,
     customSettings: normalizeMarketingImageSettings(settings.preview.customSettings),
   },
-  final: normalizeMarketingImageSettings(settings.final),
   childrenSceneSubjectIds: settings.childrenSceneSubjectIds.slice(0, 3),
 });

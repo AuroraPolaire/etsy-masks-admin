@@ -123,6 +123,7 @@ describe('worker OpenAI marketing image requests', () => {
         optionIndex: 0,
         stage: 'final',
         maskCount: 2,
+        customPrompt: 'Use a visible home printer in the craft scene',
       },
       images: [
         new Blob(['mask-1'], { type: 'image/png' }),
@@ -137,6 +138,7 @@ describe('worker OpenAI marketing image requests', () => {
     expect(formData.getAll('image[]')).toHaveLength(2);
     expect(formData.get('prompt')).toContain('printable paper masks made from A4 paper');
     expect(formData.get('prompt')).toContain('flat paper craft masks');
+    expect(formData.get('prompt')).toContain('Use a visible home printer');
     expect(formData.get('prompt')).toContain('Do not render masks as molded plastic');
   });
 });
