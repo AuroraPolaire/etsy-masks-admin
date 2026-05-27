@@ -1016,7 +1016,7 @@ test.describe('cloud workflow', () => {
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByText('Progressive masks').first()).toBeVisible();
 
-    await page.getByRole('button', { name: 'Restore' }).click();
+    await page.getByRole('button', { name: 'Restore', exact: true }).click();
     await page.getByRole('button', { name: 'Restore run' }).click();
     await expect(page.getByText(/Downloading \d+\/12/).first()).toBeVisible();
 
