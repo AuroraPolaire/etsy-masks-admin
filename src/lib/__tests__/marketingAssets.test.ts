@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createDefaultProject } from '../../constants';
 import {
+  findReusableFinalMarketingAsset,
   getApprovedMarketingSourceMasks,
   getFinalMarketingAssetFiles,
   getMaskSheetPageCount,
@@ -75,7 +76,19 @@ describe('marketing asset helpers', () => {
     ).toMatchObject({ quality: 'medium' });
   });
 
-  it('uses 512 square previews by default while inheriting mask model and quality cap', () => {
+  it('normalizes legacy 512 marketing settings to the smallest supported GPT image size', () => {
+    expect(
+      normalizeMarketingImageSettings({
+        model: 'gpt-image-2',
+        size: '512x512',
+        quality: 'low',
+        background: 'opaque',
+        outputFormat: 'png',
+      }),
+    ).toMatchObject({ size: '1024x1024' });
+  });
+
+  it('uses 1024 square previews by default while inheriting mask model and quality cap', () => {
     const project = {
       ...createProject(),
       openAIImageSettings: {
@@ -89,7 +102,7 @@ describe('marketing asset helpers', () => {
 
     expect(resolveMarketingPreviewSettings(project)).toMatchObject({
       model: 'gpt-image-1.5',
-      size: '512x512',
+      size: '1024x1024',
       quality: 'medium',
     });
   });
@@ -114,10 +127,30 @@ describe('marketing asset helpers', () => {
     });
   });
 
-  it('defaults custom marketing preview settings to 512 square', () => {
+  it('normalizes legacy custom marketing preview size', () => {
+    const project = {
+      ...createProject(),
+      marketingSettings: {
+        ...createProject().marketingSettings,
+        preview: {
+          mode: 'custom',
+          customSettings: {
+            ...createProject().marketingSettings.preview.customSettings,
+            size: '512x512',
+          },
+        },
+      },
+    } satisfies Project;
+
+    expect(resolveMarketingPreviewSettings(project)).toMatchObject({
+      size: '1024x1024',
+    });
+  });
+
+  it('defaults custom marketing preview settings to 1024 square', () => {
     expect(createDefaultProject().marketingSettings.preview.customSettings).toMatchObject({
       quality: 'low',
-      size: '512x512',
+      size: '1024x1024',
     });
   });
 
@@ -164,5 +197,77 @@ describe('marketing asset helpers', () => {
     expect(getFinalMarketingAssetFiles([finalFile, previewFile]).map((file) => file.id)).toEqual([
       'final-slogan',
     ]);
+  });
+
+  it('finds reusable final marketing assets with matching recipe, sources, and final settings', () => {
+    const settings = createDefaultProject().marketingSettings.final;
+    const lionMask = makeImageFile('lion-new', 'approved', 'lion');
+    const owlMask = makeImageFile('owl-approved', 'approved', 'owl');
+    const finalFile = makeImageFile('final-slogan', 'approved', undefined, {
+      kind: 'generated-preview',
+      assetVariant: 'marketing-slogan',
+      marketingAsset: {
+        type: 'slogan-poster',
+        stage: 'final',
+        optionIndex: 1,
+        recipeId: 'slogan-2',
+        sourceFileIds: ['lion-new', 'owl-approved'],
+        generatedAt: '2026-05-26T10:00:00.000Z',
+        generatedFromSettings: settings,
+      },
+    });
+
+    expect(
+      findReusableFinalMarketingAsset({
+        files: [finalFile],
+        type: 'slogan-poster',
+        recipe: {
+          type: 'slogan-poster',
+          id: 'slogan-2',
+          optionIndex: 1,
+          stage: 'final',
+          maskCount: 2,
+        },
+        sourceMasks: [lionMask, owlMask],
+        settings,
+      })?.id,
+    ).toBe('final-slogan');
+  });
+
+  it('does not reuse final marketing assets generated with a different final quality', () => {
+    const settings = createDefaultProject().marketingSettings.final;
+    const lionMask = makeImageFile('lion-new', 'approved', 'lion');
+    const finalFile = makeImageFile('final-slogan', 'approved', undefined, {
+      kind: 'generated-preview',
+      assetVariant: 'marketing-slogan',
+      marketingAsset: {
+        type: 'slogan-poster',
+        stage: 'final',
+        optionIndex: 0,
+        recipeId: 'slogan-1',
+        sourceFileIds: ['lion-new'],
+        generatedAt: '2026-05-26T10:00:00.000Z',
+        generatedFromSettings: {
+          ...settings,
+          quality: 'low',
+        },
+      },
+    });
+
+    expect(
+      findReusableFinalMarketingAsset({
+        files: [finalFile],
+        type: 'slogan-poster',
+        recipe: {
+          type: 'slogan-poster',
+          id: 'slogan-1',
+          optionIndex: 0,
+          stage: 'final',
+          maskCount: 1,
+        },
+        sourceMasks: [lionMask],
+        settings,
+      }),
+    ).toBeUndefined();
   });
 });

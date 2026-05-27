@@ -320,6 +320,25 @@ export type BackendHealth = {
 
 export type BackendRunStatus = 'draft';
 
+export type RunRevisionStage =
+  | 'brief'
+  | 'masks'
+  | 'approval'
+  | 'coloring'
+  | 'marketing'
+  | 'export'
+  | 'restore';
+
+export type RunRevisionKind =
+  | 'autosave'
+  | 'manual'
+  | 'generation'
+  | 'restore-safety'
+  | 'restore'
+  | 'export';
+
+export type RunRevisionRestoreMode = 'full' | 'project-only' | 'files-only';
+
 export type BackendAutosaveStatus = 'idle' | 'restoring' | 'saving' | 'saved' | 'error';
 
 export type BackendAutosaveState = {
@@ -327,12 +346,15 @@ export type BackendAutosaveState = {
   status: BackendAutosaveStatus;
   lastSavedAt?: string;
   lastError?: string;
+  retryAttempt?: number;
+  nextRetryAt?: string;
 };
 
 export type BackendFileRecord = {
   id: string;
   runId: string;
   projectId: string;
+  objectId?: string;
   name: string;
   originalName: string;
   size: number;
@@ -395,6 +417,49 @@ export type BackendProjectSnapshot = {
   updatedAt?: string;
   files: BackendFileRecord[];
   events: BackendEvent[];
+};
+
+export type RunRevisionSummary = {
+  id: string;
+  runId: string;
+  projectId: string;
+  parentRevisionId?: string;
+  sequenceNumber: number;
+  stage: RunRevisionStage;
+  kind: RunRevisionKind;
+  label: string;
+  description?: string;
+  changeSummary?: Record<string, unknown>;
+  thumbnailFileId?: string;
+  fileCount: number;
+  totalSizeBytes: number;
+  isManual: boolean;
+  isPinned: boolean;
+  restoredFromRevisionId?: string;
+  createdAt: string;
+};
+
+export type RunRevisionDetail = RunRevisionSummary & {
+  project: Project | null;
+  files: BackendFileRecord[];
+};
+
+export type CreateRunRevisionInput = {
+  stage: RunRevisionStage;
+  kind: RunRevisionKind;
+  label: string;
+  description?: string;
+  changeSummary?: Record<string, unknown>;
+  thumbnailFileId?: string;
+  isManual?: boolean;
+  isPinned?: boolean;
+  restoredFromRevisionId?: string;
+};
+
+export type RestoreRunRevisionResult = {
+  safetyRevision: RunRevisionSummary;
+  restoredRevision: RunRevisionSummary;
+  snapshot: BackendProjectSnapshot;
 };
 
 export type BackendRunSummary = {

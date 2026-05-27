@@ -228,6 +228,35 @@ describe('project storage', () => {
     expect(project.openAIImageSettings).toEqual(DEFAULT_OPENAI_IMAGE_SETTINGS);
   });
 
+  it('normalizes legacy 512 image settings from imported project backups', () => {
+    const backup = {
+      appVersion: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      project: {
+        ...createDefaultProject(),
+        openAIImageSettings: {
+          ...DEFAULT_OPENAI_IMAGE_SETTINGS,
+          size: '512x512',
+        },
+        marketingSettings: {
+          ...createDefaultProject().marketingSettings,
+          preview: {
+            mode: 'custom',
+            customSettings: {
+              ...createDefaultProject().marketingSettings.preview.customSettings,
+              size: '512x512',
+            },
+          },
+        },
+      },
+    };
+
+    const project = parseProjectBackup(JSON.stringify(backup));
+
+    expect(project.openAIImageSettings.size).toBe('1024x1024');
+    expect(project.marketingSettings.preview.customSettings.size).toBe('1024x1024');
+  });
+
   it('preserves normalized AI SEO analysis from imported project backups', () => {
     const backup = {
       appVersion: '1.0.0',

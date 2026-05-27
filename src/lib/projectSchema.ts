@@ -187,6 +187,20 @@ const readOpenAIImageSettings = (
   fallback: OpenAIImageSettings,
 ): OpenAIImageSettings => {
   const settings = isRecord(settingsLike) ? settingsLike : {};
+  const size = readEnum<OpenAIImageSize>(
+    settings.size,
+    [
+      '512x512',
+      '1024x1024',
+      '1536x1024',
+      '1024x1536',
+      '2048x2048',
+      '2048x1152',
+      '1152x2048',
+      'auto',
+    ],
+    fallback.size,
+  );
 
   return {
     model: readEnum<OpenAIImageModel>(
@@ -194,20 +208,7 @@ const readOpenAIImageSettings = (
       ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-image-2'],
       fallback.model,
     ),
-    size: readEnum<OpenAIImageSize>(
-      settings.size,
-      [
-        '512x512',
-        '1024x1024',
-        '1536x1024',
-        '1024x1536',
-        '2048x2048',
-        '2048x1152',
-        '1152x2048',
-        'auto',
-      ],
-      fallback.size,
-    ),
+    size: size === '512x512' ? '1024x1024' : size,
     quality: readEnum<OpenAIImageQuality>(
       settings.quality,
       ['low', 'medium', 'high', 'auto'],
@@ -231,6 +232,20 @@ const readMarketingImageSettings = (
   fallback: MarketingSettings['final'],
 ): MarketingSettings['final'] => {
   const settings = isRecord(settingsLike) ? settingsLike : {};
+  const size = readEnum<OpenAIImageSize>(
+    settings.size,
+    [
+      '512x512',
+      '1024x1024',
+      '1536x1024',
+      '1024x1536',
+      '2048x2048',
+      '2048x1152',
+      '1152x2048',
+      'auto',
+    ],
+    fallback.size,
+  );
   const quality = readEnum<OpenAIImageQuality>(
     settings.quality,
     ['low', 'medium', 'high', 'auto'],
@@ -243,20 +258,7 @@ const readMarketingImageSettings = (
       ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'gpt-image-2'],
       fallback.model,
     ),
-    size: readEnum<OpenAIImageSize>(
-      settings.size,
-      [
-        '512x512',
-        '1024x1024',
-        '1536x1024',
-        '1024x1536',
-        '2048x2048',
-        '2048x1152',
-        '1152x2048',
-        'auto',
-      ],
-      fallback.size,
-    ),
+    size: size === '512x512' ? '1024x1024' : size,
     quality: quality === 'high' ? 'medium' : quality,
     background: readEnum<OpenAIImageBackground>(
       settings.background,

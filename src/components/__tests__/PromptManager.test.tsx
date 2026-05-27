@@ -340,8 +340,8 @@ describe('FileInputButton', () => {
 
 describe('InitialPromptPanel', () => {
   it('fills the bundle idea from a style template', () => {
-    const [watercolorTemplate] = initialPromptStyleTemplates;
-    if (!watercolorTemplate) {
+    const [styleTemplate] = initialPromptStyleTemplates;
+    if (!styleTemplate) {
       throw new Error('Expected at least one style template.');
     }
 
@@ -355,9 +355,11 @@ describe('InitialPromptPanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Fluffy plush/i }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Style template' }), {
+      target: { value: styleTemplate.id },
+    });
 
-    expect(screen.getByLabelText('Bundle idea')).toHaveValue(watercolorTemplate.prompt);
+    expect(screen.getByLabelText('Bundle idea')).toHaveValue(styleTemplate.prompt);
   });
 
   it('shows the busy label while generating through backend AI', () => {

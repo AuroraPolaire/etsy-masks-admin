@@ -5,6 +5,7 @@ import { createManagedFile } from '../lib/files';
 import {
   CHILDREN_SCENE_RECIPES,
   createMarketingAssetMetadata,
+  findReusableFinalMarketingAsset,
   getApprovedMarketingSourceMasks,
   getChildrenSceneRecipe,
   getSelectedChildrenSceneMasks,
@@ -124,6 +125,19 @@ export const useMarketingAssetGeneration = ({
   addActivity,
   generateMarketingSceneFile,
 }: UseMarketingAssetGenerationParams) => {
+  const appendVisibleMarketingFile = useCallback(
+    (managedFile: ManagedFile) => {
+      void appendGeneratedFiles([managedFile]).catch((error) => {
+        addActivity(
+          'error',
+          'error',
+          error instanceof Error ? error.message : 'Could not queue generated marketing asset.',
+        );
+      });
+    },
+    [addActivity, appendGeneratedFiles],
+  );
+
   const generateSloganPreviews = useCallback(
     async (context?: BusyActionContext) => {
       const sourceMasks = getApprovedMarketingSourceMasks(project, filesRef.current);
@@ -135,7 +149,7 @@ export const useMarketingAssetGeneration = ({
       try {
         const settings = resolveMarketingPreviewSettings(project);
         const reservedNames = getReservedNames(filesRef.current);
-        const managedFiles: ManagedFile[] = [];
+        let generatedCount = 0;
 
         for (let optionIndex = 0; optionIndex < 3; optionIndex += 1) {
           if (context?.signal.aborted) {
@@ -159,21 +173,24 @@ export const useMarketingAssetGeneration = ({
             context?.signal,
           );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
-          managedFiles.push(
-            await createAiMarketingFile({
-              file: uniqueFile,
-              project,
-              type: 'slogan-poster',
-              recipe,
-              sourceMasks,
-              settings,
-              reviewState: 'pending',
-            }),
-          );
+          const managedFile = await createAiMarketingFile({
+            file: uniqueFile,
+            project,
+            type: 'slogan-poster',
+            recipe,
+            sourceMasks,
+            settings,
+            reviewState: 'pending',
+          });
+          generatedCount += 1;
+          appendVisibleMarketingFile(managedFile);
         }
 
-        await appendGeneratedFiles(managedFiles, context);
-        addActivity('marketing-generated', 'success', 'Generated 3 slogan poster previews.');
+        addActivity(
+          'marketing-generated',
+          'success',
+          `Generated ${generatedCount} slogan poster preview${generatedCount === 1 ? '' : 's'}.`,
+        );
       } catch (error) {
         if (isAbortError(error)) {
           addActivity('marketing-generated', 'warning', 'Marketing generation was cancelled.');
@@ -187,7 +204,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
   );
 
   const finalizeSloganPoster = useCallback(
@@ -201,7 +218,6 @@ export const useMarketingAssetGeneration = ({
       }
 
       try {
-        context?.setProgress('Creating final slogan poster...');
         const settings = normalizeMarketingImageSettings(project.marketingSettings.final);
         const recipe: MarketingGenerationRecipe = {
           type: 'slogan-poster',
@@ -210,6 +226,23 @@ export const useMarketingAssetGeneration = ({
           stage: 'final',
           maskCount: sourceMasks.length,
         };
+        const reusableFile = findReusableFinalMarketingAsset({
+          files: filesRef.current,
+          type: 'slogan-poster',
+          recipe,
+          sourceMasks,
+          settings,
+        });
+        if (reusableFile) {
+          addActivity(
+            'marketing-generated',
+            'success',
+            'Reused the existing final slogan poster with matching final settings.',
+          );
+          return;
+        }
+
+        context?.setProgress('Creating final slogan poster...');
         const file = await generateMarketingSceneFile(
           settings,
           project,
@@ -261,7 +294,8 @@ export const useMarketingAssetGeneration = ({
         const settings = normalizeMarketingImageSettings(project.marketingSettings.final);
         const pageCount = Math.ceil(sourceMasks.length / MASK_SHEET_PAGE_SIZE);
         const reservedNames = getReservedNames(filesRef.current);
-        const managedFiles: ManagedFile[] = [];
+        let generatedCount = 0;
+        let reusedCount = 0;
 
         for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
           if (context?.signal.aborted) {
@@ -282,6 +316,18 @@ export const useMarketingAssetGeneration = ({
             pageCount,
           };
 
+          const reusableFile = findReusableFinalMarketingAsset({
+            files: filesRef.current,
+            type: 'mask-sheet',
+            recipe,
+            sourceMasks: pageMasks,
+            settings,
+          });
+          if (reusableFile) {
+            reusedCount += 1;
+            continue;
+          }
+
           context?.setProgress(`Generating AI mask sheet ${pageIndex + 1}/${pageCount}...`);
           const file = await generateMarketingSceneFile(
             settings,
@@ -291,24 +337,27 @@ export const useMarketingAssetGeneration = ({
             context?.signal,
           );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
-          managedFiles.push(
-            await createAiMarketingFile({
-              file: uniqueFile,
-              project,
-              type: 'mask-sheet',
-              recipe,
-              sourceMasks: pageMasks,
-              settings,
-              reviewState: 'approved',
-            }),
-          );
+          const managedFile = await createAiMarketingFile({
+            file: uniqueFile,
+            project,
+            type: 'mask-sheet',
+            recipe,
+            sourceMasks: pageMasks,
+            settings,
+            reviewState: 'approved',
+          });
+          generatedCount += 1;
+          appendVisibleMarketingFile(managedFile);
         }
 
-        await appendGeneratedFiles(managedFiles, context);
         addActivity(
           'marketing-generated',
           'success',
-          `Generated ${managedFiles.length} mask sheet image${managedFiles.length === 1 ? '' : 's'}.`,
+          reusedCount === 0
+            ? `Generated ${generatedCount} mask sheet image${generatedCount === 1 ? '' : 's'}.`
+            : generatedCount === 0
+              ? `Reused ${reusedCount} existing mask sheet image${reusedCount === 1 ? '' : 's'} with matching final settings.`
+              : `Generated ${generatedCount} mask sheet image${generatedCount === 1 ? '' : 's'} and reused ${reusedCount} existing.`,
         );
       } catch (error) {
         if (isAbortError(error)) {
@@ -323,7 +372,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
   );
 
   const generateChildrenScenePreviews = useCallback(
@@ -340,7 +389,7 @@ export const useMarketingAssetGeneration = ({
       try {
         const settings = resolveMarketingPreviewSettings(project);
         const reservedNames = getReservedNames(filesRef.current);
-        const managedFiles: ManagedFile[] = [];
+        let generatedCount = 0;
 
         for (const [optionIndex, recipe] of CHILDREN_SCENE_RECIPES.entries()) {
           if (context?.signal.aborted) {
@@ -364,21 +413,24 @@ export const useMarketingAssetGeneration = ({
             context?.signal,
           );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
-          managedFiles.push(
-            await createAiMarketingFile({
-              file: uniqueFile,
-              project,
-              type: 'children-scene',
-              recipe: recipeInput,
-              sourceMasks,
-              settings,
-              reviewState: 'pending',
-            }),
-          );
+          const managedFile = await createAiMarketingFile({
+            file: uniqueFile,
+            project,
+            type: 'children-scene',
+            recipe: recipeInput,
+            sourceMasks,
+            settings,
+            reviewState: 'pending',
+          });
+          generatedCount += 1;
+          appendVisibleMarketingFile(managedFile);
         }
 
-        await appendGeneratedFiles(managedFiles, context);
-        addActivity('marketing-generated', 'success', 'Generated 3 children scene previews.');
+        addActivity(
+          'marketing-generated',
+          'success',
+          `Generated ${generatedCount} children scene preview${generatedCount === 1 ? '' : 's'}.`,
+        );
       } catch (error) {
         if (isAbortError(error)) {
           addActivity('marketing-generated', 'warning', 'Marketing generation was cancelled.');
@@ -392,7 +444,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendGeneratedFiles, filesRef, generateMarketingSceneFile, project],
+    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
   );
 
   const finalizeChildrenScene = useCallback(
@@ -410,7 +462,6 @@ export const useMarketingAssetGeneration = ({
       }
 
       try {
-        context?.setProgress('Generating final children scene...');
         const settings = normalizeMarketingImageSettings(project.marketingSettings.final);
         const recipeInput: MarketingGenerationRecipe = {
           type: 'children-scene',
@@ -419,6 +470,23 @@ export const useMarketingAssetGeneration = ({
           stage: 'final',
           maskCount: sourceMasks.length,
         };
+        const reusableFile = findReusableFinalMarketingAsset({
+          files: filesRef.current,
+          type: 'children-scene',
+          recipe: recipeInput,
+          sourceMasks,
+          settings,
+        });
+        if (reusableFile) {
+          addActivity(
+            'marketing-generated',
+            'success',
+            'Reused the existing final children scene with matching final settings.',
+          );
+          return;
+        }
+
+        context?.setProgress('Generating final children scene...');
         const file = await generateMarketingSceneFile(
           settings,
           project,
