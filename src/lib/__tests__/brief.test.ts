@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { createProjectDraftFromInitialPrompt } from '../brief';
@@ -43,6 +46,7 @@ describe('brief prompt drafting', () => {
     expect(ids.size).toBe(initialPromptStyleTemplates.length);
     expect(prompts.size).toBe(initialPromptStyleTemplates.length);
     for (const template of initialPromptStyleTemplates) {
+      expect(template.exampleImageSrc).toBe(`/style-examples/${template.id}.png`);
       expect(template.prompt).toContain('Mask style:');
       expect(template.prompt).toContain('Color painting:');
       expect(template.prompt).toContain('Coloring page lines:');
@@ -56,5 +60,16 @@ describe('brief prompt drafting', () => {
 
     expect(draft.subjects).toEqual([]);
     expect(draft.settings.title).not.toContain('12 PNG Paper Masks');
+  });
+
+  it('ships every style example as a 256x256 PNG frontend asset', () => {
+    for (const template of initialPromptStyleTemplates) {
+      const filePath = join(process.cwd(), 'public', template.exampleImageSrc.replace(/^\//, ''));
+      const file = readFileSync(filePath);
+
+      expect(file.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+      expect(file.readUInt32BE(16)).toBe(256);
+      expect(file.readUInt32BE(20)).toBe(256);
+    }
   });
 });
