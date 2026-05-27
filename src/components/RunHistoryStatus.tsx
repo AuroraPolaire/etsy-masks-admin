@@ -74,25 +74,29 @@ export const RunHistoryStatus = ({
 
   return (
     <Card>
-      <CardHeader className="px-4 py-3">
+      <CardHeader className="px-4 py-2">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-ink-strong">Run history</h2>
+          <h2 className="text-base font-bold text-ink-strong">Version history</h2>
           <Badge tone={getSaveStateTone(autosaveState)}>{getSaveStateLabel(autosaveState)}</Badge>
         </div>
       </CardHeader>
-      <CardBody className="space-y-2 px-4 py-3">
-        <div className="rounded-control border border-surface-divider bg-surface-muted px-3 py-1.5 text-sm">
+      <CardBody className="space-y-2 px-4 py-2">
+        <div className="rounded-control border border-surface-divider bg-surface-muted px-3 py-1 text-sm">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate font-semibold text-ink-strong">
-              {latestRevision ? latestRevision.label : 'No checkpoints yet'}
+              {latestRevision ? latestRevision.label : 'No restore points yet'}
             </p>
             <Badge>{revisions.length}</Badge>
           </div>
           {latestRevision ? (
             <p className="mt-1 text-xs text-ink-muted">
-              {formatCloudSaveDateTime(latestRevision.createdAt)}
+              Latest point saved {formatCloudSaveDateTime(latestRevision.createdAt)}
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-1 text-xs text-ink-muted">
+              Cloud autosave creates points you can restore.
+            </p>
+          )}
         </div>
         {autosaveState.status === 'error' ? (
           <div className="rounded-control border border-feedback-danger-border bg-feedback-danger-bg px-3 py-2 text-xs text-feedback-danger-fg">
@@ -109,15 +113,15 @@ export const RunHistoryStatus = ({
         {canShowManualCheckpoint ? (
           <details className="rounded-control border border-surface-divider bg-surface-muted">
             <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-ink-strong">
-              Manual checkpoint
+              Save named restore point
             </summary>
             <div className="space-y-2 border-t border-surface-divider p-3">
               <Input
-                label="Checkpoint label"
+                label="Restore point name"
                 name="checkpointLabel"
                 value={label}
                 placeholder="Before redoing slogans"
-                helperText="Manual checkpoints stay pinned in history."
+                helperText="Use this before regenerating or replacing work."
                 onChange={(event) => setLabel(event.target.value)}
               />
               <Button
@@ -125,12 +129,12 @@ export const RunHistoryStatus = ({
                 disabled={!canSave || historyBusy}
                 variant="primary"
                 onClick={() => {
-                  onSaveCheckpoint(label.trim() || 'Manual checkpoint');
+                  onSaveCheckpoint(label.trim() || 'Named restore point');
                   setLabel('');
                 }}
               >
                 <Save aria-hidden="true" className="mr-2" size={17} />
-                Save checkpoint
+                Save restore point
               </Button>
             </div>
           </details>
@@ -138,7 +142,7 @@ export const RunHistoryStatus = ({
         <div className="grid gap-2">
           <Button disabled={historyBusy} onClick={onOpenHistory}>
             <History aria-hidden="true" className="mr-2" size={17} />
-            History
+            View restore points
           </Button>
           {autosaveState.status === 'error' ? (
             <Button disabled={!canSave} variant="danger" onClick={onRetryCloudSave}>

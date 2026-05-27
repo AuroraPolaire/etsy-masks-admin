@@ -14,13 +14,13 @@ export type RunHistoryGroup = {
 };
 
 const stageLabels: Record<RunRevisionStage, string> = {
-  brief: 'Brief',
-  masks: 'Masks',
-  approval: 'Approval',
+  brief: 'Idea and brief',
+  masks: 'Mask drafts',
+  approval: 'Approved masks',
   coloring: 'Coloring pages',
-  marketing: 'Marketing',
-  export: 'Export',
-  restore: 'Restores',
+  marketing: 'Marketing assets',
+  export: 'Exports',
+  restore: 'Restore events',
 };
 
 const stageOrder: RunRevisionStage[] = [
@@ -123,9 +123,9 @@ export const createAutosaveRevisionInput = (
     kind: files.length > 0 ? 'generation' : 'autosave',
     label:
       stage === 'approval'
-        ? `Approved masks checkpoint (${approvedCount})`
-        : `${stageLabels[stage]} checkpoint`,
-    description: 'Automatic checkpoint from cloud autosave.',
+        ? `Approved masks saved (${approvedCount})`
+        : `${stageLabels[stage]} saved`,
+    description: 'Automatic restore point from cloud autosave.',
     changeSummary: {
       subjectCount: project.subjects.length,
       fileCount: files.length,
