@@ -88,7 +88,7 @@ export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {
 };
 
 export const PROMPT_NEGATIVE_REQUIREMENTS =
-  'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no shadows, no dark background, no distorted face, no tiny eye holes, no extra holes, no side holes, no round punch holes, no string holes, no strap holes, no hanging holes, no attachment holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
+  'no copyrighted character, no brand, no celebrity, no text, no watermark, no scary expression, no full body, no scene, no props, no hands, no multiple masks, no paired color and line-art preview, no black-and-white duplicate, no coloring page in the color mask image, no split layout, no before-and-after layout, no shadows, no dark background, no distorted face, no tiny eye holes, no extra holes, no side holes, no round punch holes, no string holes, no strap holes, no hanging holes, no attachment holes, no black outline, no cutting outline, no sticker border, no contour cut line, no dashed cut guide';
 
 export const MAX_TOTAL_SOURCE_BYTES = 150 * 1024 * 1024;
 

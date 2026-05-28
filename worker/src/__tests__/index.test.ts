@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createRunFileHeaders } from '../index';
 import {
+  buildColoringPagePrompt,
+  buildImageRequestBody,
   buildMarketingSceneEditFormData,
   buildMarketingSceneGenerationRequestBody,
 } from '../openaiProxy';
@@ -172,6 +174,44 @@ describe('worker run revision manifests', () => {
         totalSizeBytes: 0,
       }),
     ).toBe(true);
+  });
+});
+
+describe('worker OpenAI mask image requests', () => {
+  const promptItem = {
+    expectedFilename: 'sheriff-cowboy-hat.png',
+    prompt:
+      'Mask style: western sheriff hat mask. Color painting: rich brown leather and gold star. Subject: Sheriff Cowboy Hat.',
+    coloringPagePrompt:
+      'Create a separate black-and-white coloring page for the Sheriff Cowboy Hat mask. Preserve the star and stitching as smooth line art.',
+    negativeRequirements:
+      'no multiple masks, no paired color and line-art preview, no coloring page in the color mask image',
+  };
+
+  it('blocks paired color and coloring-page layouts in color mask generation', () => {
+    const body = buildImageRequestBody(
+      {
+        model: 'gpt-image-2',
+        size: '1024x1024',
+        quality: 'low',
+        background: 'opaque',
+        outputFormat: 'png',
+      },
+      promptItem,
+    );
+
+    expect(body.prompt).toContain('exactly one color mask image');
+    expect(body.prompt).toContain('Do not include a black-and-white coloring page');
+    expect(body.prompt).toContain('no paired color and line-art preview');
+  });
+
+  it('uses the separate coloring page prompt for coloring-page edits', () => {
+    const prompt = buildColoringPagePrompt(promptItem);
+
+    expect(prompt).toContain('Separate coloring-page prompt');
+    expect(prompt).toContain('Preserve the star and stitching as smooth line art');
+    expect(prompt).toContain('Output only the coloring page');
+    expect(prompt).toContain('Color mask prompt context');
   });
 });
 

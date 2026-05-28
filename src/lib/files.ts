@@ -132,11 +132,55 @@ const cleanPromptStyle = (style: string | undefined): string => {
   return cleanedStyle && cleanedStyle.length > 0 ? cleanedStyle : DEFAULT_MASK_PROMPT_STYLE;
 };
 
+const stripColoringPageStyle = (style: string): string => {
+  const withoutLabeledColoringPage = style.replace(
+    /\bColoring page(?: lines)?:\s*.*?(?=\s+\b(?:Mask style|Color painting|Only eye holes)\b|$)/gi,
+    ' ',
+  );
+  const withoutColoringSentences = withoutLabeledColoringPage
+    .split(/(?<=[.!?;])\s+/)
+    .filter(
+      (sentence) =>
+        !/\b(coloring page|line[- ]art|black[- ]and[- ]white|black and white)\b/i.test(sentence),
+    )
+    .join(' ');
+
+  return withoutColoringSentences.replace(/\s+/g, ' ').trim();
+};
+
+const cleanColorMaskPromptStyle = (style: string | undefined): string => {
+  const cleanedStyle = cleanPromptStyle(style);
+  const colorOnlyStyle = stripColoringPageStyle(cleanedStyle);
+
+  return colorOnlyStyle.length > 0 ? colorOnlyStyle : DEFAULT_MASK_PROMPT_STYLE;
+};
+
+const extractColoringPageStyle = (style: string | undefined): string | undefined => {
+  const cleanedStyle = cleanPromptStyle(style);
+  const labeledMatch =
+    /\bColoring page(?: lines)?:\s*(.*?)(?=\s+\b(?:Mask style|Color painting|Only eye holes)\b|$)/i.exec(
+      cleanedStyle,
+    );
+  const labeledStyle = labeledMatch?.[1]?.replace(/\s+/g, ' ').trim();
+  if (labeledStyle) {
+    return labeledStyle;
+  }
+
+  return cleanedStyle
+    .split(/(?<=[.!?;])\s+/)
+    .find((sentence) =>
+      /\b(coloring page|line[- ]art|black[- ]and[- ]white|black and white)\b/i.test(sentence),
+    )
+    ?.replace(/\s+/g, ' ')
+    .trim();
+};
+
 const createMaskPrompt = (subjectName: string, settings?: Pick<ProjectSettings, 'style'>): string =>
   [
-    cleanPromptStyle(settings?.style),
+    cleanColorMaskPromptStyle(settings?.style),
     `Subject: ${subjectName}.`,
     'One standalone printable paper mask only.',
+    'Output a single color mask image only, not a paired color and coloring-page preview.',
     'Front view, centered composition, symmetrical design, child-friendly expression.',
     'Clearly cut human eye holes with enough space for a child to see through.',
     'Only the eye holes may be cut through the mask; do not add side punch holes, string holes, strap holes, hanging holes, attachment holes, or any extra circular cutouts.',
@@ -147,6 +191,23 @@ const createMaskPrompt = (subjectName: string, settings?: Pick<ProjectSettings, 
     'No text, no watermark.',
   ].join(' ');
 
+const createColoringPagePrompt = (
+  subjectName: string,
+  settings?: Pick<ProjectSettings, 'style'>,
+): string => {
+  const coloringPageStyle = extractColoringPageStyle(settings?.style);
+
+  return [
+    `Create a separate black-and-white coloring page for the ${subjectName} mask.`,
+    coloringPageStyle
+      ? `Coloring page style: ${coloringPageStyle}.`
+      : 'Use smooth printable line art with open colorable spaces and simplified decorative details.',
+    'Use the approved color mask image as the source; preserve the mask silhouette, eye holes, and main decorative elements.',
+    'Output only the coloring page, not the original color mask and not a side-by-side comparison.',
+    'Pure white background, black outlines only, no color, no shading, no gradients, no text, no watermark.',
+  ].join(' ');
+};
+
 export const createPromptItems = (
   subjects: SubjectItem[],
   settings?: Pick<ProjectSettings, 'style'>,
@@ -156,6 +217,7 @@ export const createPromptItems = (
     subjectName: subject.name,
     expectedFilename: getExpectedFilename(subject.name),
     prompt: createMaskPrompt(subject.name, settings),
+    coloringPagePrompt: createColoringPagePrompt(subject.name, settings),
     negativeRequirements: PROMPT_NEGATIVE_REQUIREMENTS,
   }));
 

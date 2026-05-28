@@ -61,14 +61,31 @@ describe('file helpers', () => {
     expect(prompt?.prompt).toContain('no shadows');
     expect(prompt?.prompt).toContain('Clearly cut human eye holes');
     expect(prompt?.prompt).toContain('Only the eye holes may be cut through the mask');
+    expect(prompt?.prompt).toContain('single color mask image only');
     expect(prompt?.prompt).toContain('do not add side punch holes');
     expect(prompt?.prompt).toContain('extra circular cutouts');
     expect(prompt?.prompt).toContain('without any black cutting outline');
+    expect(prompt?.coloringPagePrompt).toContain('separate black-and-white coloring page');
     expect(prompt?.negativeRequirements).toContain('no multiple masks');
+    expect(prompt?.negativeRequirements).toContain('no paired color and line-art preview');
     expect(prompt?.negativeRequirements).toContain('no side holes');
     expect(prompt?.negativeRequirements).toContain('no round punch holes');
     expect(prompt?.negativeRequirements).toContain('no attachment holes');
     expect(prompt?.negativeRequirements).toContain('no black outline');
+  });
+
+  it('keeps coloring page style directions out of color mask prompts', () => {
+    const [prompt] = createPromptItems([{ id: 'cowboy', name: 'Sheriff Cowboy Hat' }], {
+      style:
+        'Mask style: western sheriff hat mask. Color painting: rich brown leather and gold star. Coloring page: preserve the main star and stitching as smooth line art, no shading. Only eye holes, white background, front view.',
+    });
+
+    expect(prompt?.prompt).toContain('western sheriff hat mask');
+    expect(prompt?.prompt).toContain('rich brown leather and gold star');
+    expect(prompt?.prompt).not.toContain('Coloring page');
+    expect(prompt?.prompt).not.toContain('line art');
+    expect(prompt?.coloringPagePrompt).toContain('preserve the main star and stitching');
+    expect(prompt?.coloringPagePrompt).toContain('Output only the coloring page');
   });
 
   it('groups files for export', () => {

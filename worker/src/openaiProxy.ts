@@ -65,6 +65,7 @@ type ImageSettings = {
 type PromptItemInput = {
   expectedFilename: string;
   prompt: string;
+  coloringPagePrompt?: string;
   negativeRequirements: string;
 };
 
@@ -439,11 +440,14 @@ const readPromptItem = (value: unknown): PromptItemInput => {
     throw new ApiError(400, 'promptItem is required.');
   }
 
+  const coloringPagePrompt = readOptionalString(value.coloringPagePrompt);
+
   return {
     expectedFilename: sanitizeFileName(
       readRequiredString(value.expectedFilename, 'promptItem.expectedFilename'),
     ),
     prompt: readRequiredString(value.prompt, 'promptItem.prompt'),
+    ...(coloringPagePrompt ? { coloringPagePrompt } : {}),
     negativeRequirements: readRequiredString(
       value.negativeRequirements,
       'promptItem.negativeRequirements',
@@ -466,7 +470,7 @@ const createColoringPageFileName = (fileName: string): string => {
   return `${baseName}-coloring-page.png`;
 };
 
-const buildImageRequestBody = (
+export const buildImageRequestBody = (
   settings: ImageSettings,
   promptItem: PromptItemInput,
 ): Record<string, string | number> => {
@@ -477,7 +481,13 @@ const buildImageRequestBody = (
 
   return {
     model: settings.model,
-    prompt: `${promptItem.prompt}\n\nNegative requirements: ${promptItem.negativeRequirements}`,
+    prompt: [
+      promptItem.prompt,
+      '',
+      'Output requirements: generate exactly one color mask image. Do not include a black-and-white coloring page, line-art duplicate, split layout, before-and-after comparison, or any second mask.',
+      '',
+      `Negative requirements: ${promptItem.negativeRequirements}`,
+    ].join('\n'),
     n: 1,
     size: normalizeOpenAIRequestSize(settings.size),
     quality: settings.quality,
@@ -494,8 +504,11 @@ const getEditModel = (settings: ImageSettings): (typeof EDIT_IMAGE_MODELS)[numbe
 const supportsHighInputFidelity = (model: (typeof EDIT_IMAGE_MODELS)[number]): boolean =>
   model !== 'gpt-image-1-mini';
 
-const buildColoringPagePrompt = (promptItem: PromptItemInput): string =>
+export const buildColoringPagePrompt = (promptItem: PromptItemInput): string =>
   [
+    ...(promptItem.coloringPagePrompt
+      ? ['Separate coloring-page prompt:', promptItem.coloringPagePrompt, '']
+      : []),
     'Turn this image into a clean black and white coloring page.',
     '',
     'Style requirements:',
@@ -520,8 +533,9 @@ const buildColoringPagePrompt = (promptItem: PromptItemInput): string =>
     '- decorative details as printed lines only, not as punched holes',
     '',
     'Do not add text, watermark, crop marks, dashed cut guides, sticker borders, side punch holes, string holes, strap holes, hanging holes, attachment holes, extra circular cutouts, or an extra cut contour outside the mask.',
+    'Output only the coloring page; do not include the original color mask beside it.',
     'Make it suitable for a kids coloring activity.',
-    `Original prompt context: ${promptItem.prompt}`,
+    `Color mask prompt context: ${promptItem.prompt}`,
   ].join('\n');
 
 const readFormJsonObject = (formData: FormData, fieldName: string): Record<string, unknown> => {
