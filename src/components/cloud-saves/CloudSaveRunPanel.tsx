@@ -4,7 +4,6 @@ import { formatBytes } from '../../lib/files';
 import { Alert } from '../ui/Alert';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { Card, CardBody, CardHeader } from '../ui/Card';
 import { Surface } from '../ui/Surface';
 
 import type { BackendAutosaveState, BackendHealth, ManagedFile } from '../../types';
@@ -62,14 +61,13 @@ export const CloudSaveRunPanel = ({
   const runName = saveIdea.trim() || suggestedIdea;
 
   return (
-    <Card>
-      <CardHeader>
+    <details className="rounded-control border border-surface-outline bg-surface-panel">
+      <summary className="cursor-pointer px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Automatic online save</h2>
+            <h2 className="text-sm font-bold text-ink-strong">Autosave status</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Each meaningful edit is saved to one online copy for this project. There is no manual
-              save step.
+              Saved quietly in the background. Open this only when save status needs attention.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -80,26 +78,26 @@ export const CloudSaveRunPanel = ({
             </Badge>
           </div>
         </div>
-      </CardHeader>
-      <CardBody className="space-y-4">
+      </summary>
+      <div className="space-y-4 border-t border-surface-divider p-4">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <Surface variant="muted" className="p-3">
-            <p className="text-xs font-semibold uppercase text-ink-muted">Saved as</p>
+            <p className="text-xs font-semibold uppercase text-ink-muted">Project name</p>
             <p className="mt-1 truncate text-sm font-semibold text-ink-strong">{runName}</p>
             <p className="mt-1 text-xs text-ink-muted">
-              The name follows the current project and stays searchable in saved projects.
+              This name follows the current project and stays searchable in saved projects.
             </p>
           </Surface>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button disabled={backendBusy} onClick={onTestConnection}>
               <RefreshCw aria-hidden="true" className="mr-2" size={17} />
-              Refresh
+              Check save status
             </Button>
           </div>
         </div>
         {autosaveState.status === 'saved' && autosaveState.lastSavedAt ? (
           <p className="text-xs text-ink-muted">
-            Last online save:{' '}
+            Last saved:{' '}
             {new Intl.DateTimeFormat(undefined, {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -124,7 +122,7 @@ export const CloudSaveRunPanel = ({
             {formatBytes(maxFileBytes)} online-save limit. Remove or shrink them before saving.
           </Alert>
         ) : null}
-      </CardBody>
-    </Card>
+      </div>
+    </details>
   );
 };

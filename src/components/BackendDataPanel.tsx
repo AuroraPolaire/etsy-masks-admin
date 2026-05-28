@@ -61,17 +61,6 @@ export const BackendDataPanel = ({
 
   return (
     <div className="space-y-6">
-      <CloudSaveRunPanel
-        health={health}
-        saveIdea={saveIdea}
-        suggestedIdea={suggestedIdea}
-        backendBusy={backendBusy}
-        backendReachable={backendReachable}
-        autosaveState={autosaveState}
-        maxFileBytes={maxFileBytes}
-        oversizedFiles={oversizedFiles}
-        onTestConnection={onTestConnection}
-      />
       <SavedRunsTable
         runs={runs}
         filteredRuns={filteredRuns}
@@ -84,6 +73,17 @@ export const BackendDataPanel = ({
         onRunSelected={onRunSelected}
         onRestoreRun={onRestoreRun}
         onDeleteRun={onDeleteRun}
+      />
+      <CloudSaveRunPanel
+        health={health}
+        saveIdea={saveIdea}
+        suggestedIdea={suggestedIdea}
+        backendBusy={backendBusy}
+        backendReachable={backendReachable}
+        autosaveState={autosaveState}
+        maxFileBytes={maxFileBytes}
+        oversizedFiles={oversizedFiles}
+        onTestConnection={onTestConnection}
       />
       <CloudDiagnostics
         health={health}

@@ -20,20 +20,20 @@ type RunHistoryDrawerProps = {
 };
 
 const kindLabels: Record<RunRevisionSummary['kind'], string> = {
-  autosave: 'Auto save',
-  manual: 'Named point',
-  generation: 'Generated files',
-  'restore-safety': 'Before restore',
-  restore: 'Restored point',
+  autosave: 'Auto saved',
+  manual: 'Saved by you',
+  generation: 'After generation',
+  'restore-safety': 'Before load',
+  restore: 'Loaded version',
   export: 'Export',
 };
 
 const kindDescriptions: Record<RunRevisionSummary['kind'], string> = {
-  autosave: 'Saved automatically after a meaningful edit.',
-  manual: 'Named by you before a risky change.',
+  autosave: 'Saved automatically after edits.',
+  manual: 'Saved by you before a risky change.',
   generation: 'Saved after files or assets were generated.',
-  'restore-safety': 'Saved automatically before restoring an older point.',
-  restore: 'Saved after a restore finished.',
+  'restore-safety': 'Saved automatically before loading an older version.',
+  restore: 'Saved after an older version was loaded.',
   export: 'Saved around export work.',
 };
 
@@ -82,16 +82,16 @@ export const RunHistoryDrawer = ({
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-ink-strong/35">
       <aside
-        aria-label="Version history"
+        aria-label="Previous versions"
         className="flex size-full max-w-3xl flex-col border-l border-surface-outline bg-surface-panel shadow-panel"
       >
         <div className="flex items-start justify-between gap-4 border-b border-surface-divider p-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-brand">Version history</p>
-            <h2 className="mt-1 text-xl font-bold text-ink-strong">Restore points for this run</h2>
+            <p className="text-xs font-bold uppercase tracking-wide text-brand">Saved work</p>
+            <h2 className="mt-1 text-xl font-bold text-ink-strong">Previous versions</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Pick a saved point to go back. The app saves your current work first, so newer work
-              remains reachable.
+              Choose an older version to load. Your current work is saved first, so you can come
+              back to it.
             </p>
           </div>
           <IconButton icon={X} label="Close history" variant="ghost" onClick={onClose} />
@@ -99,12 +99,12 @@ export const RunHistoryDrawer = ({
 
         <div className="border-b border-surface-divider p-5">
           <Input
-            label="Search restore points"
+            label="Search previous versions"
             name="runHistorySearch"
             type="search"
             value={query}
             placeholder="Name, stage, or save type"
-            helperText={`${filteredRevisions.length}/${revisions.length} restore points shown`}
+            helperText={`${filteredRevisions.length}/${revisions.length} versions shown`}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
@@ -113,8 +113,8 @@ export const RunHistoryDrawer = ({
           {groups.length === 0 ? (
             <div className="rounded-control border border-surface-divider bg-surface-muted p-4 text-sm text-ink-muted">
               {revisions.length === 0
-                ? 'No restore points yet. Online autosave creates them after this run is saved.'
-                : 'No restore points match the search.'}
+                ? 'No previous versions yet. Autosave creates them after this project is saved online.'
+                : 'No previous versions match the search.'}
             </div>
           ) : (
             <div className="space-y-6">
@@ -160,7 +160,7 @@ export const RunHistoryDrawer = ({
                             </p>
                             <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                               <div className="rounded-control bg-surface-muted px-3 py-2">
-                                <dt className="text-xs uppercase text-ink-muted">Save order</dt>
+                                <dt className="text-xs uppercase text-ink-muted">Version</dt>
                                 <dd className="font-semibold text-ink-strong">
                                   #{revision.sequenceNumber}
                                 </dd>
@@ -172,7 +172,7 @@ export const RunHistoryDrawer = ({
                                 </dd>
                               </div>
                               <div className="rounded-control bg-surface-muted px-3 py-2">
-                                <dt className="text-xs uppercase text-ink-muted">Storage</dt>
+                                <dt className="text-xs uppercase text-ink-muted">Size</dt>
                                 <dd className="font-semibold text-ink-strong">
                                   {formatBytes(revision.totalSizeBytes)}
                                 </dd>
@@ -186,7 +186,7 @@ export const RunHistoryDrawer = ({
                             onClick={() => onRestoreRevision(revision.id)}
                           >
                             <RotateCcw aria-hidden="true" className="mr-2" size={17} />
-                            Restore this point
+                            Load version
                           </Button>
                         </div>
                       </article>
@@ -200,7 +200,7 @@ export const RunHistoryDrawer = ({
 
         <div className="border-t border-surface-divider p-4 text-xs text-ink-muted">
           <Search aria-hidden="true" className="mr-1 inline" size={13} />
-          Restoring creates a safety restore point first, so the current state remains reachable.
+          Loading a version saves your current work first, so the current version remains reachable.
         </div>
       </aside>
     </div>

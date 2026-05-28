@@ -22,7 +22,7 @@ const stageLabels: Record<RunRevisionStage, string> = {
   coloring: 'Coloring pages',
   marketing: 'Marketing assets',
   export: 'Exports',
-  restore: 'Restore events',
+  restore: 'Loaded versions',
 };
 
 const stageOrder: RunRevisionStage[] = [
@@ -127,7 +127,7 @@ export const createAutosaveRevisionInput = (
       stage === 'approval'
         ? `Ready masks saved (${readyMaskCount})`
         : `${stageLabels[stage]} saved`,
-    description: 'Automatic restore point from online autosave.',
+    description: 'Saved automatically online.',
     changeSummary: {
       subjectCount: project.subjects.length,
       fileCount: files.length,

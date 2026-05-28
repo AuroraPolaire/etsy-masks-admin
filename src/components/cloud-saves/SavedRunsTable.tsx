@@ -73,8 +73,8 @@ export const SavedRunsTable = ({
         <div>
           <h2 className="text-base font-bold text-ink-strong">Saved projects</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Search by idea, open a project to check details, then restore only when you want to load
-            that saved work.
+            Search by idea, open a project to check details, then load it only when you want to
+            replace the current work.
           </p>
         </div>
         <div className="w-full lg:max-w-sm">
@@ -143,7 +143,7 @@ export const SavedRunsTable = ({
                       onClick={() => onRestoreRun(run.id)}
                     >
                       <Download aria-hidden="true" className="mr-2" size={17} />
-                      Restore
+                      Load project
                     </Button>
                     <IconButton
                       disabled={!backendReachable || backendBusy}

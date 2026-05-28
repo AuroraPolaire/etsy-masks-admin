@@ -144,7 +144,7 @@ export const useBackendCache = ({
       .getHealth(controller.signal)
       .then(setHealth)
       .catch(() => {
-        // Full connection diagnostics run from the Cloud screen.
+        // Full connection diagnostics run from the saved-work screen.
       });
 
     return () => controller.abort();
@@ -236,10 +236,8 @@ export const useBackendCache = ({
             stage: inferRunRevisionStage(projectOverride, filesOverride),
             kind: 'manual' as const,
             label:
-              checkpointLabel && checkpointLabel.length > 0
-                ? checkpointLabel
-                : 'Named restore point',
-            description: 'Named restore point saved from the workflow sidebar.',
+              checkpointLabel && checkpointLabel.length > 0 ? checkpointLabel : 'Saved version',
+            description: 'Version saved from the workflow sidebar.',
             isManual: true,
             isPinned,
           }
@@ -262,7 +260,7 @@ export const useBackendCache = ({
           return null;
         }
 
-        const message = getErrorMessage(error, 'Could not save a restore point.');
+        const message = getErrorMessage(error, 'Could not save this version.');
         setHistoryError(message);
         addActivity('cloud-synced', 'warning', message);
         return null;
@@ -552,11 +550,11 @@ export const useBackendCache = ({
 
         const selectedRun = runs.find((run) => run.id === targetRunId);
         const shouldRestore = await confirmAction({
-          title: 'Restore selected project?',
+          title: 'Load selected project?',
           description: `This replaces the current browser project and session files with "${
             selectedRun?.idea ?? 'the selected saved project'
           }".`,
-          confirmLabel: 'Restore project',
+          confirmLabel: 'Load project',
         });
 
         if (!shouldRestore) {
@@ -569,7 +567,7 @@ export const useBackendCache = ({
             let firstFileAppendedMs: number | null = null;
 
             if (files.length > 0 && targetRunId !== activeDraftRunId) {
-              setProgress('Saving current project before restoring...');
+              setProgress('Saving current project before loading saved work...');
               const idea = saveIdea.trim() || getProjectIdeaLabel(project);
               const savedRun = await syncRunToBackend({
                 projectOverride: project,
@@ -577,7 +575,7 @@ export const useBackendCache = ({
                 signal,
                 setProgress: (message) => {
                   setProgress(
-                    message ? `Saving current project before restoring: ${message}` : null,
+                    message ? `Saving current project before loading saved work: ${message}` : null,
                   );
                 },
               });
@@ -622,8 +620,8 @@ export const useBackendCache = ({
 
             if (result.cancelled || result.failedFiles.length > 0) {
               const message = result.cancelled
-                ? 'Project restore was cancelled. Autosave is paused to protect saved files.'
-                : `Restored ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect saved files.`;
+                ? 'Project load was cancelled. Autosave is paused to protect saved files.'
+                : `Loaded ${result.files.length}/${nextSnapshot.files.length} file(s); ${result.failedFiles.length} failed. Autosave is paused to protect saved files.`;
               markDraftRestoreFailed(message, targetRunId);
               setDraftRestoreStatus('failed');
               addActivity(
@@ -640,16 +638,16 @@ export const useBackendCache = ({
             addActivity(
               'cloud-synced',
               'success',
-              `Restored ${result.files.length} file(s) from "${nextSnapshot.idea ?? 'saved project'}".`,
+              `Loaded ${result.files.length} file(s) from "${nextSnapshot.idea ?? 'saved project'}".`,
             );
           } catch (error) {
             if (isAbortError(error)) {
               setDraftRestoreStatus('complete');
-              addActivity('cloud-synced', 'warning', 'Project restore was cancelled.');
+              addActivity('cloud-synced', 'warning', 'Project load was cancelled.');
               return;
             }
 
-            const message = getErrorMessage(error, 'Could not restore the selected project.');
+            const message = getErrorMessage(error, 'Could not load the selected project.');
             markDraftRestoreFailed(message, targetRunId);
             setDraftRestoreStatus('failed');
             addActivity('error', 'error', message);
@@ -688,17 +686,17 @@ export const useBackendCache = ({
       void (async () => {
         const targetRunId = activeDraftRunId || selectedRunId;
         if (!targetRunId) {
-          addActivity('cloud-synced', 'warning', 'Save this project before restoring a point.');
+          addActivity('cloud-synced', 'warning', 'Save this project before loading a version.');
           return;
         }
 
         const revision = runRevisions.find((item) => item.id === revisionId);
         const shouldRestore = await confirmAction({
-          title: 'Restore this point?',
+          title: 'Load this version?',
           description: `This replaces the current browser project and session files with "${
-            revision?.label ?? 'the selected restore point'
-          }". Before restoring, the app saves your current work as "Before restoring older point" so you can return to it.`,
-          confirmLabel: 'Restore this point',
+            revision?.label ?? 'the selected version'
+          }". Before loading it, the app saves your current work so you can return to it.`,
+          confirmLabel: 'Load version',
         });
 
         if (!shouldRestore) {
@@ -707,17 +705,17 @@ export const useBackendCache = ({
 
         void runBusyAction('backend-sync', async ({ setProgress, signal }) => {
           try {
-            setProgress('Saving current state before restore...');
+            setProgress('Saving current work before loading the version...');
             await saveDraftNow({
               signal,
               setProgress: (message) => {
                 setProgress(message ? `Saving current state: ${message}` : null);
               },
-              checkpointLabel: 'Before restoring older point',
+              checkpointLabel: 'Before loading older version',
             });
 
             setDraftRestoreStatus('restoring');
-            setProgress('Restoring saved point metadata...');
+            setProgress('Loading saved version metadata...');
             const restoreStartedAt = getBackendRestoreNowMs();
             const { snapshot: nextSnapshot } = await client.restoreRunRevision(
               targetRunId,
@@ -728,11 +726,7 @@ export const useBackendCache = ({
             setSnapshot(nextSnapshot);
 
             if (!nextSnapshot.project) {
-              addActivity(
-                'cloud-synced',
-                'warning',
-                'The selected restore point no longer exists.',
-              );
+              addActivity('cloud-synced', 'warning', 'The selected version no longer exists.');
               return;
             }
 
@@ -763,8 +757,8 @@ export const useBackendCache = ({
 
             if (result.cancelled || result.failedFiles.length > 0) {
               const message = result.cancelled
-                ? 'Restore point load was cancelled. Autosave is paused to protect saved files.'
-                : `Loaded ${result.files.length}/${nextSnapshot.files.length} file(s) from the restore point; ${result.failedFiles.length} failed. Autosave is paused to protect saved files.`;
+                ? 'Version load was cancelled. Autosave is paused to protect saved files.'
+                : `Loaded ${result.files.length}/${nextSnapshot.files.length} file(s) from the selected version; ${result.failedFiles.length} failed. Autosave is paused to protect saved files.`;
               markDraftRestoreFailed(message, targetRunId);
               setDraftRestoreStatus('failed');
               addActivity(
@@ -781,16 +775,16 @@ export const useBackendCache = ({
             addActivity(
               'cloud-synced',
               'success',
-              `Restored point "${revision?.label ?? 'selected restore point'}".`,
+              `Loaded version "${revision?.label ?? 'selected version'}".`,
             );
           } catch (error) {
             if (isAbortError(error)) {
               setDraftRestoreStatus('complete');
-              addActivity('cloud-synced', 'warning', 'Restore point load was cancelled.');
+              addActivity('cloud-synced', 'warning', 'Version load was cancelled.');
               return;
             }
 
-            const message = getErrorMessage(error, 'Could not restore the selected point.');
+            const message = getErrorMessage(error, 'Could not load the selected version.');
             markDraftRestoreFailed(message, targetRunId);
             setDraftRestoreStatus('failed');
             addActivity('error', 'error', message);
@@ -889,7 +883,7 @@ export const useBackendCache = ({
       const shouldDelete = await confirmAction({
         title: 'Delete all saved work?',
         description:
-          'This deletes every saved project, file, and restore point stored online. Local browser data is not changed.',
+          'This deletes every saved project, file, and previous version stored online. Local browser data is not changed.',
         confirmLabel: 'Delete all saved work',
         tone: 'danger',
       });
