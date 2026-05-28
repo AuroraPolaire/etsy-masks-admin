@@ -156,6 +156,89 @@ describe('PromptManager', () => {
       screen.getByRole('button', { name: 'Open full-size color mask preview for Lion' }),
     ).toBeInTheDocument();
   });
+
+  it('shows queue label for per-topic coloring page generation while another image job is running', () => {
+    const onGenerateColoringPage = vi.fn();
+    const approvedImage: ManagedFile = {
+      id: 'lion-file',
+      file: new File(['image'], 'lion.png', { type: 'image/png' }),
+      name: 'lion.png',
+      originalName: 'lion.png',
+      size: 5,
+      type: 'image/png',
+      addedAt: '2026-05-26T08:00:00.000Z',
+      kind: 'uploaded',
+      assetVariant: 'color',
+      reviewState: 'approved',
+      reviewNotes: '',
+      mappedSubjectId: 'lion',
+      explicitlyConfirmed: true,
+    };
+
+    render(
+      <PromptManager
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
+        files={[approvedImage]}
+        canGenerateImages
+        generatingSubjectIds={['other-subject']}
+        generatingColoringPageSubjectIds={[]}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
+        onGenerateImage={vi.fn()}
+        onGenerateColoringPage={onGenerateColoringPage}
+        onDelete={vi.fn()}
+        onCopy={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Queue coloring page' }));
+
+    expect(onGenerateColoringPage).toHaveBeenCalledWith('lion');
+  });
+
+  it('shows queued state and disables per-topic generation buttons once queued', () => {
+    const approvedImage: ManagedFile = {
+      id: 'lion-file',
+      file: new File(['image'], 'lion.png', { type: 'image/png' }),
+      name: 'lion.png',
+      originalName: 'lion.png',
+      size: 5,
+      type: 'image/png',
+      addedAt: '2026-05-26T08:00:00.000Z',
+      kind: 'uploaded',
+      assetVariant: 'color',
+      reviewState: 'approved',
+      reviewNotes: '',
+      mappedSubjectId: 'lion',
+      explicitlyConfirmed: true,
+    };
+
+    render(
+      <PromptManager
+        subjects={subjects}
+        prompts={createPromptItems(subjects)}
+        files={[approvedImage]}
+        canGenerateImages
+        generatingSubjectIds={[]}
+        generatingColoringPageSubjectIds={[]}
+        queuedSubjectIds={['lion']}
+        queuedColoringPageSubjectIds={['lion']}
+        onAddSubject={vi.fn()}
+        onRemoveSubject={vi.fn()}
+        onGenerateImage={vi.fn()}
+        onGenerateColoringPage={vi.fn()}
+        onDelete={vi.fn()}
+        onCopy={vi.fn()}
+      />,
+    );
+
+    const queuedButtons = screen.getAllByRole('button', { name: 'Queued' });
+    expect(queuedButtons).toHaveLength(2);
+    queuedButtons.forEach((button) => {
+      expect(button).toBeDisabled();
+    });
+  });
 });
 
 describe('QAPanel', () => {

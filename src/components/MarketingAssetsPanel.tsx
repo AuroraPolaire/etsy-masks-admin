@@ -1,18 +1,19 @@
 import { RotateCw, Trash2 } from 'lucide-react';
 import { PhotoProvider } from 'react-photo-view';
 
+import { MAX_MASK_SHEET_MASKS_PER_IMAGE, MIN_MASK_SHEET_MASKS_PER_IMAGE } from '../constants';
 import {
   CHILDREN_SCENE_RECIPES,
   getApprovedMarketingSourceMasks,
   getMarketingAssetFiles,
   isMarketingAssetStale,
+  normalizeMaskSheetMasksPerImage,
 } from '../lib/marketingAssets';
 import { AIButton } from './ui/AIButton';
 import { Alert } from './ui/Alert';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
-import { CheckboxCard } from './ui/CheckboxCard';
 import { EmptyState } from './ui/EmptyState';
 import { ImagePreviewButton } from './ui/ImagePreviewButton';
 import { Input } from './ui/Input';
@@ -155,28 +156,83 @@ export const MarketingAssetsPanel = ({
     });
   };
 
-  const renderSourceMasks = () =>
+  const updateMaskSheetMasksPerImage = (value: string) => {
+    const parsedValue = Number.parseInt(value, 10);
+    const nextValue = normalizeMaskSheetMasksPerImage(
+      Number.isFinite(parsedValue) ? parsedValue : project.marketingSettings.maskSheetMasksPerImage,
+    );
+
+    onMarketingSettingsChange({
+      ...project.marketingSettings,
+      maskSheetMasksPerImage: nextValue,
+    });
+  };
+
+  const renderSourceMasks = (options?: { selectable?: boolean }) =>
     sourceMasks.length === 0 ? (
       <EmptyState>Generate at least one color mask before generating marketing assets.</EmptyState>
     ) : (
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {sourceMasks.map((file) => (
-          <Surface key={file.id} variant="default" className="min-w-0 p-3">
-            <div className="flex items-center gap-3">
-              {file.objectUrl ? (
-                <img
-                  src={file.objectUrl}
-                  alt=""
-                  className="size-16 shrink-0 rounded-control bg-white object-contain"
+      <div
+        className={`grid gap-3 ${options?.selectable ? 'sm:grid-cols-2 xl:grid-cols-3' : 'sm:grid-cols-2 xl:grid-cols-4'}`}
+      >
+        {sourceMasks.map((file) => {
+          const subject = project.subjects.find((item) => item.id === file.mappedSubjectId);
+          const subjectLabel = subject?.name ?? file.name;
+          const subjectId = file.mappedSubjectId ?? '';
+          const checked = selectedChildrenSubjectIds.includes(subjectId);
+          const disabled = options?.selectable ? !checked && selectedCount >= 3 : false;
+
+          return options?.selectable ? (
+            <Surface
+              key={file.id}
+              variant="default"
+              className={`min-w-0 p-3 transition ${checked ? 'ring-2 ring-brand/30' : ''} ${disabled ? 'opacity-70' : ''}`}
+            >
+              <div className="flex items-start gap-3">
+                {file.objectUrl ? (
+                  <img
+                    src={file.objectUrl}
+                    alt=""
+                    className="size-16 shrink-0 rounded-control bg-white object-contain"
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink-strong">{subjectLabel}</p>
+                  <p className="text-xs text-ink-muted">Ready mask source</p>
+                </div>
+                <input
+                  id={`children-scene-mask-${file.id}`}
+                  type="checkbox"
+                  className="mt-1 size-4 shrink-0 accent-brand focus:ring-brand/20"
+                  aria-label={subjectLabel}
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={(event) => {
+                    if (subjectId) {
+                      toggleChildrenSubject(subjectId, event.target.checked);
+                    }
+                  }}
                 />
-              ) : null}
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink-strong">{file.name}</p>
-                <p className="text-xs text-ink-muted">Ready mask source</p>
               </div>
-            </div>
-          </Surface>
-        ))}
+            </Surface>
+          ) : (
+            <Surface key={file.id} variant="default" className="min-w-0 p-3">
+              <div className="flex items-center gap-3">
+                {file.objectUrl ? (
+                  <img
+                    src={file.objectUrl}
+                    alt=""
+                    className="size-16 shrink-0 rounded-control bg-white object-contain"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink-strong">{file.name}</p>
+                  <p className="text-xs text-ink-muted">Ready mask source</p>
+                </div>
+              </div>
+            </Surface>
+          );
+        })}
       </div>
     );
 
@@ -214,23 +270,6 @@ export const MarketingAssetsPanel = ({
               <h3 className="text-sm font-bold text-ink-strong">Ready mask sources</h3>
               {renderSourceMasks()}
             </section>
-            <Input
-              label="Marketing slogan"
-              name="marketingSlogan"
-              value={project.marketingSettings.slogan}
-              placeholder={project.settings.title || '30 printable dinosaur masks for kids'}
-              helperText="Used on slogan poster assets. If empty, the listing title is used."
-              onChange={(event) => updateSlogan(event.target.value)}
-            />
-            <Textarea
-              label="Additional prompt for AI scenes"
-              name="marketingAdditionalPrompt"
-              value={project.marketingSettings.additionalPrompt}
-              rows={3}
-              placeholder="Example: brighter classroom scene, more readable printable text, use warm daylight"
-              helperText="Optional direction for AI slogan posters and children-scene suggestions. Local mask-sheet images ignore this."
-              onChange={(event) => updateAdditionalPrompt(event.target.value)}
-            />
             <Surface variant="muted" className="p-4">
               <h3 className="text-sm font-bold text-ink-strong">How to use marketing images</h3>
               <p className="mt-1 text-sm text-ink-muted">
@@ -241,6 +280,14 @@ export const MarketingAssetsPanel = ({
               </p>
             </Surface>
             <section className="space-y-3">
+              <Input
+                label="Marketing slogan"
+                name="marketingSlogan"
+                value={project.marketingSettings.slogan}
+                placeholder={project.settings.title || '30 printable dinosaur masks for kids'}
+                helperText="Used on slogan poster assets. If empty, the listing title is used."
+                onChange={(event) => updateSlogan(event.target.value)}
+              />
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
@@ -281,14 +328,24 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Mask sheet</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates up to 3 white-background sheet images locally with masks only and no
-                    text.
+                    Creates white-background sheet images locally with masks only and no text.
                   </p>
                 </div>
                 <Button disabled={!canGenerate} variant="primary" onClick={onGenerateMaskSheets}>
                   {willQueueGeneration ? 'Queue mask sheets' : 'Create mask sheets'}
                 </Button>
               </div>
+              <Input
+                label="Masks per mask-sheet image"
+                name="maskSheetMasksPerImage"
+                type="number"
+                min={MIN_MASK_SHEET_MASKS_PER_IMAGE}
+                max={MAX_MASK_SHEET_MASKS_PER_IMAGE}
+                step={1}
+                value={project.marketingSettings.maskSheetMasksPerImage}
+                helperText={`Choose ${MIN_MASK_SHEET_MASKS_PER_IMAGE}-${MAX_MASK_SHEET_MASKS_PER_IMAGE} masks per generated image. Example: 12 masks with 4 per image creates 3 mask sheets.`}
+                onChange={(event) => updateMaskSheetMasksPerImage(event.target.value)}
+              />
               {maskSheets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
                   {maskSheets.map((file, index) => (
@@ -325,30 +382,16 @@ export const MarketingAssetsPanel = ({
                       : 'Generate 3 suggestions'}
                 </AIButton>
               </div>
-              {sourceMasks.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {sourceMasks.map((file) => {
-                    const subject = project.subjects.find(
-                      (item) => item.id === file.mappedSubjectId,
-                    );
-                    const checked = selectedChildrenSubjectIds.includes(file.mappedSubjectId ?? '');
-
-                    return (
-                      <CheckboxCard
-                        key={file.id}
-                        label={subject?.name ?? file.name}
-                        checked={checked}
-                        disabled={!checked && selectedCount >= 3}
-                        onChange={(event) => {
-                          if (file.mappedSubjectId) {
-                            toggleChildrenSubject(file.mappedSubjectId, event.target.checked);
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              ) : null}
+              <Textarea
+                label="Additional prompt for AI scenes"
+                name="marketingAdditionalPrompt"
+                value={project.marketingSettings.additionalPrompt}
+                rows={3}
+                placeholder="Example: brighter classroom scene, more readable printable text, use warm daylight"
+                helperText="Optional direction for AI slogan posters and children-scene suggestions. Local mask-sheet images ignore this."
+                onChange={(event) => updateAdditionalPrompt(event.target.value)}
+              />
+              {sourceMasks.length > 0 ? renderSourceMasks({ selectable: true }) : null}
               <p className="text-xs text-ink-muted">
                 Select up to 3 masks. If none are selected, the first ready masks are used.
               </p>

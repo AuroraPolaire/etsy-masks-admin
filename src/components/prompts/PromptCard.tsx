@@ -27,6 +27,8 @@ type PromptCardProps = {
   canGenerateImages: boolean;
   generatingSubjectIds: string[];
   generatingColoringPageSubjectIds: string[];
+  queuedSubjectIds?: string[];
+  queuedColoringPageSubjectIds?: string[];
   allowTopicEditing: boolean;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string, promptOverride?: string) => void;
@@ -52,6 +54,8 @@ export const PromptCard = ({
   canGenerateImages,
   generatingSubjectIds,
   generatingColoringPageSubjectIds,
+  queuedSubjectIds = [],
+  queuedColoringPageSubjectIds = [],
   allowTopicEditing,
   onRemoveSubject,
   onGenerateImage,
@@ -98,6 +102,13 @@ export const PromptCard = ({
   const subject = subjects.find((item) => item.id === prompt.subjectId);
   const isGenerating = generatingSubjectIds.includes(prompt.subjectId);
   const isGeneratingColoringPage = generatingColoringPageSubjectIds.includes(prompt.subjectId);
+  const isQueued = queuedSubjectIds.includes(prompt.subjectId);
+  const isQueuedColoringPage = queuedColoringPageSubjectIds.includes(prompt.subjectId);
+  const hasQueuedOrRunningImageGeneration =
+    generatingSubjectIds.length > 0 ||
+    generatingColoringPageSubjectIds.length > 0 ||
+    queuedSubjectIds.length > 0 ||
+    queuedColoringPageSubjectIds.length > 0;
   const colorStatus = {
     label: getReadyLabel(previewFile, 'Mask ready', 'Needs mask'),
     tone: getReadyTone(previewFile),
@@ -129,10 +140,18 @@ export const PromptCard = ({
         </div>
         <div className="flex flex-wrap gap-2">
           <AIButton
-            disabled={!canGenerateImages || isGenerating}
+            disabled={!canGenerateImages || isGenerating || isQueued}
             onClick={() => onGenerateImage(prompt.subjectId, promptForGeneration)}
           >
-            {isGenerating ? 'Generating' : previewFile ? 'Regenerate mask' : 'Generate mask'}
+            {isGenerating
+              ? 'Generating'
+              : isQueued
+                ? 'Queued'
+                : hasQueuedOrRunningImageGeneration
+                  ? 'Queue mask'
+                  : previewFile
+                    ? 'Regenerate mask'
+                    : 'Generate mask'}
           </AIButton>
           <IconButton
             icon={Copy}
@@ -220,14 +239,23 @@ export const PromptCard = ({
                 <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
               ) : (
                 <AIButton
-                  disabled={!canGenerateImages || !mappedFile || isGeneratingColoringPage}
+                  disabled={
+                    !canGenerateImages ||
+                    !mappedFile ||
+                    isGeneratingColoringPage ||
+                    isQueuedColoringPage
+                  }
                   onClick={() => onGenerateColoringPage(prompt.subjectId)}
                 >
                   {isGeneratingColoringPage
                     ? 'Generating'
-                    : coloringPageFile
-                      ? 'Regenerate coloring page'
-                      : 'Generate coloring page'}
+                    : isQueuedColoringPage
+                      ? 'Queued'
+                      : hasQueuedOrRunningImageGeneration
+                        ? 'Queue coloring page'
+                        : coloringPageFile
+                          ? 'Regenerate coloring page'
+                          : 'Generate coloring page'}
                 </AIButton>
               )}
             </div>

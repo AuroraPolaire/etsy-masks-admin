@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppAside } from './components/AppAside';
@@ -94,6 +95,8 @@ export const App = () => {
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isRunHistoryOpen, setIsRunHistoryOpen] = useState(false);
+  const [queuedSubjectIds, setQueuedSubjectIds] = useState<string[]>([]);
+  const [queuedColoringPageSubjectIds, setQueuedColoringPageSubjectIds] = useState<string[]>([]);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
   >(null);
@@ -679,11 +682,20 @@ export const App = () => {
 
   const handleGenerateSubjectImage = useCallback(
     (subjectId: string, promptOverride?: string) => {
+      if (generatingSubjectIds.includes(subjectId) || queuedSubjectIds.includes(subjectId)) {
+        return;
+      }
+
+      setQueuedSubjectIds((currentIds) =>
+        currentIds.includes(subjectId) ? currentIds : [...currentIds, subjectId],
+      );
       void runQueuedBusyAction('image-generation', (context) =>
         generateSubjectImage(subjectId, context, promptOverride),
-      );
+      ).finally(() => {
+        setQueuedSubjectIds((currentIds) => currentIds.filter((id) => id !== subjectId));
+      });
     },
-    [generateSubjectImage, runQueuedBusyAction],
+    [generateSubjectImage, generatingSubjectIds, queuedSubjectIds, runQueuedBusyAction],
   );
 
   const handleGenerateMissingSubjectImages = useCallback(() => {
@@ -692,11 +704,30 @@ export const App = () => {
 
   const handleGenerateSubjectColoringPage = useCallback(
     (subjectId: string) => {
+      if (
+        generatingColoringPageSubjectIds.includes(subjectId) ||
+        queuedColoringPageSubjectIds.includes(subjectId)
+      ) {
+        return;
+      }
+
+      setQueuedColoringPageSubjectIds((currentIds) =>
+        currentIds.includes(subjectId) ? currentIds : [...currentIds, subjectId],
+      );
       void runQueuedBusyAction('image-generation', (context) =>
         generateSubjectColoringPage(subjectId, context),
-      );
+      ).finally(() => {
+        setQueuedColoringPageSubjectIds((currentIds) =>
+          currentIds.filter((id) => id !== subjectId),
+        );
+      });
     },
-    [generateSubjectColoringPage, runQueuedBusyAction],
+    [
+      generateSubjectColoringPage,
+      generatingColoringPageSubjectIds,
+      queuedColoringPageSubjectIds,
+      runQueuedBusyAction,
+    ],
   );
 
   const handleGenerateMissingColoringPages = useCallback(() => {
@@ -757,6 +788,8 @@ export const App = () => {
         busyAction={busyAction}
         generatingSubjectIds={generatingSubjectIds}
         generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+        queuedSubjectIds={queuedSubjectIds}
+        queuedColoringPageSubjectIds={queuedColoringPageSubjectIds}
         missingImageCount={missingImagePrompts.length}
         missingColoringPageCount={missingColoringPagePrompts.length}
         imageGenerationHint={imageGenerationHint}
@@ -839,6 +872,11 @@ export const App = () => {
     return renderHomeView();
   };
 
+  const handleOpenNewIdeaFlow = useCallback(() => {
+    setActiveSectionId('home');
+    setActiveStepId('brief');
+  }, []);
+
   return (
     <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[auto_minmax(0,1fr)]">
       <AppSidebar
@@ -870,6 +908,14 @@ export const App = () => {
           onConfirm={handleConfirmAccept}
         />
       ) : null}
+      <button
+        type="button"
+        aria-label="Start new idea flow"
+        className="fixed bottom-6 right-6 z-40 inline-flex size-14 items-center justify-center rounded-full border border-transparent bg-brand text-ink-inverse shadow-lg transition hover:bg-brand-strong focus:outline-none focus:ring-2 focus:ring-brand/25 focus:ring-offset-2 focus:ring-offset-surface-panel"
+        onClick={handleOpenNewIdeaFlow}
+      >
+        <Plus aria-hidden="true" size={24} />
+      </button>
     </div>
   );
 };

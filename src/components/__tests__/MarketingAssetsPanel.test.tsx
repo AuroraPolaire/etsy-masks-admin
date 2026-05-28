@@ -144,6 +144,34 @@ describe('MarketingAssetsPanel', () => {
     });
   });
 
+  it('updates masks-per-image value for mask sheet generation', () => {
+    const project = createProject();
+    const onMarketingSettingsChange = vi.fn();
+
+    render(
+      <MarketingAssetsPanel
+        project={project}
+        files={[createFile({ id: 'dino-mask' })]}
+        hasAIProvider
+        busyAction={null}
+        onMarketingSettingsChange={onMarketingSettingsChange}
+        onGenerateSloganPreviews={vi.fn()}
+        onGenerateMaskSheets={vi.fn()}
+        onGenerateChildrenScenePreviews={vi.fn()}
+        onDeleteFile={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: /Masks per mask-sheet image/ }), {
+      target: { value: '4' },
+    });
+
+    expect(onMarketingSettingsChange).toHaveBeenCalledWith({
+      ...project.marketingSettings,
+      maskSheetMasksPerImage: 4,
+    });
+  });
+
   it('shows saved marketing suggestions without requiring final approval', () => {
     const project = createProject();
     const onDeleteFile = vi.fn();

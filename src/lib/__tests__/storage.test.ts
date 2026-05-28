@@ -268,6 +268,24 @@ describe('project storage', () => {
     expect(project.marketingSettings.preview.customSettings.size).toBe('1024x1024');
   });
 
+  it('clamps invalid masks-per-image values from imported project backups', () => {
+    const backup = {
+      appVersion: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      project: {
+        ...createDefaultProject(),
+        marketingSettings: {
+          ...createDefaultProject().marketingSettings,
+          maskSheetMasksPerImage: 0,
+        },
+      },
+    };
+
+    const project = parseProjectBackup(JSON.stringify(backup));
+
+    expect(project.marketingSettings.maskSheetMasksPerImage).toBe(1);
+  });
+
   it('preserves normalized AI SEO analysis from imported project backups', () => {
     const backup = {
       appVersion: '1.0.0',

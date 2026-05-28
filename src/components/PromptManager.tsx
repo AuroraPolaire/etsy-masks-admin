@@ -19,6 +19,8 @@ type PromptManagerProps = {
   canGenerateImages: boolean;
   generatingSubjectIds: string[];
   generatingColoringPageSubjectIds: string[];
+  queuedSubjectIds?: string[];
+  queuedColoringPageSubjectIds?: string[];
   missingImageCount?: number;
   missingColoringPageCount?: number;
   imageGenerationHint?: string;
@@ -40,6 +42,8 @@ export const PromptManager = ({
   canGenerateImages,
   generatingSubjectIds,
   generatingColoringPageSubjectIds,
+  queuedSubjectIds = [],
+  queuedColoringPageSubjectIds = [],
   missingImageCount = 0,
   missingColoringPageCount = 0,
   imageGenerationHint,
@@ -55,7 +59,10 @@ export const PromptManager = ({
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
   const isGeneratingImages =
-    generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
+    generatingSubjectIds.length > 0 ||
+    generatingColoringPageSubjectIds.length > 0 ||
+    queuedSubjectIds.length > 0 ||
+    queuedColoringPageSubjectIds.length > 0;
   const promptStates = prompts.map((prompt) => {
     const colorFile = getFileForSubject(files, prompt.subjectId);
     const coloringPageFile = colorFile
@@ -172,6 +179,8 @@ export const PromptManager = ({
                   canGenerateImages={canGenerateImages}
                   generatingSubjectIds={generatingSubjectIds}
                   generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+                  queuedSubjectIds={queuedSubjectIds}
+                  queuedColoringPageSubjectIds={queuedColoringPageSubjectIds}
                   allowTopicEditing={allowTopicEditing}
                   onRemoveSubject={onRemoveSubject}
                   onGenerateImage={onGenerateImage}

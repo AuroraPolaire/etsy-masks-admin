@@ -78,6 +78,10 @@ export const DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS: MarketingImageSettings = 
   outputFormat: 'png',
 };
 
+export const MIN_MASK_SHEET_MASKS_PER_IMAGE = 1;
+export const MAX_MASK_SHEET_MASKS_PER_IMAGE = 16;
+export const DEFAULT_MASK_SHEET_MASKS_PER_IMAGE = 16;
+
 export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {
   slogan: '',
   preview: {
@@ -85,6 +89,7 @@ export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {
     customSettings: DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS,
   },
   additionalPrompt: '',
+  maskSheetMasksPerImage: DEFAULT_MASK_SHEET_MASKS_PER_IMAGE,
   childrenSceneSubjectIds: [],
 };
 

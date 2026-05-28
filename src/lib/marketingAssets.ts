@@ -1,4 +1,9 @@
-import { DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS } from '../constants';
+import {
+  DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS,
+  DEFAULT_MASK_SHEET_MASKS_PER_IMAGE,
+  MAX_MASK_SHEET_MASKS_PER_IMAGE,
+  MIN_MASK_SHEET_MASKS_PER_IMAGE,
+} from '../constants';
 import { groupFilesForExport, isImageFile } from './files';
 
 import type {
@@ -41,21 +46,37 @@ export const CHILDREN_SCENE_RECIPES: ChildrenSceneRecipe[] = [
 ];
 const DEFAULT_CHILDREN_SCENE_RECIPE = CHILDREN_SCENE_RECIPES[0]!;
 
-export const MASK_SHEET_PAGE_SIZE = 16;
-export const MAX_MASK_SHEET_PAGE_COUNT = 3;
+export const normalizeMaskSheetMasksPerImage = (
+  value: number,
+  fallback = DEFAULT_MASK_SHEET_MASKS_PER_IMAGE,
+): number => {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
 
-export const getMaskSheetPageCount = (maskCount: number): number =>
-  Math.min(MAX_MASK_SHEET_PAGE_COUNT, Math.ceil(Math.max(maskCount, 0) / MASK_SHEET_PAGE_SIZE));
+  return Math.min(
+    MAX_MASK_SHEET_MASKS_PER_IMAGE,
+    Math.max(MIN_MASK_SHEET_MASKS_PER_IMAGE, Math.round(value)),
+  );
+};
 
-export const getMaskSheetPageSlices = <Item>(items: Item[]): Item[][] => {
-  const pageCount = getMaskSheetPageCount(items.length);
+export const getMaskSheetPageCount = (
+  maskCount: number,
+  masksPerImage = DEFAULT_MASK_SHEET_MASKS_PER_IMAGE,
+): number => Math.ceil(Math.max(maskCount, 0) / normalizeMaskSheetMasksPerImage(masksPerImage));
+
+export const getMaskSheetPageSlices = <Item>(
+  items: Item[],
+  masksPerImage = DEFAULT_MASK_SHEET_MASKS_PER_IMAGE,
+): Item[][] => {
+  const pageSize = normalizeMaskSheetMasksPerImage(masksPerImage);
+  const pageCount = getMaskSheetPageCount(items.length, pageSize);
   if (pageCount === 0) {
     return [];
   }
 
-  const itemsPerPage = Math.ceil(items.length / pageCount);
   return Array.from({ length: pageCount }, (_, pageIndex) =>
-    items.slice(pageIndex * itemsPerPage, (pageIndex + 1) * itemsPerPage),
+    items.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
   ).filter((pageItems) => pageItems.length > 0);
 };
 
@@ -222,6 +243,7 @@ export const getChildrenSceneRecipe = (optionIndex: number): ChildrenSceneRecipe
 export const sanitizeMarketingSettings = (settings: MarketingSettings): MarketingSettings => ({
   ...settings,
   additionalPrompt: (settings.additionalPrompt ?? '').trimStart(),
+  maskSheetMasksPerImage: normalizeMaskSheetMasksPerImage(settings.maskSheetMasksPerImage),
   preview: {
     ...settings.preview,
     customSettings: normalizeMarketingImageSettings(settings.preview.customSettings),

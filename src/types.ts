@@ -301,6 +301,7 @@ export type MarketingSettings = {
   slogan: string;
   preview: MarketingPreviewSettings;
   additionalPrompt: string;
+  maskSheetMasksPerImage: number;
   childrenSceneSubjectIds: string[];
 };
 
