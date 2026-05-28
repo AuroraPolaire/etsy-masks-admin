@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FileInput } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -18,7 +18,14 @@ import { QAPanel } from '../QAPanel';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { FileInputButton } from '../ui/FileInputButton';
 
-import type { ManagedFile, Project, SubjectItem, ProjectSettings, QAResult } from '../../types';
+import type {
+  BriefReferenceImage,
+  ManagedFile,
+  Project,
+  SubjectItem,
+  ProjectSettings,
+  QAResult,
+} from '../../types';
 
 const subjects: SubjectItem[] = [{ id: 'lion', name: 'Lion' }];
 
@@ -36,8 +43,6 @@ describe('PromptManager', () => {
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
         onGenerateColoringPage={vi.fn()}
-        onApproveAll={vi.fn()}
-        onApprove={vi.fn()}
         onDelete={vi.fn()}
         onCopy={vi.fn()}
       />,
@@ -63,8 +68,6 @@ describe('PromptManager', () => {
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
         onGenerateColoringPage={vi.fn()}
-        onApproveAll={vi.fn()}
-        onApprove={vi.fn()}
         onDelete={vi.fn()}
         onCopy={vi.fn()}
       />,
@@ -74,8 +77,7 @@ describe('PromptManager', () => {
     expect(screen.queryByLabelText('Remove Lion')).not.toBeInTheDocument();
   });
 
-  it('approves all review-ready prompt images', () => {
-    const onApproveAll = vi.fn();
+  it('treats generated prompt images as ready without an approval step', () => {
     const pendingImage: ManagedFile = {
       id: 'lion-file',
       file: new File(['image'], 'lion.png', { type: 'image/png' }),
@@ -105,16 +107,13 @@ describe('PromptManager', () => {
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
         onGenerateColoringPage={vi.fn()}
-        onApproveAll={onApproveAll}
-        onApprove={vi.fn()}
         onDelete={vi.fn()}
         onCopy={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /approve all/i }));
-
-    expect(onApproveAll).toHaveBeenCalledWith(['lion-file']);
+    expect(screen.getAllByText('Mask ready').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument();
   });
 
   it('renders generated images as full-size preview triggers', () => {
@@ -148,8 +147,6 @@ describe('PromptManager', () => {
         onRemoveSubject={vi.fn()}
         onGenerateImage={vi.fn()}
         onGenerateColoringPage={vi.fn()}
-        onApproveAll={vi.fn()}
-        onApprove={vi.fn()}
         onDelete={vi.fn()}
         onCopy={vi.fn()}
       />,
@@ -171,9 +168,9 @@ describe('QAPanel', () => {
         {
           id: 'approved-images',
           group: 'critical',
-          label: 'Every topic has an approved image',
+          label: 'Every topic has a color mask',
           status: 'fail',
-          details: '0 of 1 topics have an approved image.',
+          details: '0 of 1 topics have a color mask.',
         },
       ],
     };
@@ -182,12 +179,12 @@ describe('QAPanel', () => {
 
     expect(screen.getByText('50%')).toBeInTheDocument();
     expect(screen.getByText('Blockers')).toBeInTheDocument();
-    expect(screen.queryByText('Every topic has an approved image')).not.toBeInTheDocument();
+    expect(screen.queryByText('Every topic has a color mask')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /show qa checks/i }));
 
-    expect(screen.getByText('Critical')).toBeInTheDocument();
-    expect(screen.getByText('Every topic has an approved image')).toBeInTheDocument();
+    expect(screen.getByText('Needs attention first')).toBeInTheDocument();
+    expect(screen.getByText('Every topic has a color mask')).toBeInTheDocument();
   });
 });
 
@@ -242,7 +239,7 @@ describe('EtsySeoPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Checks passed')).toBeInTheDocument();
+    expect(screen.getByText('SEO checks')).toBeInTheDocument();
     expect(screen.getByText('Title words')).toBeInTheDocument();
     expect(screen.queryByText('Suggested title')).not.toBeInTheDocument();
 
@@ -404,5 +401,53 @@ describe('InitialPromptPanel', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Drafting brief...' })).toBeDisabled();
+  });
+
+  it('passes attached reference images when drafting the bundle idea', async () => {
+    const onFillBrief =
+      vi.fn<(initialPrompt: string, referenceImages: BriefReferenceImage[]) => void>();
+    const imageFile = new File(['reference image'], 'unicorn-reference.png', {
+      type: 'image/png',
+    });
+
+    render(
+      <InitialPromptPanel
+        aiReady
+        disabled={false}
+        isGenerating={false}
+        onFillBrief={onFillBrief}
+        onOpenBackendSaves={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Bundle idea'), {
+      target: { value: 'Unicorn birthday masks' },
+    });
+    fireEvent.change(screen.getByLabelText('Attach images'), {
+      target: { files: [imageFile] },
+    });
+
+    expect(await screen.findByText('unicorn-reference.png')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Draft brief' }));
+
+    await waitFor(() => {
+      expect(onFillBrief).toHaveBeenCalledTimes(1);
+    });
+
+    const firstCall = onFillBrief.mock.calls[0];
+    if (!firstCall) {
+      throw new Error('Expected onFillBrief to be called.');
+    }
+
+    const [prompt, referenceImages] = firstCall;
+    expect(prompt).toBe('Unicorn birthday masks');
+    expect(referenceImages).toHaveLength(1);
+    expect(referenceImages[0]).toMatchObject({
+      name: 'unicorn-reference.png',
+      mimeType: 'image/png',
+      size: imageFile.size,
+    });
+    expect(referenceImages[0]?.dataUrl).toMatch(/^data:image\/png;base64,/);
   });
 });

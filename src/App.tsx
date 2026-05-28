@@ -41,6 +41,7 @@ import type {
   ActivityLevel,
   ActivityType,
   BusyActionContext,
+  BriefReferenceImage,
   ManagedFile,
   MarketingGenerationRecipe,
   MarketingImageSettings,
@@ -91,7 +92,7 @@ export const App = () => {
   );
   const [activeStepId, setActiveStepId] = useState<WorkflowStepId>('brief');
   const [activeSectionId, setActiveSectionId] = useState<AppSectionId>('home');
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isRunHistoryOpen, setIsRunHistoryOpen] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<
     (ConfirmDialogRequest & { resolve: (confirmed: boolean) => void }) | null
@@ -109,14 +110,11 @@ export const App = () => {
     applyEtsySeoAnalysis,
     addSubject,
     removeSubject,
-    markImageApproved,
   } = useProjectState();
   const {
     files,
     filesRef,
     appendFiles,
-    approveFile,
-    approveFiles,
     deleteFile,
     clearSubjectMapping,
     clearFiles,
@@ -124,7 +122,6 @@ export const App = () => {
   } = useManagedFiles({
     subjects: project.subjects,
     addActivity,
-    onImageApproved: markImageApproved,
   });
   const { busyAction, busyProgress, cancelBusyAction, runBusyAction } = useBusyAction();
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
@@ -197,7 +194,7 @@ export const App = () => {
           'warning',
           `Recovered ${missingFiles.length} generated file${
             missingFiles.length === 1 ? '' : 's'
-          } that had not reached Cloud yet. Retrying cloud save.`,
+          } that had not been saved online yet. Retrying online save.`,
         );
         window.setTimeout(() => backendCache.retryCloudSave(), 0);
       })
@@ -259,9 +256,9 @@ export const App = () => {
           addActivity(
             'error',
             'error',
-            `Generated files were added locally, but cloud save failed: ${getErrorMessage(
+            `Generated files were added locally, but online save failed: ${getErrorMessage(
               error,
-              'Could not save generated files to Cloudflare.',
+              'Could not save generated files online.',
             )}`,
           );
         }
@@ -302,7 +299,7 @@ export const App = () => {
       signal?: AbortSignal,
     ): Promise<File> => {
       if (!backendCache.canUseOpenAIProxy) {
-        throw new Error('Cloud OpenAI proxy is required before generating images.');
+        throw new Error('Online AI is required before generating images.');
       }
 
       return backendCache.generateImage(settings, prompt, signal);
@@ -317,7 +314,7 @@ export const App = () => {
       signal?: AbortSignal,
     ): Promise<File> => {
       if (!backendCache.canUseOpenAIProxy) {
-        throw new Error('Cloud OpenAI proxy is required before generating coloring pages.');
+        throw new Error('Online AI is required before generating coloring pages.');
       }
 
       return backendCache.generateColoringPageImage(settings, prompt, sourceFile, signal);
@@ -333,7 +330,7 @@ export const App = () => {
       signal?: AbortSignal,
     ): Promise<File> => {
       if (!backendCache.canUseOpenAIProxy) {
-        throw new Error('Cloud OpenAI proxy is required before generating marketing assets.');
+        throw new Error('Online AI is required before generating marketing assets.');
       }
 
       return backendCache.generateMarketingSceneImage(
@@ -377,6 +374,14 @@ export const App = () => {
       generateMarketingSceneFile,
     });
   const hasAIProvider = backendCache.canUseOpenAIProxy;
+  const { ensureSavedRunsLoaded } = backendCache;
+
+  useEffect(() => {
+    if (activeSectionId === 'backend') {
+      ensureSavedRunsLoaded();
+    }
+  }, [activeSectionId, ensureSavedRunsLoaded]);
+
   const workflow = useMemo(
     () =>
       createWorkflowState({
@@ -389,14 +394,14 @@ export const App = () => {
     [activeStepId, files, hasAIProvider, project, qaResult],
   );
   const imageGenerationHint = !hasAIProvider
-    ? 'Configure the Cloud OpenAI proxy to generate images.'
+    ? 'Connect online AI before generating images.'
     : missingImagePrompts.length === 0
       ? missingColoringPagePrompts.length === 0
-        ? 'All topics have approved color masks and coloring pages.'
-        : `${missingColoringPagePrompts.length} approved mask${
+        ? 'All topics have color masks and coloring pages.'
+        : `${missingColoringPagePrompts.length} mask${
             missingColoringPagePrompts.length === 1 ? '' : 's'
           } still need a coloring page.`
-      : `${missingImagePrompts.length} topic${missingImagePrompts.length === 1 ? '' : 's'} still need an approved image.`;
+      : `${missingImagePrompts.length} topic${missingImagePrompts.length === 1 ? '' : 's'} still need a color mask.`;
   const handleConfirmCancel = useCallback(() => {
     confirmRequest?.resolve(false);
     setConfirmRequest(null);
@@ -423,7 +428,7 @@ export const App = () => {
         const shouldApply = await requestConfirmation({
           title: 'Replace current topics?',
           description:
-            'A new brief replaces the topic list and clears assigned generated images. The current run will be saved to Cloud first.',
+            'A new brief replaces the topic list and clears assigned generated images. The current project will be saved online first.',
           confirmLabel: 'Replace topics',
         });
         if (!shouldApply) {
@@ -451,9 +456,9 @@ export const App = () => {
           addActivity(
             'error',
             'error',
-            `Current generated files were not replaced because cloud save failed: ${getErrorMessage(
+            `Current generated files were not replaced because online save failed: ${getErrorMessage(
               error,
-              'Could not save the current run to Cloudflare.',
+              'Could not save the current project online.',
             )}`,
           );
           return;
@@ -477,23 +482,27 @@ export const App = () => {
   );
 
   const handleFillProductBrief = useCallback(
-    (initialPrompt: string) => {
+    (initialPrompt: string, referenceImages: BriefReferenceImage[]) => {
       void runBusyAction('brief-generation', async ({ setProgress, signal }) => {
         setProgress('Drafting product brief...');
 
         if (!backendCache.canUseOpenAIProxy) {
-          addActivity('error', 'error', 'Configure the Cloud OpenAI proxy before drafting.');
+          addActivity('error', 'error', 'Connect online AI before drafting.');
           return;
         }
 
         try {
-          const draft = await backendCache.generateProjectDraft(initialPrompt, signal);
+          const draft = await backendCache.generateProjectDraft(
+            initialPrompt,
+            referenceImages,
+            signal,
+          );
           if (signal.aborted) {
             return;
           }
           await applyDraftToProject(
             draft,
-            `Drafted the brief through the Cloud proxy and added ${draft.subjects.length} topics.`,
+            `Drafted the brief with online AI and added ${draft.subjects.length} topics.`,
             { signal, setProgress },
           );
         } catch (error) {
@@ -505,7 +514,7 @@ export const App = () => {
           addActivity(
             'error',
             'error',
-            getErrorMessage(error, 'Could not draft the brief through the Cloud proxy.'),
+            getErrorMessage(error, 'Could not draft the brief with online AI.'),
           );
         }
       });
@@ -518,7 +527,7 @@ export const App = () => {
       setProgress('Running AI listing review...');
 
       if (!backendCache.canUseOpenAIProxy) {
-        addActivity('error', 'error', 'Configure the Cloud OpenAI proxy before AI review.');
+        addActivity('error', 'error', 'Connect online AI before AI review.');
         return;
       }
 
@@ -539,7 +548,7 @@ export const App = () => {
         addActivity(
           'error',
           'error',
-          getErrorMessage(error, 'Could not run AI listing review through the Cloud proxy.'),
+          getErrorMessage(error, 'Could not run AI listing review with online AI.'),
         );
       }
     });
@@ -606,7 +615,7 @@ export const App = () => {
       const shouldClear = await requestConfirmation({
         title: 'Clear session files?',
         description:
-          'This saves the current run to Cloud, then clears generated files from this browser tab and starts a fresh draft copy.',
+          'This saves the current project online, then clears generated files from this browser tab and starts a fresh draft copy.',
         confirmLabel: 'Clear files',
         tone: 'danger',
       });
@@ -627,7 +636,7 @@ export const App = () => {
             }
             clearFiles(
               hadFiles
-                ? 'Cleared session files. Previous files remain in the saved cloud run.'
+                ? 'Cleared session files. Previous files remain in saved work.'
                 : 'Cleared session files.',
             );
             if (hadFiles) {
@@ -646,9 +655,9 @@ export const App = () => {
             addActivity(
               'error',
               'error',
-              `Files were not cleared because cloud save failed: ${getErrorMessage(
+              `Files were not cleared because online save failed: ${getErrorMessage(
                 error,
-                'Could not save the current run to Cloudflare.',
+                'Could not save the current project online.',
               )}`,
             );
           }
@@ -705,20 +714,6 @@ export const App = () => {
     void runBusyAction('marketing-generation', generateChildrenScenePreviews);
   }, [generateChildrenScenePreviews, runBusyAction]);
 
-  const handleApproveFile = useCallback(
-    (fileId: string) => {
-      approveFile(fileId);
-    },
-    [approveFile],
-  );
-
-  const handleApproveFiles = useCallback(
-    (fileIds: string[]) => {
-      approveFiles(fileIds);
-    },
-    [approveFiles],
-  );
-
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
@@ -743,7 +738,6 @@ export const App = () => {
       historyError={backendCache.historyError}
       onCancelBusyAction={cancelBusyAction}
       onOpenHistory={() => setIsRunHistoryOpen(true)}
-      onSaveCheckpoint={backendCache.saveManualCheckpoint}
       onRetryCloudSave={backendCache.retryCloudSave}
     />
   );
@@ -779,8 +773,6 @@ export const App = () => {
         onGenerateSloganPreviews={handleGenerateSloganPreviews}
         onGenerateMaskSheets={handleGenerateMaskSheets}
         onGenerateChildrenScenePreviews={handleGenerateChildrenScenePreviews}
-        onApproveAllFiles={handleApproveFiles}
-        onApproveFile={handleApproveFile}
         onDeleteFile={handleDeleteFile}
         onCopyPrompt={(message) => addActivity('prompt-copied', 'success', message)}
         onExportArchive={exportArchive}
@@ -793,7 +785,7 @@ export const App = () => {
       <AppSectionHeader
         eyebrow="Settings"
         title="Image generation settings"
-        description="Manage the model, API image size, mask quality, coloring page quality, background, output format, and cost estimate used by Cloud AI generation."
+        description="Choose a simple image quality preset, or open advanced settings when you need exact model, size, format, and cost controls."
       />
       {renderOpenAIImagePanel()}
       <div className="mt-6">
@@ -809,9 +801,9 @@ export const App = () => {
   const renderBackendView = () => (
     <AppMainLayout aside={renderAside()}>
       <AppSectionHeader
-        eyebrow="Cloud"
-        title="Cloud"
-        description="Review automatic cloud drafts, search previous work by idea, restore a run, or delete runs you no longer need."
+        eyebrow="Online save"
+        title="Saved work"
+        description="Review autosaved projects, search previous work by idea, restore a project, or delete work you no longer need."
       />
       <BackendDataPanel
         health={backendCache.health}
@@ -823,7 +815,6 @@ export const App = () => {
         suggestedIdea={backendCache.suggestedIdea}
         files={files}
         busyAction={busyAction}
-        onSaveIdeaChange={backendCache.setSaveIdea}
         onRunSelected={backendCache.selectRun}
         onRestoreRun={backendCache.restoreRun}
         onTestConnection={backendCache.testConnection}

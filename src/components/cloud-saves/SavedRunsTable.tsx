@@ -1,5 +1,4 @@
 import { ChevronDown, Download, Trash2 } from 'lucide-react';
-import { Fragment } from 'react';
 
 import { formatCloudSaveDateTime } from './cloudSaveUtils';
 import { formatBytes } from '../../lib/files';
@@ -8,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Card, CardBody, CardHeader } from '../ui/Card';
 import { IconButton } from '../ui/IconButton';
 import { Input } from '../ui/Input';
+import { Surface } from '../ui/Surface';
 
 import type { BackendProjectSnapshot, BackendRunSummary } from '../../types';
 
@@ -71,20 +71,20 @@ export const SavedRunsTable = ({
     <CardHeader>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-base font-bold text-ink-strong">Saved runs</h2>
+          <h2 className="text-base font-bold text-ink-strong">Saved projects</h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Search by idea, click a row to expand or collapse details, then use Restore only when
-            you want to load a run.
+            Search by idea, open a project to check details, then restore only when you want to load
+            that saved work.
           </p>
         </div>
         <div className="w-full lg:max-w-sm">
           <Input
-            label="Search saved runs"
+            label="Search saved projects"
             name="backendRunSearch"
             type="search"
             value={runSearchQuery}
-            placeholder="Idea, project id, or run id"
-            helperText={`${filteredRuns.length}/${runs.length} runs shown`}
+            placeholder="Idea or saved project name"
+            helperText={`${filteredRuns.length}/${runs.length} projects shown`}
             onChange={(event) => onRunSearchChange(event.target.value)}
           />
         </div>
@@ -93,150 +93,133 @@ export const SavedRunsTable = ({
     <CardBody>
       {filteredRuns.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          {runs.length === 0 ? 'No cloud runs saved yet.' : 'No cloud runs match the search.'}
+          {runs.length === 0 ? 'No saved projects yet.' : 'No saved projects match the search.'}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-surface-divider text-xs uppercase text-ink-muted">
-                <th className="py-2 pr-3 font-semibold">Idea</th>
-                <th className="px-3 py-2 font-semibold">Updated</th>
-                <th className="px-3 py-2 text-right font-semibold">Files</th>
-                <th className="px-3 py-2 text-right font-semibold">Size</th>
-                <th className="py-2 pl-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRuns.map((run) => {
-                const isSelected = run.id === selectedRunId;
-                const isSnapshotReady = snapshot?.runId === run.id && Boolean(snapshot.project);
-                const detailsId = `saved-run-details-${run.id}`;
-                const toggleDetails = () => onRunSelected(isSelected ? '' : run.id);
+        <div className="grid gap-3">
+          {filteredRuns.map((run) => {
+            const isSelected = run.id === selectedRunId;
+            const isSnapshotReady = snapshot?.runId === run.id && Boolean(snapshot.project);
+            const detailsId = `saved-run-details-${run.id}`;
+            const toggleDetails = () => onRunSelected(isSelected ? '' : run.id);
 
-                return (
-                  <Fragment key={run.id}>
-                    <tr
-                      className={`cursor-pointer border-b border-surface-divider transition hover:bg-surface-muted focus:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-brand/20 ${
-                        isSelected ? 'bg-brand-subtle' : ''
+            return (
+              <Surface
+                as="article"
+                key={run.id}
+                variant={isSelected ? 'muted' : 'default'}
+                className="p-4"
+              >
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <button
+                    type="button"
+                    aria-controls={detailsId}
+                    aria-expanded={isSelected}
+                    className="flex min-w-0 items-start gap-3 rounded-control text-left focus:outline-none focus:ring-2 focus:ring-brand/20"
+                    onClick={toggleDetails}
+                  >
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`mt-0.5 shrink-0 text-ink-muted transition ${
+                        isSelected ? '' : '-rotate-90'
                       }`}
-                      onClick={toggleDetails}
+                      size={18}
+                    />
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base font-bold text-ink-strong">{run.idea}</h3>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        Last edited {formatCloudSaveDateTime(run.updatedAt)}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge tone="neutral">{run.fileCount} files</Badge>
+                        <Badge tone="neutral">{formatBytes(run.totalSizeBytes)}</Badge>
+                      </div>
+                    </div>
+                  </button>
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <Button
+                      disabled={!backendReachable || backendBusy}
+                      variant="primary"
+                      onClick={() => onRestoreRun(run.id)}
                     >
-                      <td className="max-w-80 py-3 pr-3">
-                        <button
-                          type="button"
-                          aria-controls={detailsId}
-                          aria-expanded={isSelected}
-                          className="flex w-full min-w-0 items-start gap-2 rounded-control text-left focus:outline-none focus:ring-2 focus:ring-brand/20"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleDetails();
-                          }}
-                        >
-                          <ChevronDown
-                            aria-hidden="true"
-                            className={`mt-0.5 shrink-0 text-ink-muted transition ${
-                              isSelected ? '' : '-rotate-90'
-                            }`}
-                            size={17}
-                          />
-                          <div className="min-w-0">
-                            <span className="block truncate font-semibold text-ink-strong">
-                              {run.idea}
-                            </span>
-                            <span className="mt-1 block truncate text-xs text-ink-muted">
-                              {run.projectId} / {run.id}
-                            </span>
-                          </div>
-                        </button>
-                      </td>
-                      <td className="p-3 text-ink-base">
-                        {formatCloudSaveDateTime(run.updatedAt)}
-                      </td>
-                      <td className="p-3 text-right text-ink-base">{run.fileCount}</td>
-                      <td className="p-3 text-right text-ink-base">
-                        {formatBytes(run.totalSizeBytes)}
-                      </td>
-                      <td className="py-3 pl-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            disabled={!backendReachable || backendBusy}
-                            variant="primary"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onRestoreRun(run.id);
-                            }}
-                          >
-                            <Download aria-hidden="true" className="mr-2" size={17} />
-                            Restore
-                          </Button>
-                          <IconButton
-                            disabled={!backendReachable || backendBusy}
-                            icon={Trash2}
-                            label={`Delete saved run ${run.idea}`}
-                            variant="danger"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onDeleteRun(run.id);
-                            }}
-                          />
+                      <Download aria-hidden="true" className="mr-2" size={17} />
+                      Restore
+                    </Button>
+                    <IconButton
+                      disabled={!backendReachable || backendBusy}
+                      icon={Trash2}
+                      label={`Delete saved project ${run.idea}`}
+                      variant="danger"
+                      onClick={() => onDeleteRun(run.id)}
+                    />
+                  </div>
+                </div>
+                {isSelected ? (
+                  <div id={detailsId} className="mt-4 border-t border-surface-outline pt-4">
+                    <dl className="grid gap-3 md:grid-cols-4">
+                      <div>
+                        <dt className="text-xs uppercase text-ink-muted">Title</dt>
+                        <dd className="mt-1 font-semibold text-ink-strong">
+                          {getSnapshotMetric(snapshot, run.id, 'title')}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase text-ink-muted">Theme</dt>
+                        <dd className="mt-1 font-semibold text-ink-strong">
+                          {getSnapshotMetric(snapshot, run.id, 'theme')}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase text-ink-muted">Topics</dt>
+                        <dd className="mt-1 font-semibold text-ink-strong">
+                          {getSnapshotMetric(snapshot, run.id, 'topics')}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase text-ink-muted">Save state</dt>
+                        <dd className="mt-1">
+                          <Badge tone={isSnapshotReady ? 'success' : 'neutral'}>
+                            {isSnapshotReady ? 'Loaded' : 'Loading'}
+                          </Badge>
+                        </dd>
+                      </div>
+                    </dl>
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-ink-strong">
+                        Technical details
+                      </summary>
+                      <dl className="mt-2 grid gap-3 md:grid-cols-2">
+                        <div>
+                          <dt className="text-xs uppercase text-ink-muted">AI model</dt>
+                          <dd className="mt-1 font-semibold text-ink-strong">
+                            {getSnapshotMetric(snapshot, run.id, 'model')}
+                          </dd>
                         </div>
-                      </td>
-                    </tr>
-                    {isSelected ? (
-                      <tr
-                        id={detailsId}
-                        className="border-b border-surface-divider bg-brand-subtle"
-                      >
-                        <td colSpan={5} className="p-4">
-                          <dl className="grid gap-3 md:grid-cols-3">
-                            <div>
-                              <dt className="text-xs uppercase text-ink-muted">Title</dt>
-                              <dd className="mt-1 font-semibold text-ink-strong">
-                                {getSnapshotMetric(snapshot, run.id, 'title')}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-xs uppercase text-ink-muted">Theme</dt>
-                              <dd className="mt-1 font-semibold text-ink-strong">
-                                {getSnapshotMetric(snapshot, run.id, 'theme')}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-xs uppercase text-ink-muted">Topics</dt>
-                              <dd className="mt-1 font-semibold text-ink-strong">
-                                {getSnapshotMetric(snapshot, run.id, 'topics')}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-xs uppercase text-ink-muted">AI model</dt>
-                              <dd className="mt-1 font-semibold text-ink-strong">
-                                {getSnapshotMetric(snapshot, run.id, 'model')}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-xs uppercase text-ink-muted">AI output</dt>
-                              <dd className="mt-1 font-semibold text-ink-strong">
-                                {getSnapshotMetric(snapshot, run.id, 'output')}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-xs uppercase text-ink-muted">Save state</dt>
-                              <dd className="mt-1">
-                                <Badge tone={isSnapshotReady ? 'success' : 'neutral'}>
-                                  {isSnapshotReady ? 'Loaded' : 'Loading'}
-                                </Badge>
-                              </dd>
-                            </div>
-                          </dl>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                        <div>
+                          <dt className="text-xs uppercase text-ink-muted">AI output</dt>
+                          <dd className="mt-1 font-semibold text-ink-strong">
+                            {getSnapshotMetric(snapshot, run.id, 'output')}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase text-ink-muted">Project id</dt>
+                          <dd className="mt-1 break-all font-mono text-xs text-ink-base">
+                            {run.projectId}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs uppercase text-ink-muted">Run id</dt>
+                          <dd className="mt-1 break-all font-mono text-xs text-ink-base">
+                            {run.id}
+                          </dd>
+                        </div>
+                      </dl>
+                    </details>
+                  </div>
+                ) : null}
+              </Surface>
+            );
+          })}
         </div>
       )}
     </CardBody>

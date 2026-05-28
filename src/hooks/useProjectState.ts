@@ -152,13 +152,6 @@ export const useProjectState = () => {
     [updateProject],
   );
 
-  const markImageApproved = useCallback(() => {
-    updateProject((currentProject) => ({
-      ...currentProject,
-      lastImageApprovalAt: nowIso(),
-    }));
-  }, [updateProject]);
-
   useEffect(() => {
     saveProject(project);
   }, [project]);
@@ -176,6 +169,5 @@ export const useProjectState = () => {
     applyEtsySeoAnalysis,
     addSubject,
     removeSubject,
-    markImageApproved,
   };
 };

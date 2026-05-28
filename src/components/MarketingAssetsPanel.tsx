@@ -151,7 +151,7 @@ export const MarketingAssetsPanel = ({
 
   const renderSourceMasks = () =>
     sourceMasks.length === 0 ? (
-      <EmptyState>Approve at least one color mask before generating marketing assets.</EmptyState>
+      <EmptyState>Generate at least one color mask before generating marketing assets.</EmptyState>
     ) : (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {sourceMasks.map((file) => (
@@ -166,7 +166,7 @@ export const MarketingAssetsPanel = ({
               ) : null}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ink-strong">{file.name}</p>
-                <p className="text-xs text-ink-muted">Approved mask source</p>
+                <p className="text-xs text-ink-muted">Ready mask source</p>
               </div>
             </div>
           </Surface>
@@ -181,11 +181,11 @@ export const MarketingAssetsPanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Marketing assets</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Generate optional listing graphics from the approved mask files.
+              Generate optional listing graphics from the ready mask files.
             </p>
           </div>
           <Badge tone={sourceMasks.length > 0 ? 'success' : 'neutral'}>
-            {sourceMasks.length} approved source mask{sourceMasks.length === 1 ? '' : 's'}
+            {sourceMasks.length} ready source mask{sourceMasks.length === 1 ? '' : 's'}
           </Badge>
         </div>
       </CardHeader>
@@ -200,11 +200,12 @@ export const MarketingAssetsPanel = ({
             ) : null}
             {!hasAIProvider ? (
               <Alert tone="info">
-                Cloud OpenAI proxy is required for AI marketing asset generation.
+                Online AI is required for children scenes. Slogan posters and mask sheets are
+                created locally.
               </Alert>
             ) : null}
             <section className="space-y-3">
-              <h3 className="text-sm font-bold text-ink-strong">Approved mask sources</h3>
+              <h3 className="text-sm font-bold text-ink-strong">Ready mask sources</h3>
               {renderSourceMasks()}
             </section>
             <Input
@@ -216,12 +217,12 @@ export const MarketingAssetsPanel = ({
               onChange={(event) => updateSlogan(event.target.value)}
             />
             <Textarea
-              label="Additional prompt for next suggestions"
+              label="Additional prompt for AI scenes"
               name="marketingAdditionalPrompt"
               value={project.marketingSettings.additionalPrompt}
               rows={3}
               placeholder="Example: brighter classroom scene, more readable printable text, use warm daylight"
-              helperText="Optional direction for the next marketing generation batch. Leave empty for the default recipes."
+              helperText="Optional direction for children-scene AI suggestions. Local slogan and mask-sheet images ignore this."
               onChange={(event) => updateAdditionalPrompt(event.target.value)}
             />
             <Surface variant="muted" className="p-4">
@@ -238,13 +239,16 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates 3 saved AI poster suggestions from the approved masks. Generate more
-                    when you want a fresh batch.
+                    Creates 3 saved text-only slogan variations without placing masks in the image.
                   </p>
                 </div>
-                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
-                  {sloganAssets.length > 0 ? 'Generate +3 more' : 'Generate 3 suggestions'}
-                </AIButton>
+                <Button
+                  disabled={!canGenerate}
+                  variant="primary"
+                  onClick={onGenerateSloganPreviews}
+                >
+                  {sloganAssets.length > 0 ? 'Create +3 more' : 'Create 3 variations'}
+                </Button>
               </div>
               {sloganAssets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
@@ -269,12 +273,13 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Mask sheet</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Uses AI to compose approved masks into one or more polished sheet images.
+                    Creates up to 3 sheet images locally by placing ready masks in a clean catalog
+                    layout.
                   </p>
                 </div>
-                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateMaskSheets}>
-                  Generate mask sheet
-                </AIButton>
+                <Button disabled={!canGenerate} variant="primary" onClick={onGenerateMaskSheets}>
+                  Create mask sheets
+                </Button>
               </div>
               {maskSheets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
@@ -331,7 +336,7 @@ export const MarketingAssetsPanel = ({
                 </div>
               ) : null}
               <p className="text-xs text-ink-muted">
-                Select up to 3 masks. If none are selected, the first approved masks are used.
+                Select up to 3 masks. If none are selected, the first ready masks are used.
               </p>
               {childrenAssets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">

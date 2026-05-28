@@ -94,7 +94,7 @@ export const createWorkflowState = ({
   const exportSummary = !canExportFinalFiles
     ? `QA is ${qaResult.readinessPercentage}% ready.`
     : !imagesComplete
-      ? `${approvedImageCount} approved color mask${
+      ? `${approvedImageCount} ready color mask${
           approvedImageCount === 1 ? '' : 's'
         } available for partial export.`
       : qaResult.status === 'etsy-ready'
@@ -128,13 +128,13 @@ export const createWorkflowState = ({
     {
       id: 'marketing',
       title: 'Marketing assets',
-      description: 'Create optional listing graphics from approved masks.',
+      description: 'Create optional listing graphics from ready masks.',
       summary: marketingUnlocked
-        ? 'Optional assets can be generated from approved masks.'
-        : 'Approve at least one mask before creating marketing assets.',
+        ? 'Optional assets can be generated from ready masks.'
+        : 'Generate at least one mask before creating marketing assets.',
       complete: false,
       unlocked: marketingUnlocked,
-      lockedReason: 'Approve at least one color mask first.',
+      lockedReason: 'Generate at least one color mask first.',
     },
     {
       id: 'export',
@@ -144,7 +144,7 @@ export const createWorkflowState = ({
       summary: exportSummary,
       complete: qaResult.status === 'etsy-ready',
       unlocked: canExportFinalFiles,
-      lockedReason: 'Approve at least one color mask to export available files.',
+      lockedReason: 'Generate at least one color mask to export available files.',
     },
   ];
   const stepById = new Map(steps.map((step) => [step.id, step]));
@@ -175,13 +175,13 @@ export const createWorkflowState = ({
     : !topicsComplete
       ? 'Add mask topics, then generate their images.'
       : !hasAIProvider && !imagesComplete
-        ? 'Configure the Cloud OpenAI proxy before generating images.'
+        ? 'Connect online AI before generating images.'
         : canExportFinalFiles && !imagesComplete
           ? 'Export available files, or finish missing images and coloring pages.'
           : approvedImageCount !== subjectCount
-            ? 'Generate and approve missing images.'
+            ? 'Generate missing images.'
             : !imagesComplete
-              ? 'Generate coloring pages for approved masks.'
+              ? 'Generate coloring pages for ready masks.'
               : qaResult.status === 'etsy-ready'
                 ? 'Export the ZIP.'
                 : 'Fix the remaining QA items.';

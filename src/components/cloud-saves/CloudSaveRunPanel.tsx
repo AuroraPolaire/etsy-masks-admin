@@ -5,7 +5,7 @@ import { Alert } from '../ui/Alert';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Card, CardBody, CardHeader } from '../ui/Card';
-import { Input } from '../ui/Input';
+import { Surface } from '../ui/Surface';
 
 import type { BackendAutosaveState, BackendHealth, ManagedFile } from '../../types';
 import type { BadgeTone } from '../ui/Badge';
@@ -19,7 +19,6 @@ type CloudSaveRunPanelProps = {
   autosaveState: BackendAutosaveState;
   maxFileBytes: number;
   oversizedFiles: ManagedFile[];
-  onSaveIdeaChange: (idea: string) => void;
   onTestConnection: () => void;
 };
 
@@ -32,12 +31,11 @@ export const CloudSaveRunPanel = ({
   autosaveState,
   maxFileBytes,
   oversizedFiles,
-  onSaveIdeaChange,
   onTestConnection,
 }: CloudSaveRunPanelProps) => {
   const statusTone: BadgeTone = backendReachable ? 'success' : health ? 'warning' : 'neutral';
   const statusLabel = backendReachable
-    ? 'Cloud reachable'
+    ? 'Online save ready'
     : health
       ? 'Needs attention'
       : 'Not checked';
@@ -53,23 +51,24 @@ export const CloudSaveRunPanel = ({
             : 'neutral';
   const autosaveLabel =
     autosaveState.status === 'saved'
-      ? 'Draft autosaved'
+      ? 'Autosaved'
       : autosaveState.status === 'restoring'
-        ? 'Restoring draft'
+        ? 'Restoring'
         : autosaveState.status === 'saving'
-          ? 'Autosaving draft'
+          ? 'Autosaving'
           : autosaveState.status === 'error'
             ? 'Autosave failed'
             : 'Autosave idle';
+  const runName = saveIdea.trim() || suggestedIdea;
 
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-ink-strong">Automatic draft save</h2>
+            <h2 className="text-lg font-bold text-ink-strong">Automatic online save</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Each meaningful edit is saved to one cloud draft for this project. There is no manual
+              Each meaningful edit is saved to one online copy for this project. There is no manual
               save step.
             </p>
           </div>
@@ -77,22 +76,20 @@ export const CloudSaveRunPanel = ({
             <Badge tone={statusTone}>{statusLabel}</Badge>
             <Badge tone={autosaveTone}>{autosaveLabel}</Badge>
             <Badge tone={health?.openaiProxyReady ? 'success' : 'warning'}>
-              {health?.openaiProxyReady ? 'AI ready' : 'AI not ready'}
+              {health?.openaiProxyReady ? 'AI image service ready' : 'AI setup needed'}
             </Badge>
           </div>
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <Input
-            label="Draft name"
-            name="backendRunIdea"
-            type="text"
-            value={saveIdea}
-            placeholder={suggestedIdea}
-            helperText="This is the searchable name shown in saved runs."
-            onChange={(event) => onSaveIdeaChange(event.target.value)}
-          />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <Surface variant="muted" className="p-3">
+            <p className="text-xs font-semibold uppercase text-ink-muted">Saved as</p>
+            <p className="mt-1 truncate text-sm font-semibold text-ink-strong">{runName}</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              The name follows the current project and stays searchable in saved projects.
+            </p>
+          </Surface>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button disabled={backendBusy} onClick={onTestConnection}>
               <RefreshCw aria-hidden="true" className="mr-2" size={17} />
@@ -102,7 +99,7 @@ export const CloudSaveRunPanel = ({
         </div>
         {autosaveState.status === 'saved' && autosaveState.lastSavedAt ? (
           <p className="text-xs text-ink-muted">
-            Last cloud draft save:{' '}
+            Last online save:{' '}
             {new Intl.DateTimeFormat(undefined, {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -110,21 +107,21 @@ export const CloudSaveRunPanel = ({
           </p>
         ) : null}
         {autosaveState.status === 'restoring' ? (
-          <Alert>Restoring the active cloud draft before new edits are saved.</Alert>
+          <Alert>Restoring the active saved copy before new edits are saved.</Alert>
         ) : null}
         {autosaveState.status === 'error' && autosaveState.lastError ? (
           <Alert tone="warning">{autosaveState.lastError}</Alert>
         ) : null}
         {!backendReachable && health ? (
           <Alert tone="warning">
-            Cloud autosave is not ready. Check the Pages Function route, Cloudflare Access, and
-            D1/R2 bindings.
+            Online autosave is not ready. Refresh again or ask an admin to check the saved-work
+            setup.
           </Alert>
         ) : null}
         {oversizedFiles.length > 0 ? (
           <Alert tone="warning">
             {oversizedFiles.length} file{oversizedFiles.length === 1 ? '' : 's'} exceed the{' '}
-            {formatBytes(maxFileBytes)} cloud-save limit. Remove or shrink them before saving.
+            {formatBytes(maxFileBytes)} online-save limit. Remove or shrink them before saving.
           </Alert>
         ) : null}
       </CardBody>

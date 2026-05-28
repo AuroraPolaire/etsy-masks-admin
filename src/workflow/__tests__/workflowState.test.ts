@@ -60,7 +60,7 @@ describe('workflow state', () => {
 
     expect(workflow.topicsComplete).toBe(true);
     expect(workflow.imagesComplete).toBe(false);
-    expect(workflow.nextAction).toBe('Configure the Cloud OpenAI proxy before generating images.');
+    expect(workflow.nextAction).toBe('Connect online AI before generating images.');
     expect(workflow.stepperItems.map((step) => step.status)).toEqual([
       'active',
       'available',

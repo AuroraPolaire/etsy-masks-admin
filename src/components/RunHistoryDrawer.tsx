@@ -113,7 +113,7 @@ export const RunHistoryDrawer = ({
           {groups.length === 0 ? (
             <div className="rounded-control border border-surface-divider bg-surface-muted p-4 text-sm text-ink-muted">
               {revisions.length === 0
-                ? 'No restore points yet. Cloud autosave creates them after this run is saved.'
+                ? 'No restore points yet. Online autosave creates them after this run is saved.'
                 : 'No restore points match the search.'}
             </div>
           ) : (

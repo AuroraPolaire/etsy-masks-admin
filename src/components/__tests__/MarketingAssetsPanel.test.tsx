@@ -43,7 +43,7 @@ const createFile = (overrides: Partial<ManagedFile>): ManagedFile => {
 };
 
 describe('MarketingAssetsPanel', () => {
-  it('unlocks generation controls from approved masks', () => {
+  it('unlocks generation controls from ready masks', () => {
     const project = createProject();
 
     render(
@@ -60,9 +60,32 @@ describe('MarketingAssetsPanel', () => {
       />,
     );
 
-    expect(screen.getByText('1 approved source mask')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Generate mask sheet' })).toBeEnabled();
-    expect(screen.getAllByRole('button', { name: 'Generate 3 suggestions' })[0]).toBeEnabled();
+    expect(screen.getByText('1 ready source mask')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create mask sheets' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Create 3 variations' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Generate 3 suggestions' })).toBeEnabled();
+  });
+
+  it('allows local mask sheet creation without online AI', () => {
+    const project = createProject();
+
+    render(
+      <MarketingAssetsPanel
+        project={project}
+        files={[createFile({ id: 'dino-mask' })]}
+        hasAIProvider={false}
+        busyAction={null}
+        onMarketingSettingsChange={vi.fn()}
+        onGenerateSloganPreviews={vi.fn()}
+        onGenerateMaskSheets={vi.fn()}
+        onGenerateChildrenScenePreviews={vi.fn()}
+        onDeleteFile={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Create mask sheets' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Create 3 variations' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Generate 3 suggestions' })).toBeDisabled();
   });
 
   it('updates the marketing slogan from the main workflow panel', () => {

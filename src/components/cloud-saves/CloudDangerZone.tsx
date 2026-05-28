@@ -25,9 +25,9 @@ export const CloudDangerZone = ({
     </summary>
     <div className="space-y-4 border-t border-feedback-danger-border p-4">
       <p className="text-sm text-feedback-danger-fg">
-        Individual runs can be deleted from the saved-runs table. Delete all cloud data removes
-        every saved run, backend event, and R2 object. Clearing current tab files first saves the
-        current run, then starts a fresh browser draft without those in-tab file objects.
+        Individual projects can be deleted from the saved projects list. Delete all saved work
+        removes every saved project, event, and stored file. Clearing current tab files first saves
+        the current project, then starts a fresh browser draft without those in-tab file objects.
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button variant="ghost" onClick={onClearSessionFiles}>
@@ -40,7 +40,7 @@ export const CloudDangerZone = ({
           onClick={onDeleteAllCloudData}
         >
           <Trash2 aria-hidden="true" className="mr-2" size={17} />
-          Delete all cloud data
+          Delete all saved work
         </Button>
       </div>
     </div>

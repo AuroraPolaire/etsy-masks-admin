@@ -7,14 +7,9 @@ import type { AddActivity, ManagedFile, SubjectItem } from '../types';
 type UseManagedFilesParams = {
   subjects: SubjectItem[];
   addActivity: AddActivity;
-  onImageApproved: () => void;
 };
 
-export const useManagedFiles = ({
-  subjects,
-  addActivity,
-  onImageApproved,
-}: UseManagedFilesParams) => {
+export const useManagedFiles = ({ subjects, addActivity }: UseManagedFilesParams) => {
   const [files, setFiles] = useState<ManagedFile[]>([]);
   const filesRef = useRef<ManagedFile[]>([]);
 
@@ -39,50 +34,6 @@ export const useManagedFiles = ({
       return nextFiles;
     });
   }, []);
-
-  const approveFile = useCallback(
-    (fileId: string) => {
-      updateFile(fileId, (file) => ({
-        ...file,
-        reviewState: 'approved',
-        explicitlyConfirmed: true,
-      }));
-      onImageApproved();
-      addActivity('image-approved', 'success', 'Image approved.');
-    },
-    [addActivity, onImageApproved, updateFile],
-  );
-
-  const approveFiles = useCallback(
-    (fileIds: string[]) => {
-      const targetIds = new Set(fileIds);
-      const targetCount = filesRef.current.filter((file) => targetIds.has(file.id)).length;
-      if (targetCount === 0) {
-        return;
-      }
-
-      setFiles((currentFiles) => {
-        const nextFiles = currentFiles.map((file) =>
-          targetIds.has(file.id)
-            ? {
-                ...file,
-                reviewState: 'approved' as const,
-                explicitlyConfirmed: true,
-              }
-            : file,
-        );
-        filesRef.current = nextFiles;
-        return nextFiles;
-      });
-      onImageApproved();
-      addActivity(
-        'image-approved',
-        'success',
-        `Approved ${targetCount} image${targetCount === 1 ? '' : 's'}.`,
-      );
-    },
-    [addActivity, onImageApproved],
-  );
 
   const deleteFile = useCallback(
     (fileId: string) => {
@@ -159,8 +110,6 @@ export const useManagedFiles = ({
     files,
     filesRef,
     appendFiles,
-    approveFile,
-    approveFiles,
     deleteFile,
     mapFile,
     clearAllMappings,

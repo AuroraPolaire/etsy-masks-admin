@@ -126,8 +126,13 @@ export const StepAdvanceButton = ({
   onClick: () => void;
   disabled?: boolean;
 }) => (
-  <div className="mt-5 flex justify-end">
-    <Button variant="primary" onClick={onClick} disabled={disabled}>
+  <div className="sticky bottom-3 z-20 mt-5 flex justify-stretch sm:static sm:justify-end">
+    <Button
+      className="w-full shadow-panel sm:w-auto"
+      variant="primary"
+      onClick={onClick}
+      disabled={disabled}
+    >
       {children}
     </Button>
   </div>

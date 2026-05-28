@@ -56,7 +56,9 @@ const createGeneratedManagedFile = async (
   return {
     ...managedFile,
     mappedSubjectId: prompt.subjectId,
-    reviewNotes: `Generated with OpenAI ${settings.model}. Review before approving.`,
+    reviewState: 'approved',
+    explicitlyConfirmed: true,
+    reviewNotes: `Generated with OpenAI ${settings.model}. Discard and regenerate if it is not suitable.`,
   };
 };
 

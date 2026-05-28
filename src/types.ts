@@ -147,6 +147,13 @@ export type ProjectDraft = {
   etsySeoAnalysis?: EtsySeoAnalysis;
 };
 
+export type BriefReferenceImage = {
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+};
+
 export type ManagedFile = {
   id: string;
   file: File;
@@ -256,6 +263,7 @@ export type OpenAIImageModel = 'gpt-image-1.5' | 'gpt-image-1' | 'gpt-image-1-mi
 export type OpenAIImageSize =
   | '512x512'
   | '1024x1024'
+  | '1536x1536'
   | '1536x1024'
   | '1024x1536'
   | '2048x2048'

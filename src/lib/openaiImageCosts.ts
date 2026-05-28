@@ -3,7 +3,7 @@ import type { OpenAIImageQuality, OpenAIImageSize } from '../types';
 export type EstimatedImageCostModel = 'gpt-image-1.5' | 'gpt-image-2';
 
 type EstimatedQuality = Exclude<OpenAIImageQuality, 'auto'>;
-type EstimatedSize = '1024x1024' | '1024x1536' | '1536x1024';
+type EstimatedSize = '1024x1024' | '1024x1536' | '1536x1024' | '1536x1536';
 
 type ImageCostEstimate = {
   model: EstimatedImageCostModel;
@@ -34,16 +34,19 @@ const ESTIMATED_COST_USD: Record<
       '1024x1024': 0.009,
       '1024x1536': 0.013,
       '1536x1024': 0.013,
+      '1536x1536': 0.02,
     },
     medium: {
       '1024x1024': 0.034,
       '1024x1536': 0.05,
       '1536x1024': 0.05,
+      '1536x1536': 0.075,
     },
     high: {
       '1024x1024': 0.133,
       '1024x1536': 0.2,
       '1536x1024': 0.2,
+      '1536x1536': 0.3,
     },
   },
   'gpt-image-2': {
@@ -51,16 +54,19 @@ const ESTIMATED_COST_USD: Record<
       '1024x1024': 0.006,
       '1024x1536': 0.005,
       '1536x1024': 0.005,
+      '1536x1536': 0.008,
     },
     medium: {
       '1024x1024': 0.053,
       '1024x1536': 0.041,
       '1536x1024': 0.041,
+      '1536x1536': 0.062,
     },
     high: {
       '1024x1024': 0.211,
       '1024x1536': 0.165,
       '1536x1024': 0.165,
+      '1536x1536': 0.248,
     },
   },
 };
@@ -68,7 +74,7 @@ const ESTIMATED_COST_USD: Record<
 const normalizeQuality = (quality: OpenAIImageQuality): EstimatedQuality =>
   quality === 'auto' ? DEFAULT_ESTIMATE_QUALITY : quality;
 
-const ESTIMATED_SIZES: EstimatedSize[] = ['1024x1024', '1024x1536', '1536x1024'];
+const ESTIMATED_SIZES: EstimatedSize[] = ['1024x1024', '1024x1536', '1536x1024', '1536x1536'];
 
 const normalizeSize = (size: OpenAIImageSize): EstimatedSize =>
   size === 'auto' || !ESTIMATED_SIZES.includes(size as EstimatedSize)
