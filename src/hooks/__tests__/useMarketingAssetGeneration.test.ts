@@ -3,17 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createDefaultProject } from '../../constants';
 import { createScriptedMaskSheetFile } from '../../lib/scriptedMaskSheet';
-import { createScriptedSloganPosterFile } from '../../lib/scriptedSloganPoster';
 import { useMarketingAssetGeneration } from '../useMarketingAssetGeneration';
 
-import type { ManagedFile, Project } from '../../types';
+import type {
+  ManagedFile,
+  MarketingGenerationRecipe,
+  MarketingImageSettings,
+  Project,
+} from '../../types';
 
 vi.mock('../../lib/scriptedMaskSheet', () => ({
   createScriptedMaskSheetFile: vi.fn(),
-}));
-
-vi.mock('../../lib/scriptedSloganPoster', () => ({
-  createScriptedSloganPosterFile: vi.fn(),
 }));
 
 const createProject = (): Project => ({
@@ -83,16 +83,22 @@ describe('useMarketingAssetGeneration', () => {
     vi.mocked(createScriptedMaskSheetFile).mockResolvedValue(
       new File(['scripted sheet'], 'scripted-mask-sheet.bin'),
     );
-    vi.mocked(createScriptedSloganPosterFile).mockReset();
-    vi.mocked(createScriptedSloganPosterFile).mockImplementation(({ recipe }) =>
-      Promise.resolve(new File(['scripted slogan'], `scripted-slogan-${recipe.optionIndex}.bin`)),
-    );
   });
 
-  it('creates three text-only slogan poster variations locally', async () => {
+  const createGenerateMarketingSceneFileMock = () =>
+    vi.fn(
+      (
+        _settings: MarketingImageSettings,
+        _project: Project,
+        _sourceFiles: ManagedFile[],
+        recipe: MarketingGenerationRecipe,
+      ) => Promise.resolve(new File(['ai slogan'], `ai-slogan-${recipe.optionIndex}.bin`)),
+    );
+
+  it('generates three AI text-only slogan poster variations without source masks', async () => {
     const project = createProject();
     const filesRef = { current: [createApprovedMask()] };
-    const generateMarketingSceneFile = vi.fn();
+    const generateMarketingSceneFile = createGenerateMarketingSceneFileMock();
     const appendGeneratedFiles = vi.fn((files: ManagedFile[]) => {
       filesRef.current = [...filesRef.current, ...files];
       return Promise.resolve();
@@ -115,8 +121,26 @@ describe('useMarketingAssetGeneration', () => {
       });
     });
 
-    expect(generateMarketingSceneFile).not.toHaveBeenCalled();
-    expect(createScriptedSloganPosterFile).toHaveBeenCalledTimes(3);
+    expect(generateMarketingSceneFile).toHaveBeenCalledTimes(3);
+    expect(
+      generateMarketingSceneFile.mock.calls.map((call) => ({
+        sourceFiles: call[2],
+        recipe: call[3],
+      })),
+    ).toMatchObject([
+      {
+        sourceFiles: [],
+        recipe: { type: 'slogan-poster', stage: 'final', optionIndex: 0, maskCount: 0 },
+      },
+      {
+        sourceFiles: [],
+        recipe: { type: 'slogan-poster', stage: 'final', optionIndex: 1, maskCount: 0 },
+      },
+      {
+        sourceFiles: [],
+        recipe: { type: 'slogan-poster', stage: 'final', optionIndex: 2, maskCount: 0 },
+      },
+    ]);
     await waitFor(() => expect(appendGeneratedFiles).toHaveBeenCalledTimes(3));
     expect(appendGeneratedFiles.mock.calls[0]?.[0][0]).toMatchObject({
       assetVariant: 'marketing-slogan',
@@ -141,7 +165,7 @@ describe('useMarketingAssetGeneration', () => {
     };
     const existing = createMarketingFile('final-slogan', { stage: 'final' });
     const filesRef = { current: [existing] };
-    const generateMarketingSceneFile = vi.fn();
+    const generateMarketingSceneFile = createGenerateMarketingSceneFileMock();
     const appendGeneratedFiles = vi.fn((files: ManagedFile[]) => {
       filesRef.current = [...filesRef.current, ...files];
       return Promise.resolve();
@@ -164,10 +188,7 @@ describe('useMarketingAssetGeneration', () => {
       });
     });
 
-    expect(generateMarketingSceneFile).not.toHaveBeenCalled();
-    expect(
-      vi.mocked(createScriptedSloganPosterFile).mock.calls.map((call) => call[0].recipe),
-    ).toMatchObject([
+    expect(generateMarketingSceneFile.mock.calls.map((call) => call[3])).toMatchObject([
       { optionIndex: 1, customPrompt: 'Use warmer printer-table styling' },
       { optionIndex: 2, customPrompt: 'Use warmer printer-table styling' },
       { optionIndex: 3, customPrompt: 'Use warmer printer-table styling' },
@@ -183,7 +204,7 @@ describe('useMarketingAssetGeneration', () => {
     const project = createProject();
     const sourceMask = createApprovedMask();
     const filesRef = { current: [sourceMask] };
-    const generateMarketingSceneFile = vi.fn();
+    const generateMarketingSceneFile = createGenerateMarketingSceneFileMock();
     const appendGeneratedFiles = vi.fn((files: ManagedFile[]) => {
       filesRef.current = [...filesRef.current, ...files];
       return Promise.resolve();
@@ -214,7 +235,6 @@ describe('useMarketingAssetGeneration', () => {
     }
 
     const [scriptedSheetInput] = firstScriptedSheetCall;
-    expect(scriptedSheetInput.project).toBe(project);
     expect(scriptedSheetInput.sourceMasks).toEqual([sourceMask]);
     expect(scriptedSheetInput.recipe).toMatchObject({
       type: 'mask-sheet',

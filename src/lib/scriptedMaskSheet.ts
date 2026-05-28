@@ -1,11 +1,6 @@
 import { fileToDataUrl } from './files';
 
-import type {
-  ManagedFile,
-  MarketingGenerationRecipe,
-  MarketingImageSettings,
-  Project,
-} from '../types';
+import type { ManagedFile, MarketingGenerationRecipe, MarketingImageSettings } from '../types';
 
 type SheetSize = {
   width: number;
@@ -19,7 +14,6 @@ type LoadedMaskImage = {
 
 type CreateScriptedMaskSheetFileParams = {
   settings: MarketingImageSettings;
-  project: Project;
   sourceMasks: ManagedFile[];
   recipe: MarketingGenerationRecipe;
 };
@@ -169,7 +163,6 @@ const canvasToFile = async (
 
 export const createScriptedMaskSheetFile = async ({
   settings,
-  project,
   sourceMasks,
   recipe,
 }: CreateScriptedMaskSheetFileParams): Promise<File> => {
@@ -190,34 +183,18 @@ export const createScriptedMaskSheetFile = async ({
 
   const transparent = settings.background === 'transparent' && settings.outputFormat !== 'jpeg';
   if (!transparent) {
-    context.fillStyle = '#fffaf6';
+    context.fillStyle = '#ffffff';
     context.fillRect(0, 0, size.width, size.height);
   }
 
   const outerPadding = Math.round(Math.min(size.width, size.height) * 0.055);
-  const titleHeight = Math.round(Math.min(size.width, size.height) * 0.065);
-  const footerHeight =
-    recipe.pageCount && recipe.pageCount > 1
-      ? Math.round(Math.min(size.width, size.height) * 0.045)
-      : 0;
   const gap = Math.round(Math.min(size.width, size.height) * 0.018);
-  const gridTop = outerPadding + titleHeight;
-  const gridHeight = size.height - gridTop - outerPadding - footerHeight;
+  const gridTop = outerPadding;
+  const gridHeight = size.height - outerPadding * 2;
   const { columns, rows } = resolveGrid(loadedMasks.length, size);
   const cellWidth = (size.width - outerPadding * 2 - gap * (columns - 1)) / columns;
   const cellHeight = (gridHeight - gap * (rows - 1)) / rows;
   const inset = Math.round(Math.min(cellWidth, cellHeight) * 0.07);
-
-  context.fillStyle = '#211b36';
-  context.font = `700 ${Math.max(24, Math.round(size.width * 0.026))}px Inter, Arial, sans-serif`;
-  context.textAlign = 'left';
-  context.textBaseline = 'middle';
-  context.fillText(
-    project.settings.title || project.settings.theme || 'Printable mask bundle',
-    outerPadding,
-    outerPadding + titleHeight / 2,
-    size.width - outerPadding * 2,
-  );
 
   loadedMasks.forEach(({ image }, index) => {
     const row = Math.floor(index / columns);
@@ -248,18 +225,6 @@ export const createScriptedMaskSheetFile = async ({
       cellHeight - inset * 2,
     );
   });
-
-  if (footerHeight > 0) {
-    context.fillStyle = '#6f6073';
-    context.font = `600 ${Math.max(16, Math.round(size.width * 0.016))}px Inter, Arial, sans-serif`;
-    context.textAlign = 'right';
-    context.textBaseline = 'middle';
-    context.fillText(
-      `Sheet ${(recipe.pageIndex ?? 0) + 1} of ${recipe.pageCount}`,
-      size.width - outerPadding,
-      size.height - outerPadding - footerHeight / 2,
-    );
-  }
 
   return canvasToFile(
     canvas,

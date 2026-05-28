@@ -570,10 +570,9 @@ const readMarketingSceneInput = async (
   const images = (formData.getAll('image') as unknown[]).filter((image): image is Blob =>
     isBlobLike(image),
   );
-
-  if (images.length === 0) {
-    throw new ApiError(400, 'At least one image form field is required.');
-  }
+  const projectJson = readFormJsonObject(formData, 'project');
+  const recipeJson = readFormJsonObject(formData, 'recipe');
+  const recipeType = readEnum(recipeJson.type, MARKETING_ASSET_TYPES, 'recipe.type');
 
   for (const image of images) {
     if (image.size > getMaxFileBytes(env)) {
@@ -586,8 +585,10 @@ const readMarketingSceneInput = async (
     }
   }
 
-  const projectJson = readFormJsonObject(formData, 'project');
-  const recipeJson = readFormJsonObject(formData, 'recipe');
+  if (images.length === 0 && recipeType !== 'slogan-poster') {
+    throw new ApiError(400, 'At least one image form field is required.');
+  }
+
   const stage = readEnum(recipeJson.stage, MARKETING_ASSET_STAGES, 'recipe.stage');
   const pageIndex =
     typeof recipeJson.pageIndex === 'number' && Number.isFinite(recipeJson.pageIndex)
@@ -612,7 +613,7 @@ const readMarketingSceneInput = async (
       slogan: readRequiredString(projectJson.slogan, 'project.slogan'),
     },
     recipe: {
-      type: readEnum(recipeJson.type, MARKETING_ASSET_TYPES, 'recipe.type'),
+      type: recipeType,
       id: readRequiredString(recipeJson.id, 'recipe.id'),
       optionIndex:
         typeof recipeJson.optionIndex === 'number' && Number.isFinite(recipeJson.optionIndex)
@@ -621,7 +622,7 @@ const readMarketingSceneInput = async (
       stage,
       maskCount:
         typeof recipeJson.maskCount === 'number' && Number.isFinite(recipeJson.maskCount)
-          ? Math.max(1, Math.floor(recipeJson.maskCount))
+          ? Math.max(recipeType === 'slogan-poster' ? 0 : 1, Math.floor(recipeJson.maskCount))
           : images.length,
       ...(customPrompt ? { customPrompt } : {}),
       ...(pageIndex !== undefined ? { pageIndex } : {}),
@@ -660,12 +661,12 @@ const getMarketingEditModel = (
   MARKETING_EDIT_IMAGE_MODELS.includes(settings.model) ? settings.model : 'gpt-image-2';
 
 const SLOGAN_VARIANT_DIRECTIONS = [
-  'Variant style: bold centered slogan with masks arranged dynamically around it.',
-  'Variant style: editorial split composition with dramatic product grouping and a clean text area.',
-  'Variant style: playful premium poster with masks layered in depth and strong visual hierarchy.',
-  'Variant style: bright print-at-home value poster with clear buyer-facing text hierarchy.',
-  'Variant style: catalog-cover composition with masks as the hero product and clean supporting copy.',
-  'Variant style: social-ready square ad with energetic mask placement and readable printable-product wording.',
+  'Variant style: bold centered typography with generous margins.',
+  'Variant style: editorial typography with strong contrast and careful line breaks.',
+  'Variant style: playful premium lettering with balanced spacing.',
+  'Variant style: bright print-at-home value poster with large readable typography.',
+  'Variant style: catalog-cover typography with a clean marketplace-ready layout.',
+  'Variant style: social-ready square typographic poster with high readability.',
 ];
 
 const CHILDREN_SCENE_VARIANT_DIRECTIONS = [
@@ -681,10 +682,11 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
   if (recipe.type === 'slogan-poster') {
     return [
       'Asset type: slogan poster.',
-      'Create a polished Etsy listing poster that uses the provided mask images as the featured product visuals.',
-      'Make the composition feel designed, rich, and marketplace-ready, not like a simple grid.',
-      'Include the exact slogan text prominently and keep it readable.',
-      'Do not add unrelated text. Optional small supporting text can mention printable masks, print at home, cut and wear, or digital download only if it improves buyer clarity.',
+      'Create a polished text-only Etsy listing poster.',
+      'The exact slogan must be the only visible text.',
+      'Do not include masks, product images, characters, icons, logos, labels, watermarks, or supporting copy.',
+      'Use typography, color, spacing, and layout only. Keep every word fully visible.',
+      'Wrap and scale the slogan so it fits comfortably inside the image with clear margins and no cropped letters.',
       SLOGAN_VARIANT_DIRECTIONS[recipe.optionIndex % SLOGAN_VARIANT_DIRECTIONS.length],
     ].join('\n');
   }
@@ -695,11 +697,12 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
       `Create an attractive marketplace mask sheet containing all ${recipe.maskCount} provided mask references for this page.`,
       'Use AI to choose spacing, sizing, visual rhythm, and product placement.',
       'Each mask should remain clearly visible, front-facing, and separated enough for buyer review.',
-      'Avoid a boring rigid spreadsheet look; use a polished catalog or product-board layout on a clean light background.',
+      'Use a pure white background.',
+      'Avoid a boring rigid spreadsheet look; use a polished catalog or product-board layout.',
       recipe.pageCount && recipe.pageCount > 1
         ? `This is page ${(recipe.pageIndex ?? 0) + 1} of ${recipe.pageCount}; do not imply masks from other pages are included.`
         : 'This is the full mask sheet.',
-      'Do not add logos, watermarks, or decorative text beyond a short product title if useful.',
+      'Do not add text, titles, labels, page numbers, logos, or watermarks.',
     ].join('\n');
   }
 
@@ -718,15 +721,22 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
   ].join('\n');
 };
 
-const buildMarketingScenePrompt = (input: MarketingSceneInput): string =>
-  [
+const buildMarketingScenePrompt = (input: MarketingSceneInput): string => {
+  const imageReferenceLines =
+    input.images.length > 0
+      ? [
+          `Use the ${input.images.length} provided ready mask image reference${input.images.length === 1 ? '' : 's'} as the product source context.`,
+          'Preserve the important mask identity: colors, silhouettes, horn/ear/frill shapes, eye holes, expressions, and texture style.',
+        ]
+      : [];
+
+  return [
     `Create a marketing asset for ${input.project.theme}.`,
     `Listing title context: ${input.project.title}.`,
     `Audience: ${input.project.audience}.`,
     `Exact slogan text: ${input.project.slogan}.`,
     `Visual style context: ${input.project.style}.`,
-    `Use the ${input.images.length} provided ready mask image reference${input.images.length === 1 ? '' : 's'} as the product source context.`,
-    'Preserve the important mask identity: colors, silhouettes, horn/ear/frill shapes, eye holes, expressions, and texture style.',
+    ...imageReferenceLines,
     'Do not invent unrelated masks, brands, copyrighted characters, celebrities, logos, or watermarks.',
     getMarketingVariantDirection(input),
     ...(input.recipe.customPrompt
@@ -734,6 +744,27 @@ const buildMarketingScenePrompt = (input: MarketingSceneInput): string =>
       : []),
     `Generation variant id: ${input.recipe.id}, option ${input.recipe.optionIndex + 1}, ${input.recipe.stage}.`,
   ].join('\n');
+};
+
+const getMarketingRequestQuality = (settings: ImageSettings): ImageQuality =>
+  settings.quality === 'high' ? 'medium' : settings.quality;
+
+const getMarketingRequestBackground = (settings: ImageSettings): ImageBackground =>
+  settings.model === 'gpt-image-2' && settings.background === 'transparent'
+    ? 'opaque'
+    : settings.background;
+
+export const buildMarketingSceneGenerationRequestBody = (
+  input: MarketingSceneInput,
+): Record<string, string | number> => ({
+  model: input.settings.model,
+  prompt: buildMarketingScenePrompt(input),
+  n: 1,
+  size: normalizeOpenAIRequestSize(input.settings.size),
+  quality: getMarketingRequestQuality(input.settings),
+  background: getMarketingRequestBackground(input.settings),
+  output_format: input.settings.outputFormat,
+});
 
 export const buildMarketingSceneEditFormData = (input: MarketingSceneInput): FormData => {
   const formData = new FormData();
@@ -746,8 +777,8 @@ export const buildMarketingSceneEditFormData = (input: MarketingSceneInput): For
   formData.append('prompt', buildMarketingScenePrompt(input));
   formData.append('n', '1');
   formData.append('size', normalizeOpenAIRequestSize(input.settings.size));
-  formData.append('quality', input.settings.quality === 'high' ? 'medium' : input.settings.quality);
-  formData.append('background', 'opaque');
+  formData.append('quality', getMarketingRequestQuality(input.settings));
+  formData.append('background', getMarketingRequestBackground(input.settings));
   formData.append('output_format', input.settings.outputFormat);
 
   return formData;
@@ -959,18 +990,27 @@ export const proxyOpenAIMarketingSceneImage = async (
   env: Env,
 ): Promise<Response> => {
   const input = await readMarketingSceneInput(request, env);
-  const response = await fetch('https://api.openai.com/v1/images/edits', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${getOpenAIKey(env)}`,
+  const usesImageReferences = input.images.length > 0;
+  const response = await fetch(
+    `https://api.openai.com/v1/images/${usesImageReferences ? 'edits' : 'generations'}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getOpenAIKey(env)}`,
+        ...(usesImageReferences ? {} : { 'Content-Type': 'application/json' }),
+      },
+      body: usesImageReferences
+        ? buildMarketingSceneEditFormData(input)
+        : JSON.stringify(buildMarketingSceneGenerationRequestBody(input)),
     },
-    body: buildMarketingSceneEditFormData(input),
-  });
+  );
   const result = await readImageGenerationResponse(response);
 
   if (!response.ok) {
     return Response.json(
-      { error: result.error?.message ?? `OpenAI marketing image edit failed: ${response.status}` },
+      {
+        error: result.error?.message ?? `OpenAI marketing image request failed: ${response.status}`,
+      },
       { status: response.status },
     );
   }

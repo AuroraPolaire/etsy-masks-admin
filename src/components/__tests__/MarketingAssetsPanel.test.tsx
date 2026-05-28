@@ -62,11 +62,11 @@ describe('MarketingAssetsPanel', () => {
 
     expect(screen.getByText('1 ready source mask')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create mask sheets' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Create 3 variations' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Generate 3 variations' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Generate 3 suggestions' })).toBeEnabled();
   });
 
-  it('allows local mask sheet creation without online AI', () => {
+  it('requires online AI for slogan generation but allows local mask sheet creation', () => {
     const project = createProject();
 
     render(
@@ -84,7 +84,7 @@ describe('MarketingAssetsPanel', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Create mask sheets' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Create 3 variations' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Generate 3 variations' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Generate 3 suggestions' })).toBeDisabled();
   });
 

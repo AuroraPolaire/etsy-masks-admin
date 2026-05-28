@@ -15,8 +15,8 @@ same-origin `/api/*` backend.
   background, and no shadows.
 - OpenAI Images API generation through Cloudflare Pages Functions. The frontend never stores OpenAI
   keys, Worker URLs, or backend tokens.
-- Optional AI marketing asset generation from approved masks: slogan poster options, mask sheets,
-  and children-scene previews with AI-directed composition and mask placement.
+- Optional marketing assets: AI text-only slogan poster options, local white-background mask
+  sheets, and children-scene previews with AI-directed composition and mask placement.
 - Approximate OpenAI image cost estimates for one mask, missing images, and the full bundle.
 - Image preview, dimension reading, approval/rejection, review notes, and topic mapping.
 - Browser-only PDF generation with jsPDF for A4 and US Letter printable files.
@@ -228,10 +228,11 @@ and Pages Functions from one origin.
   examples. Switch to transparent only when you specifically need cutout PNG or WEBP mask assets.
 - The default OpenAI image model is `gpt-image-2` with low quality to keep routine generation
   cost-efficient. Switch models or quality only when a specific run needs it.
-- Marketing asset generation sends approved masks as OpenAI image references for slogan posters,
-  mask sheets, and children scenes. Previews default to 1024 x 1024 because GPT Image requests no
-  longer support 512 x 512. It never sends `high` quality; if inherited mask settings use high
-  quality, marketing requests are capped to medium.
+- Marketing asset generation sends approved masks as OpenAI image references for children scenes.
+  Slogan posters use AI text-only image generation without mask references; mask sheets are composed
+  locally in the browser on a white background. Previews default to 1024 x 1024 because GPT Image
+  requests no longer support 512 x 512. It never sends `high` quality; if inherited mask settings
+  use high quality, marketing requests are capped to medium.
 - OpenAI image costs shown in the app are approximate estimates based on common size/quality
   combinations. Actual billing can vary with token usage and pricing changes.
 - Final output resolution is applied after OpenAI generation. Use 4K output only when you need

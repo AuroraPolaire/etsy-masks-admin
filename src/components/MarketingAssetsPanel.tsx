@@ -200,7 +200,7 @@ export const MarketingAssetsPanel = ({
             ) : null}
             {!hasAIProvider ? (
               <Alert tone="info">
-                Online AI is required for children scenes. Slogan posters and mask sheets are
+                Online AI is required for slogan posters and children scenes. Mask sheets are
                 created locally.
               </Alert>
             ) : null}
@@ -222,7 +222,7 @@ export const MarketingAssetsPanel = ({
               value={project.marketingSettings.additionalPrompt}
               rows={3}
               placeholder="Example: brighter classroom scene, more readable printable text, use warm daylight"
-              helperText="Optional direction for children-scene AI suggestions. Local slogan and mask-sheet images ignore this."
+              helperText="Optional direction for AI slogan posters and children-scene suggestions. Local mask-sheet images ignore this."
               onChange={(event) => updateAdditionalPrompt(event.target.value)}
             />
             <Surface variant="muted" className="p-4">
@@ -239,16 +239,12 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates 3 saved text-only slogan variations without placing masks in the image.
+                    Generates 3 AI text-only slogan variations that fit the poster.
                   </p>
                 </div>
-                <Button
-                  disabled={!canGenerate}
-                  variant="primary"
-                  onClick={onGenerateSloganPreviews}
-                >
-                  {sloganAssets.length > 0 ? 'Create +3 more' : 'Create 3 variations'}
-                </Button>
+                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
+                  {sloganAssets.length > 0 ? 'Generate +3 more' : 'Generate 3 variations'}
+                </AIButton>
               </div>
               {sloganAssets.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-3">
@@ -273,8 +269,8 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Mask sheet</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates up to 3 sheet images locally by placing ready masks in a clean catalog
-                    layout.
+                    Creates up to 3 white-background sheet images locally with masks only and no
+                    text.
                   </p>
                 </div>
                 <Button disabled={!canGenerate} variant="primary" onClick={onGenerateMaskSheets}>

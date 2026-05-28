@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { createRunFileHeaders } from '../index';
-import { buildMarketingSceneEditFormData } from '../openaiProxy';
+import {
+  buildMarketingSceneEditFormData,
+  buildMarketingSceneGenerationRequestBody,
+} from '../openaiProxy';
 import { createRunRevisionFileManifest, shouldCreateRunRevisionForSnapshot } from '../storage';
 
 import type { CreateRunRevisionInput } from '../storage';
@@ -212,5 +215,44 @@ describe('worker OpenAI marketing image requests', () => {
     expect(formData.get('prompt')).toContain('flat paper craft masks');
     expect(formData.get('prompt')).toContain('Use a visible home printer');
     expect(formData.get('prompt')).toContain('Do not render masks as molded plastic');
+  });
+
+  it('builds text-only slogan poster generation requests without image inputs', () => {
+    const body = buildMarketingSceneGenerationRequestBody({
+      settings: {
+        model: 'gpt-image-2',
+        size: '512x512',
+        quality: 'high',
+        background: 'transparent',
+        outputFormat: 'png',
+      },
+      project: {
+        theme: 'Dinosaur masks',
+        title: 'Dinosaur Printable Masks',
+        audience: 'Kids',
+        style: 'Printable paper masks',
+        slogan: 'Dinosaur masks for kids',
+      },
+      recipe: {
+        type: 'slogan-poster',
+        id: 'slogan-1',
+        optionIndex: 0,
+        stage: 'final',
+        maskCount: 0,
+      },
+      images: [],
+    });
+
+    expect(body).toMatchObject({
+      model: 'gpt-image-2',
+      size: '1024x1024',
+      quality: 'medium',
+      background: 'opaque',
+      output_format: 'png',
+    });
+    expect(body.prompt).toContain('The exact slogan must be the only visible text.');
+    expect(body.prompt).toContain('Do not include masks');
+    expect(body.prompt).toContain('Wrap and scale the slogan');
+    expect(body.prompt).not.toContain('provided ready mask image reference');
   });
 });
