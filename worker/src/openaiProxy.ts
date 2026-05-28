@@ -26,6 +26,7 @@ const IMAGE_SIZES = [
 const IMAGE_QUALITIES = ['low', 'medium', 'high', 'auto'] as const;
 const IMAGE_BACKGROUNDS = ['transparent', 'opaque', 'auto'] as const;
 const OUTPUT_FORMATS = ['png', 'webp', 'jpeg'] as const;
+const COLORING_PAGE_IMAGE_SIZE = '1024x1024';
 const EDIT_IMAGE_MODELS = ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini'] as const;
 const MARKETING_EDIT_IMAGE_MODELS = [
   'gpt-image-2',
@@ -646,7 +647,7 @@ const readMarketingSceneInput = async (
   };
 };
 
-const buildColoringPageEditFormData = ({
+export const buildColoringPageEditFormData = ({
   settings,
   promptItem,
   image,
@@ -658,7 +659,7 @@ const buildColoringPageEditFormData = ({
   formData.append('image', image, promptItem.expectedFilename);
   formData.append('prompt', buildColoringPagePrompt(promptItem));
   formData.append('n', '1');
-  formData.append('size', normalizeOpenAIRequestSize(settings.size));
+  formData.append('size', COLORING_PAGE_IMAGE_SIZE);
   formData.append('quality', settings.quality);
   formData.append('background', 'opaque');
   formData.append('output_format', 'png');

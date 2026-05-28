@@ -98,8 +98,6 @@ export const PromptCard = ({
   const subject = subjects.find((item) => item.id === prompt.subjectId);
   const isGenerating = generatingSubjectIds.includes(prompt.subjectId);
   const isGeneratingColoringPage = generatingColoringPageSubjectIds.includes(prompt.subjectId);
-  const isAnyImageGenerating =
-    generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
   const colorStatus = {
     label: getReadyLabel(previewFile, 'Mask ready', 'Needs mask'),
     tone: getReadyTone(previewFile),
@@ -131,7 +129,7 @@ export const PromptCard = ({
         </div>
         <div className="flex flex-wrap gap-2">
           <AIButton
-            disabled={!canGenerateImages || isAnyImageGenerating}
+            disabled={!canGenerateImages || isGenerating}
             onClick={() => onGenerateImage(prompt.subjectId, promptForGeneration)}
           >
             {isGenerating ? 'Generating' : previewFile ? 'Regenerate mask' : 'Generate mask'}
@@ -222,7 +220,7 @@ export const PromptCard = ({
                 <Badge tone={coloringPageStatus.tone}>{coloringPageStatus.label}</Badge>
               ) : (
                 <AIButton
-                  disabled={!canGenerateImages || !mappedFile || isAnyImageGenerating}
+                  disabled={!canGenerateImages || !mappedFile || isGeneratingColoringPage}
                   onClick={() => onGenerateColoringPage(prompt.subjectId)}
                 >
                   {isGeneratingColoringPage

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 
+import { COLORING_PAGE_IMAGE_SIZE } from '../constants';
 import { makeUniqueFile, makeUniqueFileWithReservedNames } from '../lib/fileLifecycle';
 import {
   createManagedFile,
@@ -25,7 +26,6 @@ const MAX_PARALLEL_IMAGE_GENERATIONS = 3;
 type UseOpenAIImageGenerationParams = {
   subjects: SubjectItem[];
   prompts: PromptItem[];
-  missingImagePrompts: PromptItem[];
   settings: OpenAIImageSettings;
   coloringPageQuality: OpenAIImageQuality;
   filesRef: MutableRefObject<ManagedFile[]>;
@@ -88,7 +88,6 @@ const isAbortError = (error: unknown): boolean =>
 export const useOpenAIImageGeneration = ({
   subjects,
   prompts,
-  missingImagePrompts,
   settings,
   coloringPageQuality,
   filesRef,
@@ -188,7 +187,11 @@ export const useOpenAIImageGeneration = ({
 
   const generateMissingSubjectImages = useCallback(
     async (context?: BusyActionContext) => {
-      if (missingImagePrompts.length === 0) {
+      const promptsNeedingImages = prompts.filter(
+        (prompt) => !getFileForSubject(filesRef.current, prompt.subjectId),
+      );
+
+      if (promptsNeedingImages.length === 0) {
         return;
       }
 
@@ -198,7 +201,7 @@ export const useOpenAIImageGeneration = ({
         let completedCount = 0;
         let failedCount = 0;
         let cancelled = false;
-        const concurrency = Math.min(MAX_PARALLEL_IMAGE_GENERATIONS, missingImagePrompts.length);
+        const concurrency = Math.min(MAX_PARALLEL_IMAGE_GENERATIONS, promptsNeedingImages.length);
 
         const generatePrompt = async (prompt: PromptItem, promptIndex: number) => {
           if (context?.signal.aborted) {
@@ -208,7 +211,7 @@ export const useOpenAIImageGeneration = ({
 
           startGeneratingSubject(prompt.subjectId);
           context?.setProgress(
-            `Generating ${promptIndex + 1}/${missingImagePrompts.length}: ${
+            `Generating ${promptIndex + 1}/${promptsNeedingImages.length}: ${
               prompt.subjectName
             } (${concurrency} at a time)...`,
           );
@@ -232,7 +235,7 @@ export const useOpenAIImageGeneration = ({
             completedCount += 1;
             addActivity('image-generated', 'success', `Generated ${prompt.subjectName}.`);
             context?.setProgress(
-              `Generated ${completedCount}/${missingImagePrompts.length} image${
+              `Generated ${completedCount}/${promptsNeedingImages.length} image${
                 completedCount === 1 ? '' : 's'
               }${failedCount > 0 ? `, ${failedCount} failed` : ''}.`,
             );
@@ -254,10 +257,10 @@ export const useOpenAIImageGeneration = ({
         };
 
         const worker = async () => {
-          while (nextPromptIndex < missingImagePrompts.length && !context?.signal.aborted) {
+          while (nextPromptIndex < promptsNeedingImages.length && !context?.signal.aborted) {
             const promptIndex = nextPromptIndex;
             nextPromptIndex += 1;
-            const prompt = missingImagePrompts[promptIndex];
+            const prompt = promptsNeedingImages[promptIndex];
             if (prompt) {
               await generatePrompt(prompt, promptIndex);
             }
@@ -288,7 +291,7 @@ export const useOpenAIImageGeneration = ({
       filesRef,
       finishGeneratingSubject,
       generateImageFile,
-      missingImagePrompts,
+      prompts,
       settings,
       startGeneratingSubject,
       subjects,
@@ -309,6 +312,7 @@ export const useOpenAIImageGeneration = ({
       try {
         const coloringPageSettings: OpenAIImageSettings = {
           ...settings,
+          size: COLORING_PAGE_IMAGE_SIZE,
           quality: coloringPageQuality,
         };
         const generatedFile = await generateColoringPageFile(

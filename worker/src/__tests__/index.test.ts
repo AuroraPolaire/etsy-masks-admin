@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createRunFileHeaders } from '../index';
 import {
+  buildColoringPageEditFormData,
   buildColoringPagePrompt,
   buildImageRequestBody,
   buildMarketingSceneEditFormData,
@@ -212,6 +213,22 @@ describe('worker OpenAI mask image requests', () => {
     expect(prompt).toContain('Preserve the star and stitching as smooth line art');
     expect(prompt).toContain('Output only the coloring page');
     expect(prompt).toContain('Color mask prompt context');
+  });
+
+  it('always requests 1024 square coloring-page edits', () => {
+    const formData = buildColoringPageEditFormData({
+      settings: {
+        model: 'gpt-image-1.5',
+        size: '1536x1536',
+        quality: 'medium',
+        background: 'opaque',
+        outputFormat: 'png',
+      },
+      promptItem,
+      image: new Blob(['mask'], { type: 'image/png' }),
+    });
+
+    expect(formData.get('size')).toBe('1024x1024');
   });
 });
 

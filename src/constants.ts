@@ -68,6 +68,7 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
 };
 
 export const DEFAULT_COLORING_PAGE_QUALITY: OpenAIImageQuality = 'low';
+export const COLORING_PAGE_IMAGE_SIZE: OpenAIImageSettings['size'] = '1024x1024';
 
 export const DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS: MarketingImageSettings = {
   model: 'gpt-image-2',
