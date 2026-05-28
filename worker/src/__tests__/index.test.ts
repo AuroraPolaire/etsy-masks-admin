@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { createRunFileHeaders } from '../index';
-import { buildMarketingSceneEditFormData } from '../openaiProxy';
+import {
+  buildColoringPagePrompt,
+  buildImageRequestBody,
+  buildMarketingSceneEditFormData,
+  buildMarketingSceneGenerationRequestBody,
+} from '../openaiProxy';
 import { createRunRevisionFileManifest, shouldCreateRunRevisionForSnapshot } from '../storage';
 
 import type { CreateRunRevisionInput } from '../storage';
@@ -172,6 +177,44 @@ describe('worker run revision manifests', () => {
   });
 });
 
+describe('worker OpenAI mask image requests', () => {
+  const promptItem = {
+    expectedFilename: 'sheriff-cowboy-hat.png',
+    prompt:
+      'Mask style: western sheriff hat mask. Color painting: rich brown leather and gold star. Subject: Sheriff Cowboy Hat.',
+    coloringPagePrompt:
+      'Create a separate black-and-white coloring page for the Sheriff Cowboy Hat mask. Preserve the star and stitching as smooth line art.',
+    negativeRequirements:
+      'no multiple masks, no paired color and line-art preview, no coloring page in the color mask image',
+  };
+
+  it('blocks paired color and coloring-page layouts in color mask generation', () => {
+    const body = buildImageRequestBody(
+      {
+        model: 'gpt-image-2',
+        size: '1024x1024',
+        quality: 'low',
+        background: 'opaque',
+        outputFormat: 'png',
+      },
+      promptItem,
+    );
+
+    expect(body.prompt).toContain('exactly one color mask image');
+    expect(body.prompt).toContain('Do not include a black-and-white coloring page');
+    expect(body.prompt).toContain('no paired color and line-art preview');
+  });
+
+  it('uses the separate coloring page prompt for coloring-page edits', () => {
+    const prompt = buildColoringPagePrompt(promptItem);
+
+    expect(prompt).toContain('Separate coloring-page prompt');
+    expect(prompt).toContain('Preserve the star and stitching as smooth line art');
+    expect(prompt).toContain('Output only the coloring page');
+    expect(prompt).toContain('Color mask prompt context');
+  });
+});
+
 describe('worker OpenAI marketing image requests', () => {
   it('sends ready masks as image array inputs without high quality or input fidelity', () => {
     const formData = buildMarketingSceneEditFormData({
@@ -212,5 +255,44 @@ describe('worker OpenAI marketing image requests', () => {
     expect(formData.get('prompt')).toContain('flat paper craft masks');
     expect(formData.get('prompt')).toContain('Use a visible home printer');
     expect(formData.get('prompt')).toContain('Do not render masks as molded plastic');
+  });
+
+  it('builds text-only slogan poster generation requests without image inputs', () => {
+    const body = buildMarketingSceneGenerationRequestBody({
+      settings: {
+        model: 'gpt-image-2',
+        size: '512x512',
+        quality: 'high',
+        background: 'transparent',
+        outputFormat: 'png',
+      },
+      project: {
+        theme: 'Dinosaur masks',
+        title: 'Dinosaur Printable Masks',
+        audience: 'Kids',
+        style: 'Printable paper masks',
+        slogan: 'Dinosaur masks for kids',
+      },
+      recipe: {
+        type: 'slogan-poster',
+        id: 'slogan-1',
+        optionIndex: 0,
+        stage: 'final',
+        maskCount: 0,
+      },
+      images: [],
+    });
+
+    expect(body).toMatchObject({
+      model: 'gpt-image-2',
+      size: '1024x1024',
+      quality: 'medium',
+      background: 'opaque',
+      output_format: 'png',
+    });
+    expect(body.prompt).toContain('The exact slogan must be the only visible text.');
+    expect(body.prompt).toContain('Do not include masks');
+    expect(body.prompt).toContain('Wrap and scale the slogan');
+    expect(body.prompt).not.toContain('provided ready mask image reference');
   });
 });

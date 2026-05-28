@@ -851,11 +851,9 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Generate coloring page' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
-    const completeTopic = page
-      .getByRole('article')
-      .filter({ hasText: 'moon.png + moon-coloring-page.png' });
-    await expect(completeTopic.getByText('Complete')).toBeVisible();
-    await completeTopic.getByRole('button', { name: 'Open' }).click();
+    const completeTopic = page.getByRole('article').filter({ hasText: 'Moon' });
+    await expect(completeTopic.getByText('Coloring ready')).toBeVisible();
+    await expect(completeTopic.getByRole('button', { name: 'Open', exact: true })).toHaveCount(0);
     await expect(page.getByText('Coloring ready').first()).toBeVisible();
   });
 
@@ -886,11 +884,6 @@ test.describe('production workflow', () => {
       })
       .click();
 
-    await expect.poll(() => backend.getUploadFileCount()).toBeGreaterThan(0);
-    await expect(page.getByLabel('Listing title')).toHaveValue(
-      'Unicorn Printable Masks, 2 Kids Paper Masks',
-    );
-    await page.getByRole('button', { name: 'Next: topics and images' }).click();
     await expect(page.getByText('rainbow-unicorn.png').first()).toBeVisible();
     await expect(page.getByText('moon.png')).toHaveCount(0);
   });

@@ -470,6 +470,7 @@ export const App = () => {
         clearFiles();
       }
       addActivity('project-imported', 'success', activityMessage);
+      setActiveStepId('images');
     },
     [
       addActivity,

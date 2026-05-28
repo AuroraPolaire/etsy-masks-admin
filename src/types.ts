@@ -179,6 +179,7 @@ export type PromptItem = {
   subjectName: string;
   expectedFilename: string;
   prompt: string;
+  coloringPagePrompt: string;
   negativeRequirements: string;
 };
 

@@ -9,7 +9,6 @@ import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { Input } from './ui/Input';
-import { Surface } from './ui/Surface';
 
 import type { SubjectItem, ManagedFile, PromptItem } from '../types';
 
@@ -89,9 +88,6 @@ export const PromptManager = ({
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
   const [reviewFilter, setReviewFilter] = useState<PromptReviewFilter>('all');
-  const [expandedCompleteSubjectIds, setExpandedCompleteSubjectIds] = useState<Set<string>>(
-    () => new Set(),
-  );
   const isGeneratingImages =
     generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
   const promptStates = prompts.map((prompt) => {
@@ -233,57 +229,23 @@ export const PromptManager = ({
                     : 'No topics match this filter.'}
                 </EmptyState>
               ) : (
-                visiblePromptStates.map(({ prompt, colorFile, coloringPageFile, complete }) => {
-                  const isExpanded = expandedCompleteSubjectIds.has(prompt.subjectId);
-                  if (complete && !isExpanded) {
-                    return (
-                      <Surface as="article" key={prompt.subjectId} variant="muted" className="p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-bold text-ink-strong">
-                                {prompt.subjectName}
-                              </h3>
-                              <span className="rounded-badge border border-feedback-success-border bg-feedback-success-bg px-2.5 py-1 text-xs font-semibold text-feedback-success-fg">
-                                Complete
-                              </span>
-                            </div>
-                            <p className="mt-1 truncate font-mono text-sm text-ink-muted">
-                              {colorFile?.name} + {coloringPageFile?.name}
-                            </p>
-                          </div>
-                          <Button
-                            onClick={() =>
-                              setExpandedCompleteSubjectIds((currentIds) =>
-                                new Set(currentIds).add(prompt.subjectId),
-                              )
-                            }
-                          >
-                            Open
-                          </Button>
-                        </div>
-                      </Surface>
-                    );
-                  }
-
-                  return (
-                    <PromptCard
-                      key={prompt.subjectId}
-                      prompt={prompt}
-                      subjects={subjects}
-                      files={files}
-                      canGenerateImages={canGenerateImages}
-                      generatingSubjectIds={generatingSubjectIds}
-                      generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
-                      allowTopicEditing={allowTopicEditing}
-                      onRemoveSubject={onRemoveSubject}
-                      onGenerateImage={onGenerateImage}
-                      onGenerateColoringPage={onGenerateColoringPage}
-                      onDelete={onDelete}
-                      onCopy={onCopy}
-                    />
-                  );
-                })
+                visiblePromptStates.map(({ prompt }) => (
+                  <PromptCard
+                    key={prompt.subjectId}
+                    prompt={prompt}
+                    subjects={subjects}
+                    files={files}
+                    canGenerateImages={canGenerateImages}
+                    generatingSubjectIds={generatingSubjectIds}
+                    generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+                    allowTopicEditing={allowTopicEditing}
+                    onRemoveSubject={onRemoveSubject}
+                    onGenerateImage={onGenerateImage}
+                    onGenerateColoringPage={onGenerateColoringPage}
+                    onDelete={onDelete}
+                    onCopy={onCopy}
+                  />
+                ))
               )}
             </div>
           </PhotoProvider>

@@ -12,7 +12,6 @@ import {
   resolveMarketingPreviewSettings,
 } from '../lib/marketingAssets';
 import { createScriptedMaskSheetFile } from '../lib/scriptedMaskSheet';
-import { createScriptedSloganPosterFile } from '../lib/scriptedSloganPoster';
 
 import type {
   AddActivity,
@@ -171,12 +170,14 @@ export const useMarketingAssetGeneration = ({
             ...(customPrompt ? { customPrompt } : {}),
           };
 
-          context?.setProgress(`Creating slogan variation ${offset + 1}/3...`);
-          const file = await createScriptedSloganPosterFile({
+          context?.setProgress(`Generating AI slogan variation ${offset + 1}/3...`);
+          const file = await generateMarketingSceneFile(
             settings,
             project,
+            [],
             recipe,
-          });
+            context?.signal,
+          );
           const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
           const managedFile = await createAiMarketingFile({
             file: uniqueFile,
@@ -210,7 +211,7 @@ export const useMarketingAssetGeneration = ({
         );
       }
     },
-    [addActivity, appendVisibleMarketingFile, filesRef, project],
+    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
   );
 
   const generateMaskSheets = useCallback(
@@ -247,7 +248,6 @@ export const useMarketingAssetGeneration = ({
           context?.setProgress(`Creating mask sheet ${pageIndex + 1}/${pageCount}...`);
           const file = await createScriptedMaskSheetFile({
             settings,
-            project,
             recipe,
             sourceMasks: pageMasks,
           });
