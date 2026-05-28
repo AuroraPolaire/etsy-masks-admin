@@ -1,11 +1,25 @@
-import { ArrowLeft, ArrowRight, Check, Sparkles, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Gamepad2,
+  Grid2X2,
+  Palette,
+  Sparkles,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import {
   createStylePromptFromWizardValues,
   createStylePromptWizardValues,
 } from '../lib/stylePromptWizard';
-import { initialPromptStyleTemplates } from '../lib/styleTemplates';
+import {
+  defaultInitialPromptStyleCategory,
+  initialPromptStyleTemplateCategories,
+  initialPromptStyleTemplates,
+} from '../lib/styleTemplates';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
@@ -13,7 +27,7 @@ import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
 
 import type { StylePromptWizardValues } from '../lib/stylePromptWizard';
-import type { InitialPromptStyleTemplate } from '../lib/styleTemplates';
+import type { InitialPromptStyleCategory, InitialPromptStyleTemplate } from '../lib/styleTemplates';
 
 type StylePromptWizardProps = {
   open: boolean;
@@ -22,6 +36,7 @@ type StylePromptWizardProps = {
 };
 
 type WizardStep = 'style' | 'helpers' | 'review';
+type StyleCategoryFilter = 'all' | InitialPromptStyleCategory;
 
 const helperFields = [
   'bundleIdea',
@@ -38,6 +53,38 @@ const steps: Array<{ id: WizardStep; label: string }> = [
   { id: 'helpers', label: 'Helpers' },
   { id: 'review', label: 'Review' },
 ];
+
+const styleCategoryIcons: Record<InitialPromptStyleCategory, LucideIcon> = {
+  [defaultInitialPromptStyleCategory]: Palette,
+  'Gaming & digital': Gamepad2,
+};
+
+const styleCategoryOptions: Array<{
+  id: StyleCategoryFilter;
+  label: string;
+  count: number;
+  icon: LucideIcon;
+}> = [
+  {
+    id: 'all',
+    label: 'All',
+    count: initialPromptStyleTemplates.length,
+    icon: Grid2X2,
+  },
+  ...initialPromptStyleTemplateCategories.map((category) => ({
+    id: category,
+    label: category,
+    count: initialPromptStyleTemplates.filter((template) => template.category === category).length,
+    icon: styleCategoryIcons[category],
+  })),
+];
+
+const styleTemplateGroups = initialPromptStyleTemplateCategories
+  .map((category) => ({
+    category,
+    templates: initialPromptStyleTemplates.filter((template) => template.category === category),
+  }))
+  .filter((group) => group.templates.length > 0);
 
 const focusableSelector = [
   'a[href]',
@@ -71,6 +118,9 @@ const getTemplateById = (templateId: string): InitialPromptStyleTemplate =>
   initialPromptStyleTemplates.find((template) => template.id === templateId) ??
   getInitialTemplate();
 
+const getStyleCategoryHeadingId = (category: InitialPromptStyleCategory): string =>
+  `style-category-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
 const preserveHelperValues = (
   nextValues: StylePromptWizardValues,
   currentValues: StylePromptWizardValues,
@@ -90,10 +140,18 @@ export const StylePromptWizard = ({ open, onClose, onApply }: StylePromptWizardP
   const dialogRef = useRef<HTMLElement | null>(null);
   const firstTemplate = getInitialTemplate();
   const [step, setStep] = useState<WizardStep>('style');
+  const [selectedCategory, setSelectedCategory] = useState<StyleCategoryFilter>('all');
   const [selectedTemplateId, setSelectedTemplateId] = useState(firstTemplate.id);
   const [values, setValues] = useState(() => createStylePromptWizardValues(firstTemplate));
   const [finalPrompt, setFinalPrompt] = useState('');
   const selectedTemplate = useMemo(() => getTemplateById(selectedTemplateId), [selectedTemplateId]);
+  const visibleStyleTemplateGroups = useMemo(
+    () =>
+      styleTemplateGroups.filter(
+        (group) => selectedCategory === 'all' || group.category === selectedCategory,
+      ),
+    [selectedCategory],
+  );
   const composedPrompt = useMemo(
     () => createStylePromptFromWizardValues(selectedTemplate, values),
     [selectedTemplate, values],
@@ -177,6 +235,21 @@ export const StylePromptWizard = ({ open, onClose, onApply }: StylePromptWizardP
     setFinalPrompt('');
   };
 
+  const selectCategory = (category: StyleCategoryFilter) => {
+    setSelectedCategory(category);
+
+    if (category === 'all' || selectedTemplate.category === category) {
+      return;
+    }
+
+    const nextTemplate = initialPromptStyleTemplates.find(
+      (template) => template.category === category,
+    );
+    if (nextTemplate) {
+      selectTemplate(nextTemplate);
+    }
+  };
+
   const updateValue =
     (field: keyof StylePromptWizardValues) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -222,6 +295,7 @@ export const StylePromptWizard = ({ open, onClose, onApply }: StylePromptWizardP
                   Style prompt wizard
                 </h2>
                 <Badge tone="info">{initialPromptStyleTemplates.length} styles</Badge>
+                <Badge tone="neutral">{initialPromptStyleTemplateCategories.length} groups</Badge>
               </div>
               <p id={descriptionId} className="mt-1 text-sm text-ink-muted">
                 Build a guided prompt for printable kids paper mask bundles.
@@ -253,43 +327,103 @@ export const StylePromptWizard = ({ open, onClose, onApply }: StylePromptWizardP
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {step === 'style' ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {initialPromptStyleTemplates.map((template) => {
-                const selected = template.id === selectedTemplateId;
+            <div className="space-y-5">
+              <div
+                className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+                aria-label="Style categories"
+              >
+                {styleCategoryOptions.map((option) => {
+                  const selected = option.id === selectedCategory;
+                  const Icon = option.icon;
 
-                return (
-                  <button
-                    key={template.id}
-                    type="button"
-                    className={`flex min-w-0 flex-col overflow-hidden rounded-panel border bg-surface-raised text-left shadow-sm transition hover:border-brand/70 focus:outline-none focus:ring-2 focus:ring-brand/20 ${
-                      selected ? 'border-brand ring-2 ring-brand/15' : 'border-surface-outline'
-                    }`}
-                    aria-pressed={selected}
-                    data-autofocus={selected ? 'true' : undefined}
-                    onClick={() => selectTemplate(template)}
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-badge border px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-brand/20 ${
+                        selected
+                          ? 'border-brand bg-brand-subtle text-brand-strong'
+                          : 'border-surface-outline bg-surface-muted text-ink-muted hover:border-brand/60 hover:text-ink-base'
+                      }`}
+                      aria-pressed={selected}
+                      onClick={() => selectCategory(option.id)}
+                    >
+                      <Icon aria-hidden="true" size={15} />
+                      <span>{option.label}</span>
+                      <span
+                        className={`rounded-badge px-1.5 py-0.5 text-[11px] ${
+                          selected
+                            ? 'bg-white/70 text-brand-strong'
+                            : 'bg-surface-panel text-ink-muted'
+                        }`}
+                      >
+                        {option.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-6">
+                {visibleStyleTemplateGroups.map((group) => (
+                  <section
+                    key={group.category}
+                    aria-labelledby={getStyleCategoryHeadingId(group.category)}
                   >
-                    <img
-                      src={template.exampleImageSrc}
-                      alt={`${template.name} fox mask example`}
-                      width={256}
-                      height={256}
-                      loading="lazy"
-                      className="aspect-square w-full bg-surface-muted object-cover"
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col gap-2 p-3">
-                      <span className="flex min-w-0 items-center justify-between gap-2">
-                        <span className="truncate text-sm font-semibold text-ink-strong">
-                          {template.name}
-                        </span>
-                        {selected ? <Check aria-hidden="true" size={16} /> : null}
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3
+                        id={getStyleCategoryHeadingId(group.category)}
+                        className="text-sm font-bold text-ink-strong"
+                      >
+                        {group.category}
+                      </h3>
+                      <span className="text-xs font-semibold text-ink-muted">
+                        {group.templates.length} styles
                       </span>
-                      <span className="text-xs leading-5 text-ink-muted">
-                        {template.description}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {group.templates.map((template) => {
+                        const selected = template.id === selectedTemplateId;
+
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            className={`flex min-w-0 flex-col overflow-hidden rounded-panel border bg-surface-raised text-left shadow-sm transition hover:border-brand/70 focus:outline-none focus:ring-2 focus:ring-brand/20 ${
+                              selected
+                                ? 'border-brand ring-2 ring-brand/15'
+                                : 'border-surface-outline'
+                            }`}
+                            aria-pressed={selected}
+                            data-autofocus={selected ? 'true' : undefined}
+                            onClick={() => selectTemplate(template)}
+                          >
+                            <img
+                              src={template.exampleImageSrc}
+                              alt={`${template.name} style example mask`}
+                              width={256}
+                              height={256}
+                              loading="lazy"
+                              className="aspect-square w-full bg-surface-muted object-cover"
+                            />
+                            <span className="flex min-w-0 flex-1 flex-col gap-2 p-3">
+                              <span className="flex min-w-0 items-center justify-between gap-2">
+                                <span className="truncate text-sm font-semibold text-ink-strong">
+                                  {template.name}
+                                </span>
+                                {selected ? <Check aria-hidden="true" size={16} /> : null}
+                              </span>
+                              <span className="text-xs leading-5 text-ink-muted">
+                                {template.description}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
           ) : null}
 
@@ -354,7 +488,7 @@ export const StylePromptWizard = ({ open, onClose, onApply }: StylePromptWizardP
                 <div className="flex items-center gap-3 rounded-panel border border-surface-outline bg-surface-muted p-3">
                   <img
                     src={selectedTemplate.exampleImageSrc}
-                    alt={`${selectedTemplate.name} fox mask example`}
+                    alt={`${selectedTemplate.name} style example mask`}
                     width={64}
                     height={64}
                     className="size-16 rounded-control border border-surface-outline bg-surface-panel object-cover"
