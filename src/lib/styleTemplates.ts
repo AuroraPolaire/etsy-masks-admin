@@ -1,12 +1,55 @@
 export type InitialPromptStyleTemplate = {
   id: string;
   name: string;
+  category: InitialPromptStyleCategory;
   description: string;
   exampleImageSrc: string;
   prompt: string;
 };
 
-type InitialPromptStyleTemplateSeed = Omit<InitialPromptStyleTemplate, 'exampleImageSrc'>;
+export const defaultInitialPromptStyleCategory = 'Core styles';
+
+export const initialPromptStyleTemplateCategories = [
+  defaultInitialPromptStyleCategory,
+  'Gaming & digital',
+] as const;
+
+export type InitialPromptStyleCategory = (typeof initialPromptStyleTemplateCategories)[number];
+
+type InitialPromptStyleTemplateSeed = Omit<
+  InitialPromptStyleTemplate,
+  'category' | 'exampleImageSrc'
+> & {
+  category?: InitialPromptStyleCategory;
+};
+
+type GuidedStyleTemplateSeedInput = Omit<InitialPromptStyleTemplateSeed, 'prompt'> & {
+  maskStyle: string;
+  colorPainting: string;
+  coloringPageLines: string;
+};
+
+const createGuidedStyleTemplateSeed = ({
+  id,
+  name,
+  category,
+  description,
+  maskStyle,
+  colorPainting,
+  coloringPageLines,
+}: GuidedStyleTemplateSeedInput): InitialPromptStyleTemplateSeed => ({
+  id,
+  name,
+  ...(category ? { category } : {}),
+  description,
+  prompt: [
+    `Create a printable kids mask bundle using a ${name} visual preference.`,
+    `Mask style: ${maskStyle}`,
+    `Color painting: ${colorPainting}`,
+    `Coloring page lines: ${coloringPageLines}`,
+    'Choose safe, original, brand-safe topics that fit this style unless I add specific topics.',
+  ].join('\n'),
+});
 
 const initialPromptStyleTemplateSeeds: InitialPromptStyleTemplateSeed[] = [
   {
@@ -297,10 +340,239 @@ const initialPromptStyleTemplateSeeds: InitialPromptStyleTemplateSeed[] = [
       'Choose safe, original topics that fit this style unless I add specific topics.',
     ].join('\n'),
   },
+  createGuidedStyleTemplateSeed({
+    id: 'voxel-block-builder',
+    name: 'Voxel block builder',
+    category: 'Gaming & digital',
+    description: 'Blocky pixel-style masks inspired by open-ended building play.',
+    maskStyle:
+      'front-view masks built from chunky square planes and friendly blocky silhouettes, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline, no game logos or copied characters.',
+    colorPainting:
+      'bright voxel color blocks, simple grass, stone, wood, and sky-inspired panels, crisp edges, clean white print background.',
+    coloringPageLines:
+      'large square regions, simple block seams, no tiny inventory grids, no shading, no dense texture.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'avatar-creator',
+    name: 'Avatar creator',
+    category: 'Gaming & digital',
+    description: 'Customizable game-avatar masks with friendly accessory details.',
+    maskStyle:
+      'centered front-view avatar masks with modular hair, hats, glasses, bows, badges, and other original accessories, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'bright character-creator colors, clean accessory layers, polished toy-like finish, white print background.',
+    coloringPageLines:
+      'clear accessory outlines and big editable zones, no tiny facial texture, no screen UI, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'pixel-arcade',
+    name: 'Pixel arcade',
+    category: 'Gaming & digital',
+    description: '8-bit retro masks with chunky pixel edges and arcade energy.',
+    maskStyle:
+      'front-view masks with stepped pixel silhouettes, square cheek shapes, playful arcade character details, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'limited bright 8-bit palette, hard pixel edges, small coin or star motifs, clean white print background.',
+    coloringPageLines:
+      'blocky pixel contours and large square color areas, no anti-aliased micro detail, no background maze, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: '16-bit-adventure',
+    name: '16-bit adventure',
+    category: 'Gaming & digital',
+    description: 'Colorful retro console RPG masks with heroic little details.',
+    maskStyle:
+      'front-view adventure masks with readable retro RPG shapes, friendly hero accents, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline, no copied game characters.',
+    colorPainting:
+      'saturated 16-bit-inspired colors, small hearts, gems, shields, and map-like accent shapes, crisp white print background.',
+    coloringPageLines:
+      'bold adventure icons and simple contour blocks, no tiny pixel noise, no scene background, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'neon-gamer',
+    name: 'Neon gamer',
+    category: 'Gaming & digital',
+    description: 'Cyber masks with LED accents, headphones, and arcade glow.',
+    maskStyle:
+      'front-view cyber gamer masks with friendly headphones, LED strips, and soft tech panels, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'deep dark accent panels balanced by neon cyan, magenta, lime, and electric blue highlights, clean white print background.',
+    coloringPageLines:
+      'thick readable tech-panel lines, simple headphone arcs, no glow shading, no dark filled backgrounds, no tiny circuitry.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'obby-parkour',
+    name: 'Obby parkour',
+    category: 'Gaming & digital',
+    description: 'Bright obstacle-course masks with arrows, stars, and movement cues.',
+    maskStyle:
+      'front-view masks with playful obstacle-course motifs, arrows, jump pads, stars, and upbeat motion shapes, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'primary playground colors, crisp geometric blocks, cheerful motion accents, clean white print background.',
+    coloringPageLines:
+      'large arrows, stars, platform shapes, and simple obstacle stripes, no dense course layout, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'sandbox-survival',
+    name: 'Sandbox survival',
+    category: 'Gaming & digital',
+    description: 'Explorer masks with wood, stone, grass, and tool motifs.',
+    maskStyle:
+      'front-view explorer masks with original survival-crafting motifs, friendly rugged proportions, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline, no copied game assets.',
+    colorPainting:
+      'natural wood, stone, grass, leaf, rope, and simple tool-inspired color blocks, clean white print background.',
+    coloringPageLines:
+      'simple plank seams, leaf shapes, stone facets, and tool silhouettes, no tiny resource icons, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'cozy-crafting',
+    name: 'Cozy crafting',
+    category: 'Gaming & digital',
+    description: 'Grid-based craft-table masks with simple resource icons.',
+    maskStyle:
+      'front-view masks with tidy crafting-grid accents, soft handmade proportions, yarn, scissors, buttons, stars, and resource icons, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'warm craft-room colors, soft paper and fabric textures, simple organized icon panels, clean white print background.',
+    coloringPageLines:
+      'clear grid sections and large craft icons, no tiny item slots, no text labels, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'speedrunner',
+    name: 'Speedrunner',
+    category: 'Gaming & digital',
+    description: 'Energetic masks with motion lines, medals, and lightning shapes.',
+    maskStyle:
+      'front-view masks with dynamic but printable silhouettes, lightning bolts, medals, speed stripes, and finish-line cues, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'high-energy reds, yellows, blues, and white motion accents, crisp illustrated finish, clean white print background.',
+    coloringPageLines:
+      'big motion lines, medal shapes, and lightning icons, no blurred effects, no tiny speed text, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'streamer-mascot',
+    name: 'Streamer mascot',
+    category: 'Gaming & digital',
+    description: 'Cute mascot masks with headset and mic details.',
+    maskStyle:
+      'front-view cute animal or character mascot masks with friendly headset, microphone boom, and simple broadcast badges, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'bright stream-overlay inspired colors, clean headset detail, glossy mascot accents, white print background.',
+    coloringPageLines:
+      'large headset arcs, mic shape, and simple mascot features, no tiny UI overlays, no logos, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'glitchcore',
+    name: 'Glitchcore',
+    category: 'Gaming & digital',
+    description: 'Playful digital distortion with broken pixels and scanlines.',
+    maskStyle:
+      'front-view masks with kid-safe digital distortion, offset pixel blocks, broken edge accents, and scanline motifs, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'bright cyan, coral, violet, lime, and black accent fragments, clean white print background with no full dark fill.',
+    coloringPageLines:
+      'bold broken-pixel contours and a few scanline bands, no visual noise, no unreadable micro glitches, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'vr-explorer',
+    name: 'VR explorer',
+    category: 'Gaming & digital',
+    description: 'Futuristic visor masks for kids with soft sci-fi detail.',
+    maskStyle:
+      'front-view futuristic explorer masks with rounded visor-inspired shapes, soft tech panels, stars, and map pins, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'cool blues, mint, white, and soft violet gradients kept printable, clean white print background.',
+    coloringPageLines:
+      'simple visor bands, panel seams, stars, and map cues, no dark visor fill over eye holes, no tiny circuitry, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'robot-buddy',
+    name: 'Robot buddy',
+    category: 'Gaming & digital',
+    description: 'Friendly modular robot and AI-pet masks.',
+    maskStyle:
+      'front-view robot buddy masks with rounded modular panels, antennae, soft bolts, digital pet cheeks, and happy non-human faces, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'soft metal grays with cheerful teal, yellow, coral, and lavender accent panels, clean white print background.',
+    coloringPageLines:
+      'large robot panels, antennae, and button shapes, no dense wires, no realistic machinery, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'hologram-hero',
+    name: 'Hologram hero',
+    category: 'Gaming & digital',
+    description: 'Translucent-looking neon hero masks with sci-fi energy.',
+    maskStyle:
+      'front-view masks with original holographic hero shapes, layered translucent-looking panels, stars, and soft badge motifs, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'icy cyan, violet, hot pink, and white neon edge accents, transparent-look effects kept printable, clean white print background.',
+    coloringPageLines:
+      'clear layered panel outlines and star accents, no actual transparency requirement, no glow-only details, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'emoji-face',
+    name: 'Emoji face',
+    category: 'Gaming & digital',
+    description: 'Expressive masks based on big emoji-style feelings.',
+    maskStyle:
+      'front-view expressive face masks with big readable emotions, heart cheeks, star eyes, sleepy lids, surprised brows, and silly smiles, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'sunny yellows, peach, pink, blue, and clean high-contrast facial accents, crisp white print background.',
+    coloringPageLines:
+      'large emotion shapes and simple facial symbols, no tiny emoji grid, no text, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'sticker-game-ui',
+    name: 'Sticker game UI',
+    category: 'Gaming & digital',
+    description: 'Badges, buttons, coins, XP stars, and playful game-interface motifs.',
+    maskStyle:
+      'front-view masks decorated with original sticker-like game UI badges, coins, hearts, shields, buttons, and XP star shapes, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'bold app-game colors, shiny sticker borders, readable icon badges, clean white print background.',
+    coloringPageLines:
+      'large sticker outlines and simple icons, no readable UI text, no tiny counters, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'quest-hero',
+    name: 'Quest hero',
+    category: 'Gaming & digital',
+    description: 'Fantasy game adventurer masks with friendly quest details.',
+    maskStyle:
+      'front-view adventurer masks with original fantasy quest motifs, feathers, shields, pouches, map corners, and soft heroic silhouettes, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'warm quest-map colors, leather, teal, gold, and forest accent blocks, clean white print background.',
+    coloringPageLines:
+      'simple shield, feather, pouch, and map shapes, no weapons, no tiny map text, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'mini-boss-monster',
+    name: 'Mini boss monster',
+    category: 'Gaming & digital',
+    description: 'Cute level-boss creature masks that stay playful, not scary.',
+    maskStyle:
+      'front-view mini monster masks with soft horns, rounded teeth, happy eyes, and harmless boss-badge shapes, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline, no horror details.',
+    colorPainting:
+      'playful teal, purple, orange, lime, and candy colors, smooth creature texture, clean white print background.',
+    coloringPageLines:
+      'large horns, spots, teeth, and badge shapes, no scary faces, no dense scales, no shading.',
+  }),
+  createGuidedStyleTemplateSeed({
+    id: 'digital-pet',
+    name: 'Digital pet',
+    category: 'Gaming & digital',
+    description: 'Collectible virtual-pet masks with soft pixel charm.',
+    maskStyle:
+      'front-view virtual pet masks with cute rounded creature features, pixel hearts, tiny food icons, and handheld-toy charm, only eye holes, no side punch holes, no extra circular cutouts, no black cutting outline.',
+    colorPainting:
+      'pastel pixel-pet colors, small bright icons, soft glossy accents, clean white print background.',
+    coloringPageLines:
+      'simple pet features and a few blocky icons, no device screen frame, no tiny stats, no shading.',
+  }),
 ];
 
 export const initialPromptStyleTemplates: InitialPromptStyleTemplate[] =
   initialPromptStyleTemplateSeeds.map((template) => ({
     ...template,
+    category: template.category ?? defaultInitialPromptStyleCategory,
     exampleImageSrc: `/style-examples/${template.id}.png`,
   }));
