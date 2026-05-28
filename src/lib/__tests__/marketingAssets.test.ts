@@ -9,6 +9,7 @@ import {
   getMaskSheetPageSlices,
   normalizeMarketingImageSettings,
   resolveMarketingPreviewSettings,
+  sanitizeMarketingSettings,
 } from '../marketingAssets';
 
 import type { ManagedFile, Project } from '../../types';
@@ -155,18 +156,37 @@ describe('marketing asset helpers', () => {
     });
   });
 
-  it('paginates mask sheets by 16 masks per page', () => {
+  it('paginates mask sheets by masks-per-image setting', () => {
     expect(getMaskSheetPageCount(0)).toBe(0);
     expect(getMaskSheetPageCount(16)).toBe(1);
     expect(getMaskSheetPageCount(17)).toBe(2);
     expect(getMaskSheetPageCount(33)).toBe(3);
-    expect(getMaskSheetPageCount(49)).toBe(3);
+    expect(getMaskSheetPageCount(49)).toBe(4);
+    expect(getMaskSheetPageCount(12, 4)).toBe(3);
   });
 
-  it('splits mask sheets into at most three balanced pages', () => {
+  it('splits mask sheets using the selected masks-per-image value', () => {
     const masks = Array.from({ length: 49 }, (_, index) => `mask-${index + 1}`);
 
-    expect(getMaskSheetPageSlices(masks).map((page) => page.length)).toEqual([17, 17, 15]);
+    expect(getMaskSheetPageSlices(masks).map((page) => page.length)).toEqual([16, 16, 16, 1]);
+    expect(getMaskSheetPageSlices(masks.slice(0, 12), 4).map((page) => page.length)).toEqual([
+      4, 4, 4,
+    ]);
+  });
+
+  it('clamps masks-per-image value while sanitizing marketing settings', () => {
+    expect(
+      sanitizeMarketingSettings({
+        ...createDefaultProject().marketingSettings,
+        maskSheetMasksPerImage: 0,
+      }).maskSheetMasksPerImage,
+    ).toBe(1);
+    expect(
+      sanitizeMarketingSettings({
+        ...createDefaultProject().marketingSettings,
+        maskSheetMasksPerImage: 999,
+      }).maskSheetMasksPerImage,
+    ).toBe(16);
   });
 
   it('returns only approved final marketing files for archive export', () => {

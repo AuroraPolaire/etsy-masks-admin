@@ -21,11 +21,11 @@ const createProject = (): Project => ({
   subjects: [{ id: 'dino', name: 'Dinosaur' }],
 });
 
-const createApprovedMask = (): ManagedFile => {
-  const file = new File(['mask'], 'dinosaur-mask.png', { type: 'image/png' });
+const createApprovedMask = (subjectId = 'dino'): ManagedFile => {
+  const file = new File(['mask'], `${subjectId}-mask.png`, { type: 'image/png' });
 
   return {
-    id: 'dino-mask',
+    id: `${subjectId}-mask`,
     file,
     name: file.name,
     originalName: file.name,
@@ -35,7 +35,7 @@ const createApprovedMask = (): ManagedFile => {
     kind: 'uploaded',
     reviewState: 'approved',
     reviewNotes: '',
-    mappedSubjectId: 'dino',
+    mappedSubjectId: subjectId,
     assetVariant: 'color',
     explicitlyConfirmed: true,
     imageMetadata: { width: 1024, height: 1024 },
@@ -80,8 +80,13 @@ const createMarketingFile = (
 describe('useMarketingAssetGeneration', () => {
   beforeEach(() => {
     vi.mocked(createScriptedMaskSheetFile).mockReset();
-    vi.mocked(createScriptedMaskSheetFile).mockResolvedValue(
-      new File(['scripted sheet'], 'scripted-mask-sheet.bin'),
+    let sheetIndex = 0;
+    vi.mocked(createScriptedMaskSheetFile).mockImplementation(() =>
+      Promise.resolve(
+        new File(['scripted sheet'], `scripted-mask-sheet-${(sheetIndex += 1)}.bin`, {
+          type: 'application/octet-stream',
+        }),
+      ),
     );
   });
 
@@ -250,5 +255,57 @@ describe('useMarketingAssetGeneration', () => {
         stage: 'final',
       },
     });
+  });
+
+  it('splits mask sheets using the configured masks-per-image value', async () => {
+    const subjectCount = 12;
+    const subjects = Array.from({ length: subjectCount }, (_, index) => ({
+      id: `dino-${index + 1}`,
+      name: `Dino ${index + 1}`,
+    }));
+    const project = {
+      ...createDefaultProject(),
+      subjects,
+      marketingSettings: {
+        ...createDefaultProject().marketingSettings,
+        maskSheetMasksPerImage: 4,
+      },
+    };
+    const sourceMasks = subjects.map((subject) => createApprovedMask(subject.id));
+    const filesRef = { current: sourceMasks };
+    const generateMarketingSceneFile = createGenerateMarketingSceneFileMock();
+    const appendGeneratedFiles = vi.fn((files: ManagedFile[]) => {
+      filesRef.current = [...filesRef.current, ...files];
+      return Promise.resolve();
+    });
+    const addActivity = vi.fn();
+    const { result } = renderHook(() =>
+      useMarketingAssetGeneration({
+        project,
+        filesRef,
+        appendGeneratedFiles,
+        addActivity,
+        generateMarketingSceneFile,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.generateMaskSheets({
+        signal: new AbortController().signal,
+        setProgress: vi.fn(),
+      });
+    });
+
+    expect(generateMarketingSceneFile).not.toHaveBeenCalled();
+    const scriptedSheetCalls = vi.mocked(createScriptedMaskSheetFile).mock.calls;
+    expect(scriptedSheetCalls.length).toBeGreaterThan(1);
+    const pageMaskCounts = scriptedSheetCalls.map((call) => call[0].sourceMasks.length);
+    expect(pageMaskCounts.slice(0, -1).every((count) => count === 4)).toBe(true);
+    expect(pageMaskCounts.at(-1)).toBeGreaterThan(0);
+    expect(pageMaskCounts.at(-1)).toBeLessThanOrEqual(4);
+    scriptedSheetCalls.forEach((call) => {
+      expect(call[0].recipe.pageCount).toBe(scriptedSheetCalls.length);
+    });
+    expect(appendGeneratedFiles).toHaveBeenCalledTimes(scriptedSheetCalls.length);
   });
 });

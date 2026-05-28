@@ -47,6 +47,7 @@ const updateImageSetting = <Key extends keyof MarketingImageSettings>(
   imageSettings: MarketingImageSettings,
   key: Key,
   value: MarketingImageSettings[Key],
+  maskSheetMasksPerImage: number,
 ) =>
   sanitizeMarketingSettings({
     slogan: '',
@@ -58,6 +59,7 @@ const updateImageSetting = <Key extends keyof MarketingImageSettings>(
       },
     },
     additionalPrompt: '',
+    maskSheetMasksPerImage,
     childrenSceneSubjectIds: [],
   }).preview.customSettings;
 
@@ -77,7 +79,12 @@ export const MarketingSettingsPanel = ({
       ...settings,
       preview: {
         ...settings.preview,
-        customSettings: updateImageSetting(settings.preview.customSettings, key, value),
+        customSettings: updateImageSetting(
+          settings.preview.customSettings,
+          key,
+          value,
+          settings.maskSheetMasksPerImage,
+        ),
       },
     });
   };

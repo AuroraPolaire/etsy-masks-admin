@@ -1,3 +1,5 @@
+import { MAX_MASK_SHEET_MASKS_PER_IMAGE, MIN_MASK_SHEET_MASKS_PER_IMAGE } from '../constants';
+
 import type {
   Marketplace,
   MarketingSettings,
@@ -99,6 +101,17 @@ const readPageMarginMm = (value: unknown, fallback: number): number => {
 
 const readOptionalNonNegativeNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+
+const readMaskSheetMasksPerImage = (value: unknown, fallback: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.min(
+    MAX_MASK_SHEET_MASKS_PER_IMAGE,
+    Math.max(MIN_MASK_SHEET_MASKS_PER_IMAGE, Math.round(value)),
+  );
+};
 
 const isLegacyMockSubjectList = (subjects: SubjectItem[]): boolean =>
   LEGACY_MOCK_SUBJECT_SETS.some(
@@ -296,6 +309,10 @@ const readMarketingSettings = (
       ),
     },
     additionalPrompt: readString(settings.additionalPrompt, fallback.additionalPrompt),
+    maskSheetMasksPerImage: readMaskSheetMasksPerImage(
+      settings.maskSheetMasksPerImage,
+      fallback.maskSheetMasksPerImage,
+    ),
     childrenSceneSubjectIds: readStringArray(settings.childrenSceneSubjectIds, 3),
   };
 };

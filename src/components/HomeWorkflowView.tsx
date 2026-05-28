@@ -34,6 +34,8 @@ type HomeWorkflowViewProps = {
   busyAction: BusyAction;
   generatingSubjectIds: string[];
   generatingColoringPageSubjectIds: string[];
+  queuedSubjectIds: string[];
+  queuedColoringPageSubjectIds: string[];
   missingImageCount: number;
   missingColoringPageCount: number;
   imageGenerationHint: string;
@@ -68,6 +70,8 @@ export const HomeWorkflowView = ({
   busyAction,
   generatingSubjectIds,
   generatingColoringPageSubjectIds,
+  queuedSubjectIds,
+  queuedColoringPageSubjectIds,
   missingImageCount,
   missingColoringPageCount,
   imageGenerationHint,
@@ -157,6 +161,8 @@ export const HomeWorkflowView = ({
                 }
                 generatingSubjectIds={generatingSubjectIds}
                 generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+                queuedSubjectIds={queuedSubjectIds}
+                queuedColoringPageSubjectIds={queuedColoringPageSubjectIds}
                 missingImageCount={missingImageCount}
                 missingColoringPageCount={missingColoringPageCount}
                 imageGenerationHint={imageGenerationHint}

@@ -224,7 +224,10 @@ export const useMarketingAssetGeneration = ({
 
       try {
         const settings = resolveMarketingPreviewSettings(project);
-        const maskSheetPages = getMaskSheetPageSlices(sourceMasks);
+        const maskSheetPages = getMaskSheetPageSlices(
+          sourceMasks,
+          project.marketingSettings.maskSheetMasksPerImage,
+        );
         const pageCount = maskSheetPages.length;
         const reservedNames = getReservedNames(filesRef.current);
         const optionStart = getExistingAssetCount(filesRef.current, 'mask-sheet');
