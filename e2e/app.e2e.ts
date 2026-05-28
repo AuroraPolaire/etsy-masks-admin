@@ -806,7 +806,7 @@ test.describe('production workflow', () => {
     await expect(page.getByText('Mask ready').first()).toBeVisible();
     await page.getByRole('button', { name: 'Open full-size color mask preview for Moon' }).click();
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toBeVisible();
-    await page.getByRole('button', { name: 'Close image preview' }).click();
+    await page.keyboard.press('Escape');
     await expect(page.locator('.PhotoView-Portal[role="dialog"]')).toHaveCount(0);
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(0);
     await expect(page.getByRole('button', { name: 'Generate coloring page' })).toBeEnabled();
@@ -852,7 +852,7 @@ test.describe('production workflow', () => {
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
     const completeTopic = page.getByRole('article').filter({ hasText: 'Moon' });
-    await expect(completeTopic.getByText('Coloring ready')).toBeVisible();
+    await expect(completeTopic.getByText('Coloring ready').first()).toBeVisible();
     await expect(completeTopic.getByRole('button', { name: 'Open', exact: true })).toHaveCount(0);
     await expect(page.getByText('Coloring ready').first()).toBeVisible();
   });

@@ -1,5 +1,5 @@
-import { FilePenLine, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { FilePenLine } from 'lucide-react';
+import { useState } from 'react';
 import { PhotoProvider } from 'react-photo-view';
 
 import { getCurrentColoringPageForSubject, getFileForSubject } from '../lib/files';
@@ -11,8 +11,6 @@ import { EmptyState } from './ui/EmptyState';
 import { Input } from './ui/Input';
 
 import type { SubjectItem, ManagedFile, PromptItem } from '../types';
-
-type PromptReviewFilter = 'all' | 'needs-work' | 'complete';
 
 type PromptManagerProps = {
   subjects: SubjectItem[];
@@ -33,37 +31,6 @@ type PromptManagerProps = {
   onGenerateMissingColoringPages?: () => void;
   onDelete: (fileId: string) => void;
   onCopy: (label: string) => void;
-};
-
-const reviewFilters: Array<{ id: PromptReviewFilter; label: string }> = [
-  { id: 'needs-work', label: 'Needs attention' },
-  { id: 'all', label: 'All topics' },
-  { id: 'complete', label: 'Complete' },
-];
-
-const PhotoPreviewControls = ({ onClose }: { onClose: () => void }) => {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
-
-  return (
-    <button
-      type="button"
-      className="inline-flex size-11 items-center justify-center border-0 bg-transparent text-white opacity-75 transition hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white/60"
-      aria-label="Close image preview"
-      onClick={() => onClose()}
-    >
-      <X aria-hidden="true" size={22} />
-    </button>
-  );
 };
 
 export const PromptManager = ({
@@ -87,7 +54,6 @@ export const PromptManager = ({
   onCopy,
 }: PromptManagerProps) => {
   const [subjectName, setSubjectName] = useState('');
-  const [reviewFilter, setReviewFilter] = useState<PromptReviewFilter>('all');
   const isGeneratingImages =
     generatingSubjectIds.length > 0 || generatingColoringPageSubjectIds.length > 0;
   const promptStates = prompts.map((prompt) => {
@@ -105,17 +71,6 @@ export const PromptManager = ({
   });
   const completeCount = promptStates.filter((item) => item.complete).length;
   const needsWorkCount = promptStates.length - completeCount;
-  const visiblePromptStates = promptStates.filter((item) => {
-    if (reviewFilter === 'complete') {
-      return item.complete;
-    }
-
-    if (reviewFilter === 'needs-work') {
-      return !item.complete;
-    }
-
-    return true;
-  });
 
   const addSubject = () => {
     const trimmedName = subjectName.trim();
@@ -143,26 +98,22 @@ export const PromptManager = ({
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <AIButton
                     disabled={
-                      !onGenerateMissingImages ||
-                      !canGenerateImages ||
-                      missingImageCount === 0 ||
-                      isGeneratingImages
+                      !onGenerateMissingImages || !canGenerateImages || missingImageCount === 0
                     }
                     onClick={onGenerateMissingImages}
                   >
-                    {isGeneratingImages ? 'Generating' : 'Generate missing images'}
+                    {isGeneratingImages ? 'Queue missing images' : 'Generate missing images'}
                   </AIButton>
                   <Button
                     disabled={
                       !onGenerateMissingColoringPages ||
                       !canGenerateImages ||
-                      missingColoringPageCount === 0 ||
-                      isGeneratingImages
+                      missingColoringPageCount === 0
                     }
                     onClick={onGenerateMissingColoringPages}
                   >
                     <FilePenLine aria-hidden="true" className="mr-2" size={17} />
-                    Missing coloring pages
+                    {isGeneratingImages ? 'Queue coloring pages' : 'Missing coloring pages'}
                   </Button>
                 </div>
                 <p className="max-w-sm text-sm text-ink-muted lg:text-right">
@@ -200,53 +151,35 @@ export const PromptManager = ({
         {prompts.length === 0 ? (
           <EmptyState>Add mask topics here to generate image prompts.</EmptyState>
         ) : (
-          <PhotoProvider
-            toolbarRender={({ onClose }) => <PhotoPreviewControls onClose={onClose} />}
-          >
+          <PhotoProvider>
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink-muted">
                 {needsWorkCount === 0
                   ? 'All topics are complete.'
                   : `${needsWorkCount} topic${needsWorkCount === 1 ? '' : 's'} need attention.`}
               </p>
-              <div className="flex flex-wrap gap-2">
-                {reviewFilters.map((filter) => (
-                  <Button
-                    key={filter.id}
-                    variant={reviewFilter === filter.id ? 'primary' : 'secondary'}
-                    onClick={() => setReviewFilter(filter.id)}
-                  >
-                    {filter.label}
-                  </Button>
-                ))}
-              </div>
+              <p className="text-sm text-ink-muted">
+                {completeCount}/{promptStates.length} complete
+              </p>
             </div>
             <div className="grid gap-4">
-              {visiblePromptStates.length === 0 ? (
-                <EmptyState>
-                  {reviewFilter === 'needs-work'
-                    ? 'No topics need attention.'
-                    : 'No topics match this filter.'}
-                </EmptyState>
-              ) : (
-                visiblePromptStates.map(({ prompt }) => (
-                  <PromptCard
-                    key={prompt.subjectId}
-                    prompt={prompt}
-                    subjects={subjects}
-                    files={files}
-                    canGenerateImages={canGenerateImages}
-                    generatingSubjectIds={generatingSubjectIds}
-                    generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
-                    allowTopicEditing={allowTopicEditing}
-                    onRemoveSubject={onRemoveSubject}
-                    onGenerateImage={onGenerateImage}
-                    onGenerateColoringPage={onGenerateColoringPage}
-                    onDelete={onDelete}
-                    onCopy={onCopy}
-                  />
-                ))
-              )}
+              {promptStates.map(({ prompt }) => (
+                <PromptCard
+                  key={prompt.subjectId}
+                  prompt={prompt}
+                  subjects={subjects}
+                  files={files}
+                  canGenerateImages={canGenerateImages}
+                  generatingSubjectIds={generatingSubjectIds}
+                  generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
+                  allowTopicEditing={allowTopicEditing}
+                  onRemoveSubject={onRemoveSubject}
+                  onGenerateImage={onGenerateImage}
+                  onGenerateColoringPage={onGenerateColoringPage}
+                  onDelete={onDelete}
+                  onCopy={onCopy}
+                />
+              ))}
             </div>
           </PhotoProvider>
         )}

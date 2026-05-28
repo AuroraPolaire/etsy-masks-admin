@@ -123,7 +123,8 @@ export const App = () => {
     subjects: project.subjects,
     addActivity,
   });
-  const { busyAction, busyProgress, cancelBusyAction, runBusyAction } = useBusyAction();
+  const { busyAction, busyProgress, cancelBusyAction, runBusyAction, runQueuedBusyAction } =
+    useBusyAction();
   const requestConfirmation = useCallback((request: ConfirmDialogRequest) => {
     return new Promise<boolean>((resolve) => {
       setConfirmRequest({ ...request, resolve });
@@ -355,7 +356,6 @@ export const App = () => {
   } = useOpenAIImageGeneration({
     subjects: project.subjects,
     prompts,
-    missingImagePrompts,
     settings: project.openAIImageSettings,
     coloringPageQuality: project.coloringPageQuality,
     filesRef,
@@ -679,41 +679,41 @@ export const App = () => {
 
   const handleGenerateSubjectImage = useCallback(
     (subjectId: string, promptOverride?: string) => {
-      void runBusyAction('image-generation', (context) =>
+      void runQueuedBusyAction('image-generation', (context) =>
         generateSubjectImage(subjectId, context, promptOverride),
       );
     },
-    [generateSubjectImage, runBusyAction],
+    [generateSubjectImage, runQueuedBusyAction],
   );
 
   const handleGenerateMissingSubjectImages = useCallback(() => {
-    void runBusyAction('image-generation', generateMissingSubjectImages);
-  }, [generateMissingSubjectImages, runBusyAction]);
+    void runQueuedBusyAction('image-generation', generateMissingSubjectImages);
+  }, [generateMissingSubjectImages, runQueuedBusyAction]);
 
   const handleGenerateSubjectColoringPage = useCallback(
     (subjectId: string) => {
-      void runBusyAction('image-generation', (context) =>
+      void runQueuedBusyAction('image-generation', (context) =>
         generateSubjectColoringPage(subjectId, context),
       );
     },
-    [generateSubjectColoringPage, runBusyAction],
+    [generateSubjectColoringPage, runQueuedBusyAction],
   );
 
   const handleGenerateMissingColoringPages = useCallback(() => {
-    void runBusyAction('image-generation', generateMissingColoringPages);
-  }, [generateMissingColoringPages, runBusyAction]);
+    void runQueuedBusyAction('image-generation', generateMissingColoringPages);
+  }, [generateMissingColoringPages, runQueuedBusyAction]);
 
   const handleGenerateSloganPreviews = useCallback(() => {
-    void runBusyAction('marketing-generation', generateSloganPreviews);
-  }, [generateSloganPreviews, runBusyAction]);
+    void runQueuedBusyAction('marketing-generation', generateSloganPreviews);
+  }, [generateSloganPreviews, runQueuedBusyAction]);
 
   const handleGenerateMaskSheets = useCallback(() => {
-    void runBusyAction('marketing-generation', generateMaskSheets);
-  }, [generateMaskSheets, runBusyAction]);
+    void runQueuedBusyAction('marketing-generation', generateMaskSheets);
+  }, [generateMaskSheets, runQueuedBusyAction]);
 
   const handleGenerateChildrenScenePreviews = useCallback(() => {
-    void runBusyAction('marketing-generation', generateChildrenScenePreviews);
-  }, [generateChildrenScenePreviews, runBusyAction]);
+    void runQueuedBusyAction('marketing-generation', generateChildrenScenePreviews);
+  }, [generateChildrenScenePreviews, runQueuedBusyAction]);
 
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel

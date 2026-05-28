@@ -108,9 +108,15 @@ export const MarketingAssetsPanel = ({
   onDeleteFile,
 }: MarketingAssetsPanelProps) => {
   const sourceMasks = getApprovedMarketingSourceMasks(project, files);
-  const canGenerate = busyAction === null && sourceMasks.length > 0;
+  const canQueueMarketingGeneration =
+    busyAction === null ||
+    busyAction === 'image-generation' ||
+    busyAction === 'marketing-generation';
+  const canGenerate = canQueueMarketingGeneration && sourceMasks.length > 0;
   const canGenerateWithAI = canGenerate && hasAIProvider;
   const isGenerating = busyAction === 'marketing-generation';
+  const willQueueGeneration =
+    busyAction === 'image-generation' || busyAction === 'marketing-generation';
   const sloganAssets = getSavedAssetFiles(files, 'slogan-poster', 24);
   const maskSheets = getSavedAssetFiles(files, 'mask-sheet', 20);
   const childrenAssets = getSavedAssetFiles(files, 'children-scene', 24);
@@ -243,7 +249,13 @@ export const MarketingAssetsPanel = ({
                   </p>
                 </div>
                 <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
-                  {sloganAssets.length > 0 ? 'Generate +3 more' : 'Generate 3 variations'}
+                  {willQueueGeneration
+                    ? sloganAssets.length > 0
+                      ? 'Queue +3 more'
+                      : 'Queue 3 variations'
+                    : sloganAssets.length > 0
+                      ? 'Generate +3 more'
+                      : 'Generate 3 variations'}
                 </AIButton>
               </div>
               {sloganAssets.length > 0 ? (
@@ -274,7 +286,7 @@ export const MarketingAssetsPanel = ({
                   </p>
                 </div>
                 <Button disabled={!canGenerate} variant="primary" onClick={onGenerateMaskSheets}>
-                  Create mask sheets
+                  {willQueueGeneration ? 'Queue mask sheets' : 'Create mask sheets'}
                 </Button>
               </div>
               {maskSheets.length > 0 ? (
@@ -304,7 +316,13 @@ export const MarketingAssetsPanel = ({
                   </p>
                 </div>
                 <AIButton disabled={!canGenerateWithAI} onClick={onGenerateChildrenScenePreviews}>
-                  {childrenAssets.length > 0 ? 'Generate +3 more' : 'Generate 3 suggestions'}
+                  {willQueueGeneration
+                    ? childrenAssets.length > 0
+                      ? 'Queue +3 more'
+                      : 'Queue 3 suggestions'
+                    : childrenAssets.length > 0
+                      ? 'Generate +3 more'
+                      : 'Generate 3 suggestions'}
                 </AIButton>
               </div>
               {sourceMasks.length > 0 ? (

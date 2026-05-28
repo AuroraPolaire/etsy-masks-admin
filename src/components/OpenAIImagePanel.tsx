@@ -217,7 +217,7 @@ export const OpenAIImagePanel = ({
                 { value: 'high', label: 'High' },
                 { value: 'auto', label: 'Auto' },
               ]}
-              helperText="Uses the same model, size, background, and format as masks, with separate quality control."
+              helperText="Coloring pages always use 1024 x 1024 output with separate quality control."
               onChange={(event) =>
                 onColoringPageQualityChange(event.target.value as OpenAIImageQuality)
               }

@@ -152,7 +152,9 @@ export const HomeWorkflowView = ({
                 subjects={project.subjects}
                 prompts={prompts}
                 files={files}
-                canGenerateImages={hasAIProvider && busyAction === null}
+                canGenerateImages={
+                  hasAIProvider && (busyAction === null || busyAction === 'image-generation')
+                }
                 generatingSubjectIds={generatingSubjectIds}
                 generatingColoringPageSubjectIds={generatingColoringPageSubjectIds}
                 missingImageCount={missingImageCount}
