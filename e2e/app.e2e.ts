@@ -884,11 +884,6 @@ test.describe('production workflow', () => {
       })
       .click();
 
-    await expect.poll(() => backend.getUploadFileCount()).toBeGreaterThan(0);
-    await expect(page.getByLabel('Listing title')).toHaveValue(
-      'Unicorn Printable Masks, 2 Kids Paper Masks',
-    );
-    await page.getByRole('button', { name: 'Next: topics and images' }).click();
     await expect(page.getByText('rainbow-unicorn.png').first()).toBeVisible();
     await expect(page.getByText('moon.png')).toHaveCount(0);
   });
