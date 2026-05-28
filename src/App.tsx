@@ -726,7 +726,7 @@ export const App = () => {
     />
   );
 
-  const renderAside = () => (
+  const renderAside = (showSavedStatus = true) => (
     <AppAside
       workflow={workflow}
       qaResult={qaResult}
@@ -736,6 +736,7 @@ export const App = () => {
       runRevisions={backendCache.runRevisions}
       historyBusy={backendCache.historyBusy}
       historyError={backendCache.historyError}
+      showSavedStatus={showSavedStatus}
       onCancelBusyAction={cancelBusyAction}
       onOpenHistory={() => setIsRunHistoryOpen(true)}
       onRetryCloudSave={backendCache.retryCloudSave}
@@ -799,11 +800,11 @@ export const App = () => {
   );
 
   const renderBackendView = () => (
-    <AppMainLayout aside={renderAside()}>
+    <AppMainLayout aside={renderAside(false)}>
       <AppSectionHeader
-        eyebrow="Online save"
+        eyebrow="Saved work"
         title="Saved work"
-        description="Review autosaved projects, search previous work by idea, restore a project, or delete work you no longer need."
+        description="Find previous projects when you need to recover work. Autosave runs quietly in the background."
       />
       <BackendDataPanel
         health={backendCache.health}

@@ -13,6 +13,7 @@ type AppAsideProps = {
   runRevisions: RunRevisionSummary[];
   historyBusy: boolean;
   historyError: string | null;
+  showSavedStatus?: boolean;
   onCancelBusyAction: () => void;
   onOpenHistory: () => void;
   onRetryCloudSave: () => void;
@@ -27,6 +28,7 @@ export const AppAside = ({
   runRevisions,
   historyBusy,
   historyError,
+  showSavedStatus = true,
   onCancelBusyAction,
   onOpenHistory,
   onRetryCloudSave,
@@ -42,13 +44,15 @@ export const AppAside = ({
       busyProgress={busyProgress}
       onCancelBusyAction={onCancelBusyAction}
     />
-    <RunHistoryStatus
-      autosaveState={autosaveState}
-      revisions={runRevisions}
-      historyBusy={historyBusy}
-      historyError={historyError}
-      onOpenHistory={onOpenHistory}
-      onRetryCloudSave={onRetryCloudSave}
-    />
+    {showSavedStatus ? (
+      <RunHistoryStatus
+        autosaveState={autosaveState}
+        revisions={runRevisions}
+        historyBusy={historyBusy}
+        historyError={historyError}
+        onOpenHistory={onOpenHistory}
+        onRetryCloudSave={onRetryCloudSave}
+      />
+    ) : null}
   </aside>
 );

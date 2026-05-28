@@ -1,4 +1,4 @@
-import { Cloud, Home, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
+import { Archive, Home, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -19,7 +19,7 @@ type SidebarItem = {
 
 const sidebarItems: SidebarItem[] = [
   { id: 'home', label: 'Home', icon: Home },
-  { id: 'backend', label: 'Saved work', icon: Cloud },
+  { id: 'backend', label: 'Saved work', icon: Archive },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

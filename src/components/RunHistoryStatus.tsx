@@ -3,7 +3,7 @@ import { History } from 'lucide-react';
 import { formatCloudSaveDateTime } from './cloud-saves/cloudSaveUtils';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
-import { Card, CardBody, CardHeader } from './ui/Card';
+import { Card, CardBody } from './ui/Card';
 
 import type { BackendAutosaveState, RunRevisionSummary } from '../types';
 
@@ -63,30 +63,18 @@ export const RunHistoryStatus = ({
   const latestRevision = revisions[0];
 
   return (
-    <Card>
-      <CardHeader className="px-4 py-2">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-ink-strong">Version history</h2>
-          <Badge tone={getSaveStateTone(autosaveState)}>{getSaveStateLabel(autosaveState)}</Badge>
-        </div>
-      </CardHeader>
-      <CardBody className="space-y-2 px-4 py-2">
-        <div className="rounded-control border border-surface-divider bg-surface-muted px-3 py-1 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <p className="truncate font-semibold text-ink-strong">
-              {latestRevision ? latestRevision.label : 'No restore points yet'}
+    <Card className="border-surface-divider bg-surface-panel/80 shadow-none">
+      <CardBody className="space-y-2 px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-ink-strong">Saved automatically</h2>
+            <p className="mt-1 truncate text-xs text-ink-muted">
+              {latestRevision
+                ? `Latest version: ${formatCloudSaveDateTime(latestRevision.createdAt)}`
+                : 'Previous versions appear after the first online save.'}
             </p>
-            <Badge>{revisions.length}</Badge>
           </div>
-          {latestRevision ? (
-            <p className="mt-1 text-xs text-ink-muted">
-              Latest point saved {formatCloudSaveDateTime(latestRevision.createdAt)}
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-ink-muted">
-              Online autosave creates points you can restore.
-            </p>
-          )}
+          <Badge tone={getSaveStateTone(autosaveState)}>{getSaveStateLabel(autosaveState)}</Badge>
         </div>
         {autosaveState.status === 'error' ? (
           <div className="rounded-control border border-feedback-danger-border bg-feedback-danger-bg px-3 py-2 text-xs text-feedback-danger-fg">
@@ -100,11 +88,19 @@ export const RunHistoryStatus = ({
           </div>
         ) : null}
         {historyError ? <p className="text-xs text-feedback-danger-fg">{historyError}</p> : null}
-        <div className="grid gap-2">
-          <Button disabled={historyBusy} onClick={onOpenHistory}>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-ink-muted">{revisions.length} saved version(s)</p>
+          <Button
+            disabled={historyBusy}
+            variant="ghost"
+            className="min-h-9 px-2 py-1"
+            onClick={onOpenHistory}
+          >
             <History aria-hidden="true" className="mr-2" size={17} />
-            View restore points
+            Previous versions
           </Button>
+        </div>
+        <div className="grid gap-2">
           {autosaveState.status === 'error' ? (
             <Button variant="danger" onClick={onRetryCloudSave}>
               Retry online save
