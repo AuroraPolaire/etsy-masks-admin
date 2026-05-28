@@ -771,6 +771,12 @@ const prepareCleanPage = async (page: Page) => {
   await page.reload();
 };
 
+const checkSavedWorkStatus = async (page: Page) => {
+  const autosaveStatus = page.locator('details').filter({ hasText: 'Autosave status' });
+  await autosaveStatus.locator('summary').click();
+  await autosaveStatus.getByRole('button', { name: 'Check save status' }).click();
+};
+
 test.describe('production workflow', () => {
   test.beforeEach(async ({ page }) => {
     await prepareCleanPage(page);
@@ -845,6 +851,11 @@ test.describe('production workflow', () => {
     await page.getByRole('button', { name: 'Generate coloring page' }).click();
     await expect.poll(() => backend.getColoringPageRequestCount()).toBe(1);
     await expect(page.getByText('moon-coloring-page.png').first()).toBeVisible();
+    const completeTopic = page
+      .getByRole('article')
+      .filter({ hasText: 'moon.png + moon-coloring-page.png' });
+    await expect(completeTopic.getByText('Complete')).toBeVisible();
+    await completeTopic.getByRole('button', { name: 'Open' }).click();
     await expect(page.getByText('Coloring ready').first()).toBeVisible();
   });
 
@@ -923,7 +934,7 @@ test.describe('production workflow', () => {
     const dialog = page.getByRole('dialog', { name: 'Clear session files?' });
 
     await expect(dialog).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
   });
@@ -966,7 +977,7 @@ test.describe('saved work workflow', () => {
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     const listRunsAfterOpen = backend.getListRunsRequestCount();
 
-    await page.getByRole('button', { name: 'Refresh' }).click();
+    await checkSavedWorkStatus(page);
     await expect.poll(() => backend.getListRunsRequestCount()).toBeGreaterThan(listRunsAfterOpen);
     const listRunsAfterRefresh = backend.getListRunsRequestCount();
 
@@ -1011,11 +1022,14 @@ test.describe('saved work workflow', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await page.getByRole('button', { name: 'Saved work', exact: true }).click();
-    await page.getByRole('button', { name: 'Refresh' }).click();
+    await checkSavedWorkStatus(page);
     await expect(page.getByText('Progressive masks').first()).toBeVisible();
 
-    await page.getByRole('button', { name: 'Restore', exact: true }).click();
-    await page.getByRole('button', { name: 'Restore run' }).click();
+    await page.getByRole('button', { name: 'Load project' }).click();
+    await page
+      .getByRole('dialog', { name: 'Load selected project?' })
+      .getByRole('button', { name: 'Load project' })
+      .click();
     await expect(page.getByText(/Downloading \d+\/12/).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Home' }).click();
@@ -1063,7 +1077,7 @@ test.describe('saved work workflow', () => {
     await page.reload();
 
     await page.getByRole('button', { name: 'Saved work', exact: true }).click();
-    await page.getByRole('button', { name: 'Refresh' }).click();
+    await checkSavedWorkStatus(page);
     await expect(page.getByText('Ocean birthday masks')).toBeVisible();
     await expect(page.getByText('Preview', { exact: true })).toHaveCount(0);
 

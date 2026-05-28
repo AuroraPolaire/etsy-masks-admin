@@ -55,6 +55,7 @@ export const WorkflowStatus = ({
                 {busyProgress ? <p className="mt-1 text-xs">{busyProgress}</p> : null}
               </div>
               <Button
+                aria-label={`Cancel ${busyActionLabels[busyAction].toLowerCase()}`}
                 className="self-start sm:self-center"
                 variant="ghost"
                 onClick={onCancelBusyAction}
