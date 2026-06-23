@@ -267,6 +267,7 @@ export type OpenAIImageSize =
   | '1536x1536'
   | '1536x1024'
   | '1024x1536'
+  | '1536x1536'
   | '2048x2048'
   | '2048x1152'
   | '1152x2048'
@@ -284,6 +285,7 @@ export type OpenAIImageSettings = {
   quality: OpenAIImageQuality;
   background: OpenAIImageBackground;
   outputFormat: OpenAIImageOutputFormat;
+  coloringPageSize: '1024x1024' | '1536x1024' | '1024x1536';
 };
 
 export type MarketingImageQuality = Exclude<OpenAIImageQuality, 'high'>;

@@ -151,53 +151,43 @@ export const useMarketingAssetGeneration = ({
       try {
         const settings = resolveMarketingPreviewSettings(project);
         const reservedNames = getReservedNames(filesRef.current);
-        const optionStart = getExistingAssetCount(filesRef.current, 'slogan-poster');
+        const optionIndex = getExistingAssetCount(filesRef.current, 'slogan-poster');
         const customPrompt = getAdditionalPrompt(project);
-        let generatedCount = 0;
 
-        for (let offset = 0; offset < 3; offset += 1) {
-          if (context?.signal.aborted) {
-            throw new DOMException('Marketing generation cancelled', 'AbortError');
-          }
-
-          const optionIndex = optionStart + offset;
-          const recipe: MarketingGenerationRecipe = {
-            type: 'slogan-poster',
-            id: `slogan-${optionIndex + 1}`,
-            optionIndex,
-            stage: 'final',
-            maskCount: 0,
-            ...(customPrompt ? { customPrompt } : {}),
-          };
-
-          context?.setProgress(`Generating AI slogan variation ${offset + 1}/3...`);
-          const file = await generateMarketingSceneFile(
-            settings,
-            project,
-            [],
-            recipe,
-            context?.signal,
-          );
-          const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
-          const managedFile = await createAiMarketingFile({
-            file: uniqueFile,
-            project,
-            type: 'slogan-poster',
-            recipe,
-            sourceMasks: [],
-            settings,
-            reviewState: 'approved',
-          });
-          reservedNames.add(uniqueFile.name.toLowerCase());
-          generatedCount += 1;
-          appendVisibleMarketingFile(managedFile);
+        if (context?.signal.aborted) {
+          throw new DOMException('Marketing generation cancelled', 'AbortError');
         }
 
-        addActivity(
-          'marketing-generated',
-          'success',
-          `Generated ${generatedCount} slogan poster suggestion${generatedCount === 1 ? '' : 's'}.`,
+        const recipe: MarketingGenerationRecipe = {
+          type: 'slogan-poster',
+          id: `slogan-${optionIndex + 1}`,
+          optionIndex,
+          stage: 'final',
+          maskCount: 0,
+          ...(customPrompt ? { customPrompt } : {}),
+        };
+
+        context?.setProgress('Generating AI slogan variation...');
+        const file = await generateMarketingSceneFile(
+          settings,
+          project,
+          [],
+          recipe,
+          context?.signal,
         );
+        const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
+        const managedFile = await createAiMarketingFile({
+          file: uniqueFile,
+          project,
+          type: 'slogan-poster',
+          recipe,
+          sourceMasks: [],
+          settings,
+          reviewState: 'approved',
+        });
+        appendVisibleMarketingFile(managedFile);
+
+        addActivity('marketing-generated', 'success', 'Generated slogan poster.');
       } catch (error) {
         if (isAbortError(error)) {
           addActivity('marketing-generated', 'warning', 'Marketing generation was cancelled.');

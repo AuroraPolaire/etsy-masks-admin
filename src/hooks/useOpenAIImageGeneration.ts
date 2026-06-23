@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 
-import { COLORING_PAGE_IMAGE_SIZE } from '../constants';
 import { makeUniqueFile, makeUniqueFileWithReservedNames } from '../lib/fileLifecycle';
 import {
   createManagedFile,
@@ -312,7 +311,7 @@ export const useOpenAIImageGeneration = ({
       try {
         const coloringPageSettings: OpenAIImageSettings = {
           ...settings,
-          size: COLORING_PAGE_IMAGE_SIZE,
+          size: settings.coloringPageSize,
           quality: coloringPageQuality,
         };
         const generatedFile = await generateColoringPageFile(

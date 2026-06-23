@@ -65,6 +65,7 @@ export const DEFAULT_OPENAI_IMAGE_SETTINGS: OpenAIImageSettings = {
   quality: 'low',
   background: 'opaque',
   outputFormat: 'png',
+  coloringPageSize: '1024x1024',
 };
 
 export const DEFAULT_COLORING_PAGE_QUALITY: OpenAIImageQuality = 'low';
@@ -76,6 +77,7 @@ export const DEFAULT_MARKETING_PREVIEW_IMAGE_SETTINGS: MarketingImageSettings = 
   quality: 'low',
   background: 'opaque',
   outputFormat: 'png',
+  coloringPageSize: '1024x1024',
 };
 
 export const MIN_MASK_SHEET_MASKS_PER_IMAGE = 1;

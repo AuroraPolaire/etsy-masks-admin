@@ -120,6 +120,7 @@ describe('project storage', () => {
         quality: 'low',
         background: 'transparent',
         outputFormat: 'webp',
+        coloringPageSize: '1024x1024',
       },
       coloringPageQuality: 'medium',
     };

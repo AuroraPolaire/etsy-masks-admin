@@ -292,17 +292,11 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Generates 3 AI text-only slogan variations that fit the poster.
+                    Generates an AI slogan poster using the slogan text and theme.
                   </p>
                 </div>
                 <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
-                  {willQueueGeneration
-                    ? sloganAssets.length > 0
-                      ? 'Queue +3 more'
-                      : 'Queue 3 variations'
-                    : sloganAssets.length > 0
-                      ? 'Generate +3 more'
-                      : 'Generate 3 variations'}
+                  {willQueueGeneration ? 'Queue variation' : 'Generate variation'}
                 </AIButton>
               </div>
               {sloganAssets.length > 0 ? (
