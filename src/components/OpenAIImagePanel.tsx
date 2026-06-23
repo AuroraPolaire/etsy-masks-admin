@@ -49,8 +49,8 @@ export const OpenAIImagePanel = ({
           <div>
             <h2 className="text-lg font-bold text-ink-strong">Generation defaults</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Configure image model, size, quality, background, and output format. Generation runs
-              through the Cloud OpenAI proxy.
+              Configure image generation settings for color masks and coloring pages. Generation
+              runs through the Cloud OpenAI proxy.
             </p>
           </div>
           <div>
@@ -60,88 +60,137 @@ export const OpenAIImagePanel = ({
           </div>
         </div>
       </CardHeader>
-      <CardBody className="space-y-4">
-        <div className="grid gap-4">
-          <Select
-            label="Image model"
-            name="openaiModel"
-            value={settings.model}
-            options={[
-              { value: 'gpt-image-2', label: 'gpt-image-2 (preferred)' },
-              { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (transparent backgrounds)' },
-              { value: 'gpt-image-1', label: 'gpt-image-1' },
-              { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
-            ]}
-            onChange={(event) =>
-              update('model', event.target.value as OpenAIImageSettings['model'])
-            }
-          />
-          <Select
-            label="Size"
-            name="openaiSize"
-            value={settings.size}
-            options={[
-              { value: '1024x1024', label: '1024 x 1024 square' },
-              { value: '1536x1024', label: '1536 x 1024 landscape' },
-              { value: '1024x1536', label: '1024 x 1536 portrait' },
-              { value: 'auto', label: 'Auto API size' },
-            ]}
-            helperText="OpenAI currently supports square, landscape, portrait, and auto sizes for GPT Image generation."
-            onChange={(event) => update('size', event.target.value as OpenAIImageSettings['size'])}
-          />
-          <Select
-            label="Quality"
-            name="openaiQuality"
-            value={settings.quality}
-            options={[
-              { value: 'low', label: 'Low (preferred)' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'high', label: 'High' },
-              { value: 'auto', label: 'Auto' },
-            ]}
-            onChange={(event) =>
-              update('quality', event.target.value as OpenAIImageSettings['quality'])
-            }
-          />
-          <Select
-            label="Background"
-            name="openaiBackground"
-            value={settings.background}
-            options={[
-              { value: 'opaque', label: 'White print background' },
-              { value: 'transparent', label: 'Transparent PNG/WEBP' },
-              { value: 'auto', label: 'Auto' },
-            ]}
-            onChange={(event) =>
-              update('background', event.target.value as OpenAIImageSettings['background'])
-            }
-          />
-          <Select
-            label="Output format"
-            name="openaiOutputFormat"
-            value={settings.outputFormat}
-            options={[
-              { value: 'png', label: 'PNG' },
-              { value: 'webp', label: 'WEBP' },
-              { value: 'jpeg', label: 'JPEG' },
-            ]}
-            onChange={(event) =>
-              update('outputFormat', event.target.value as OpenAIImageSettings['outputFormat'])
-            }
-          />
-        </div>
-        {transparentUnsupported ? (
-          <Alert tone="warning">
-            Transparent output needs GPT Image 1.x with PNG or WEBP. With `gpt-image-2`, requests
-            use an opaque background.
-          </Alert>
-        ) : null}
+      <CardBody className="space-y-6">
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-ink-strong">Color mask</h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              Used when generating color mask images for each topic.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <Select
+              label="Image model"
+              name="openaiModel"
+              value={settings.model}
+              options={[
+                { value: 'gpt-image-2', label: 'gpt-image-2 (preferred)' },
+                { value: 'gpt-image-1.5', label: 'gpt-image-1.5 (transparent backgrounds)' },
+                { value: 'gpt-image-1', label: 'gpt-image-1' },
+                { value: 'gpt-image-1-mini', label: 'gpt-image-1-mini' },
+              ]}
+              onChange={(event) =>
+                update('model', event.target.value as OpenAIImageSettings['model'])
+              }
+            />
+            <Select
+              label="Size"
+              name="openaiSize"
+              value={settings.size}
+              options={[
+                { value: '1024x1024', label: '1024 x 1024 square' },
+                { value: '1536x1536', label: '1536 x 1536 square' },
+                { value: '1536x1024', label: '1536 x 1024 landscape' },
+                { value: '1024x1536', label: '1024 x 1536 portrait' },
+                { value: 'auto', label: 'Auto API size' },
+              ]}
+              helperText="OpenAI currently supports square, landscape, portrait, and auto sizes for GPT Image generation."
+              onChange={(event) =>
+                update('size', event.target.value as OpenAIImageSettings['size'])
+              }
+            />
+            <Select
+              label="Quality"
+              name="openaiQuality"
+              value={settings.quality}
+              options={[
+                { value: 'low', label: 'Low (preferred)' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'auto', label: 'Auto' },
+              ]}
+              onChange={(event) =>
+                update('quality', event.target.value as OpenAIImageSettings['quality'])
+              }
+            />
+            <Select
+              label="Background"
+              name="openaiBackground"
+              value={settings.background}
+              options={[
+                { value: 'opaque', label: 'White print background' },
+                { value: 'transparent', label: 'Transparent PNG/WEBP' },
+                { value: 'auto', label: 'Auto' },
+              ]}
+              onChange={(event) =>
+                update('background', event.target.value as OpenAIImageSettings['background'])
+              }
+            />
+            <Select
+              label="Output format"
+              name="openaiOutputFormat"
+              value={settings.outputFormat}
+              options={[
+                { value: 'png', label: 'PNG' },
+                { value: 'webp', label: 'WEBP' },
+                { value: 'jpeg', label: 'JPEG' },
+              ]}
+              onChange={(event) =>
+                update('outputFormat', event.target.value as OpenAIImageSettings['outputFormat'])
+              }
+            />
+          </div>
+          {transparentUnsupported ? (
+            <Alert tone="warning">
+              Transparent output needs GPT Image 1.x with PNG or WEBP. With `gpt-image-2`, requests
+              use an opaque background.
+            </Alert>
+          ) : null}
+        </section>
+
+        <div className="border-t border-surface-outline" />
+
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-ink-strong">Coloring page</h3>
+            <p className="mt-1 text-sm text-ink-muted">
+              Used when generating the black-and-white coloring page version of each mask.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            <Select
+              label="Size"
+              name="coloringPageSize"
+              value={settings.coloringPageSize}
+              options={[
+                { value: '1024x1024', label: '1024 x 1024 square' },
+                { value: '1536x1024', label: '1536 x 1024 landscape' },
+                { value: '1024x1536', label: '1024 x 1536 portrait' },
+              ]}
+              onChange={(event) =>
+                update(
+                  'coloringPageSize',
+                  event.target.value as OpenAIImageSettings['coloringPageSize'],
+                )
+              }
+            />
+          </div>
+          <Surface variant="muted" className="px-4 py-3">
+            <p className="text-sm text-ink-base">
+              <span className="font-semibold text-ink-strong">Quality:</span> Low (fixed) — keeps
+              line-art generation cost-efficient.
+            </p>
+          </Surface>
+        </section>
+
+        <div className="border-t border-surface-outline" />
+
         <Surface variant="muted" className="p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="text-sm font-bold text-ink-strong">Estimated image cost</h3>
               <p className="mt-1 text-xs text-ink-muted">
-                Based on the selected size and quality. Actual OpenAI billing can vary.
+                Based on the color mask size and quality. Actual OpenAI billing can vary.
               </p>
             </div>
             <Badge tone="neutral">

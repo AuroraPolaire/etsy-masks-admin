@@ -10,6 +10,7 @@ const settings: OpenAIImageSettings = {
   quality: 'high',
   background: 'transparent',
   outputFormat: 'png',
+  coloringPageSize: '1024x1024',
 };
 
 describe('OpenAI image helpers', () => {

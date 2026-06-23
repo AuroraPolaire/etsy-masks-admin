@@ -113,7 +113,7 @@ export const MarketingAssetsPanel = ({
   const canGenerate = busyAction === null && sourceMasks.length > 0;
   const canGenerateWithAI = canGenerate && hasAIProvider;
   const isGenerating = busyAction === 'marketing-generation';
-  const sloganPreviews = getLatestFiles(files, 'slogan-poster', 'preview', 3);
+  const sloganPreviews = getLatestFiles(files, 'slogan-poster', 'preview', 1);
   const sloganFinals = getLatestFiles(files, 'slogan-poster', 'final', 3);
   const maskSheets = getLatestFiles(files, 'mask-sheet', 'final', 20);
   const childrenPreviews = getLatestFiles(files, 'children-scene', 'preview', 3);
@@ -210,21 +210,21 @@ export const MarketingAssetsPanel = ({
                 <div>
                   <h3 className="text-sm font-bold text-ink-strong">Slogan poster</h3>
                   <p className="mt-1 text-sm text-ink-muted">
-                    Creates 3 AI poster concepts from the approved masks, then a larger final
+                    Creates an AI poster preview from the approved masks, then a larger final
                     poster.
                   </p>
                 </div>
                 <AIButton disabled={!canGenerateWithAI} onClick={onGenerateSloganPreviews}>
-                  Generate 3 previews
+                  Generate preview
                 </AIButton>
               </div>
               {sloganPreviews.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-3">
-                  {sloganPreviews.map((file, index) => (
+                <div className="grid gap-4">
+                  {sloganPreviews.map((file) => (
                     <MarketingFileCard
                       key={file.id}
                       file={file}
-                      label={`Slogan option ${index + 1}`}
+                      label="Slogan preview"
                       stale={isMarketingAssetStale(file, sourceMasks)}
                     >
                       <Button

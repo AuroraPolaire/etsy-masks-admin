@@ -71,6 +71,7 @@ describe('marketing asset helpers', () => {
         quality: 'high',
         background: 'opaque',
         outputFormat: 'png',
+        coloringPageSize: '1024x1024',
       }),
     ).toMatchObject({ quality: 'medium' });
   });
@@ -84,6 +85,7 @@ describe('marketing asset helpers', () => {
         quality: 'high',
         background: 'opaque',
         outputFormat: 'png',
+        coloringPageSize: '1024x1024',
       },
     } satisfies Project;
 

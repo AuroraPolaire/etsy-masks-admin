@@ -9,6 +9,7 @@ import { Button } from './ui/Button';
 import { Card, CardBody, CardHeader } from './ui/Card';
 import { EmptyState } from './ui/EmptyState';
 import { Input } from './ui/Input';
+import { Textarea } from './ui/Textarea';
 
 import type { SubjectItem, ManagedFile, PromptItem } from '../types';
 
@@ -23,6 +24,8 @@ type PromptManagerProps = {
   missingColoringPageCount?: number;
   imageGenerationHint?: string;
   allowTopicEditing?: boolean;
+  promptStyle: string;
+  onPromptStyleChange: (style: string) => void;
   onAddSubject: (name: string) => void;
   onRemoveSubject: (subjectId: string) => void;
   onGenerateImage: (subjectId: string, promptOverride?: string) => void;
@@ -71,6 +74,8 @@ export const PromptManager = ({
   missingColoringPageCount = 0,
   imageGenerationHint,
   allowTopicEditing = true,
+  promptStyle,
+  onPromptStyleChange,
   onAddSubject,
   onRemoveSubject,
   onGenerateImage,
@@ -160,6 +165,14 @@ export const PromptManager = ({
               </div>
             ) : null}
           </div>
+          <Textarea
+            label="Generation prompt (all masks)"
+            name="globalPromptStyle"
+            rows={4}
+            value={promptStyle}
+            helperText="Changing this updates the base prompt for every mask. Per-mask edits inside each topic card override it for that generation only."
+            onChange={(event) => onPromptStyleChange(event.target.value)}
+          />
           {allowTopicEditing ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">

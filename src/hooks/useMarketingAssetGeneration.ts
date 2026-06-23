@@ -135,45 +135,36 @@ export const useMarketingAssetGeneration = ({
       try {
         const settings = resolveMarketingPreviewSettings(project);
         const reservedNames = getReservedNames(filesRef.current);
-        const managedFiles: ManagedFile[] = [];
 
-        for (let optionIndex = 0; optionIndex < 3; optionIndex += 1) {
-          if (context?.signal.aborted) {
-            throw new DOMException('Marketing generation cancelled', 'AbortError');
-          }
+        const recipe: MarketingGenerationRecipe = {
+          type: 'slogan-poster',
+          id: 'slogan-1',
+          optionIndex: 0,
+          stage: 'preview',
+          maskCount: sourceMasks.length,
+        };
 
-          const recipe: MarketingGenerationRecipe = {
-            type: 'slogan-poster',
-            id: `slogan-${optionIndex + 1}`,
-            optionIndex,
-            stage: 'preview',
-            maskCount: sourceMasks.length,
-          };
+        context?.setProgress('Generating AI slogan preview...');
+        const file = await generateMarketingSceneFile(
+          settings,
+          project,
+          sourceMasks,
+          recipe,
+          context?.signal,
+        );
+        const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
+        const managedFile = await createAiMarketingFile({
+          file: uniqueFile,
+          project,
+          type: 'slogan-poster',
+          recipe,
+          sourceMasks,
+          settings,
+          reviewState: 'pending',
+        });
 
-          context?.setProgress(`Generating AI slogan preview ${optionIndex + 1}/3...`);
-          const file = await generateMarketingSceneFile(
-            settings,
-            project,
-            sourceMasks,
-            recipe,
-            context?.signal,
-          );
-          const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
-          managedFiles.push(
-            await createAiMarketingFile({
-              file: uniqueFile,
-              project,
-              type: 'slogan-poster',
-              recipe,
-              sourceMasks,
-              settings,
-              reviewState: 'pending',
-            }),
-          );
-        }
-
-        await appendGeneratedFiles(managedFiles, context);
-        addActivity('marketing-generated', 'success', 'Generated 3 slogan poster previews.');
+        await appendGeneratedFiles([managedFile], context);
+        addActivity('marketing-generated', 'success', 'Generated slogan poster preview.');
       } catch (error) {
         if (isAbortError(error)) {
           addActivity('marketing-generated', 'warning', 'Marketing generation was cancelled.');

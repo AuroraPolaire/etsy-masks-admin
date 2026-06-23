@@ -201,6 +201,7 @@ const readOpenAIImageSettings = (
         '1024x1024',
         '1536x1024',
         '1024x1536',
+        '1536x1536',
         '2048x2048',
         '2048x1152',
         '1152x2048',
@@ -222,6 +223,11 @@ const readOpenAIImageSettings = (
       settings.outputFormat,
       ['png', 'webp', 'jpeg'],
       fallback.outputFormat,
+    ),
+    coloringPageSize: readEnum<'1024x1024' | '1536x1024' | '1024x1536'>(
+      settings.coloringPageSize,
+      ['1024x1024', '1536x1024', '1024x1536'],
+      fallback.coloringPageSize,
     ),
   };
 };
@@ -250,6 +256,7 @@ const readMarketingImageSettings = (
         '1024x1024',
         '1536x1024',
         '1024x1536',
+        '1536x1536',
         '2048x2048',
         '2048x1152',
         '1152x2048',
@@ -267,6 +274,11 @@ const readMarketingImageSettings = (
       settings.outputFormat,
       ['png', 'webp', 'jpeg'],
       fallback.outputFormat,
+    ),
+    coloringPageSize: readEnum<'1024x1024' | '1536x1024' | '1024x1536'>(
+      settings.coloringPageSize,
+      ['1024x1024', '1536x1024', '1024x1536'],
+      fallback.coloringPageSize,
     ),
   };
 };

@@ -113,6 +113,7 @@ describe('project storage', () => {
         quality: 'low',
         background: 'transparent',
         outputFormat: 'webp',
+        coloringPageSize: '1024x1024',
       },
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));

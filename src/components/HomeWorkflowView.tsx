@@ -165,6 +165,8 @@ export const HomeWorkflowView = ({
                 missingImageCount={missingImageCount}
                 missingColoringPageCount={missingColoringPageCount}
                 imageGenerationHint={imageGenerationHint}
+                promptStyle={project.settings.style}
+                onPromptStyleChange={(style) => onUpdateSettings({ ...project.settings, style })}
                 onAddSubject={onAddSubject}
                 onRemoveSubject={onRemoveSubject}
                 onGenerateImage={onGenerateImage}

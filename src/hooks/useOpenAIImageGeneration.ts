@@ -302,8 +302,13 @@ export const useOpenAIImageGeneration = ({
       context?.setProgress(`Generating coloring page for ${prompt.subjectName}...`);
 
       try {
+        const coloringPageSettings = {
+          ...settings,
+          size: settings.coloringPageSize,
+          quality: 'low' as const,
+        };
         const generatedFile = await generateColoringPageFile(
-          settings,
+          coloringPageSettings,
           prompt,
           sourceFile.file,
           context?.signal,
