@@ -56,6 +56,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateSloganPreviews={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
+        onGeneratePrinterScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -79,6 +80,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateSloganPreviews={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
+        onGeneratePrinterScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -102,6 +104,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateSloganPreviews={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
+        onGeneratePrinterScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -130,6 +133,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateSloganPreviews={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
+        onGeneratePrinterScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -158,6 +162,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateSloganPreviews={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
+        onGeneratePrinterScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -202,6 +207,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateSloganPreviews={vi.fn()}
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
+        onGeneratePrinterScenePreviews={vi.fn()}
         onDeleteFile={onDeleteFile}
       />,
     );
@@ -251,6 +257,7 @@ describe('MarketingAssetsPanel', () => {
           onGenerateSloganPreviews={vi.fn()}
           onGenerateMaskSheets={vi.fn()}
           onGenerateChildrenScenePreviews={vi.fn()}
+          onGeneratePrinterScenePreviews={vi.fn()}
           onDeleteFile={vi.fn()}
         />
       );

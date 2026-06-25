@@ -108,6 +108,7 @@ export const countFilesByVariant = (files: ManagedFile[]): Record<FileAssetVaria
       'marketing-slogan': 0,
       'marketing-mask-sheet': 0,
       'marketing-children-scene': 0,
+      'marketing-printer-scene': 0,
     } satisfies Record<FileAssetVariant, number>,
   );
 
