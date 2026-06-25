@@ -1013,6 +1013,7 @@ const parseFileMetadata = (value: unknown): FileMetadataInput => {
     'marketing-slogan',
     'marketing-mask-sheet',
     'marketing-children-scene',
+    'marketing-printer-scene',
   ];
   if (!validAssetVariants.includes(assetVariant)) {
     throw new ApiError(400, 'metadata.assetVariant is invalid.');
