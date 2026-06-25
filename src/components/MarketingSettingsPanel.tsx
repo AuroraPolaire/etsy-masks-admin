@@ -61,6 +61,7 @@ const updateImageSetting = <Key extends keyof MarketingImageSettings>(
     additionalPrompt: '',
     maskSheetMasksPerImage,
     childrenSceneSubjectIds: [],
+    flatLaySceneSubjectIds: [],
   }).preview.customSettings;
 
 export const MarketingSettingsPanel = ({

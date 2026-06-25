@@ -373,6 +373,7 @@ export const App = () => {
     generateMaskSheets,
     generateChildrenScenePreviews,
     generatePrinterScenePreviews,
+    generateFlatLayScenePreviews,
   } = useMarketingAssetGeneration({
     project,
     filesRef,
@@ -754,6 +755,10 @@ export const App = () => {
     void runQueuedBusyAction('marketing-generation', generatePrinterScenePreviews);
   }, [generatePrinterScenePreviews, runQueuedBusyAction]);
 
+  const handleGenerateFlatLayScenePreviews = useCallback(() => {
+    void runQueuedBusyAction('marketing-generation', generateFlatLayScenePreviews);
+  }, [generateFlatLayScenePreviews, runQueuedBusyAction]);
+
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
@@ -817,6 +822,7 @@ export const App = () => {
         onGenerateMaskSheets={handleGenerateMaskSheets}
         onGenerateChildrenScenePreviews={handleGenerateChildrenScenePreviews}
         onGeneratePrinterScenePreviews={handleGeneratePrinterScenePreviews}
+        onGenerateFlatLayScenePreviews={handleGenerateFlatLayScenePreviews}
         onDeleteFile={handleDeleteFile}
         onCopyPrompt={(message) => addActivity('prompt-copied', 'success', message)}
         onExportArchive={exportArchive}

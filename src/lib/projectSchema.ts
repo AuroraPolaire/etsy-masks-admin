@@ -324,6 +324,7 @@ const readMarketingSettings = (
       fallback.maskSheetMasksPerImage,
     ),
     childrenSceneSubjectIds: readStringArray(settings.childrenSceneSubjectIds, 3),
+    flatLaySceneSubjectIds: readStringArray(settings.flatLaySceneSubjectIds, 3),
   };
 };
 

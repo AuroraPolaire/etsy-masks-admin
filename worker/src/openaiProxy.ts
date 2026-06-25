@@ -39,6 +39,7 @@ const MARKETING_ASSET_TYPES = [
   'mask-sheet',
   'children-scene',
   'printer-scene',
+  'flat-lay-scene',
 ] as const;
 const MARKETING_ASSET_STAGES = ['preview', 'final'] as const;
 const MAX_BRIEF_REFERENCE_IMAGES = 3;
@@ -754,9 +755,43 @@ const buildPrinterScenePrompt = (input: MarketingSceneInput): string =>
     `Generation variant id: ${input.recipe.id}, option ${input.recipe.optionIndex + 1}, ${input.recipe.stage}.`,
   ].join('\n');
 
+const buildFlatLayScenePrompt = (input: MarketingSceneInput): string => {
+  const maskCount = input.images.length;
+  const maskLines = Array.from({ length: Math.max(maskCount, 3) }, (_, i) => {
+    const position =
+      i === 0 ? 'upper left' : i === 1 ? 'upper right' : 'centered at the bottom, largest';
+    const ref =
+      i < maskCount
+        ? `use provided mask reference image ${i + 1} exactly at 100% fidelity`
+        : 'use a neutral placeholder mask';
+    return `The mask at ${position}: ${ref}.`;
+  });
+
+  const orientationNote = input.recipe.customPrompt
+    ? `Orientation guidance — ${input.recipe.customPrompt}.`
+    : '';
+
+  return [
+    'A top-down flat-lay craft scene on a pale wood desk in soft natural light.',
+    `${maskCount === 3 ? 'Three' : maskCount === 2 ? 'Two' : 'One'} printed mask sheets are arranged across the surface, each a detailed semi-realistic illustration with large eye cutouts.`,
+    ...maskLines,
+    orientationNote,
+    'Surrounding the masks are crafting supplies: gold-handled scissors, sheets of gem and star foil stickers in pink, purple, gold, and green, a white cup of colored pencils, loose pink and green pencils, rolls of pink and gold glitter washi tape, and a small potted green plant in the corner.',
+    'Warm, cheerful, feminine aesthetic, pastel and jewel-tone palette, soft shadows, dreamy elegant lifestyle product photography, high detail, realistic.',
+    'All mask designs must be reproduced exactly as provided — 100% fidelity, no alterations, simplifications, or reinterpretations.',
+    `Generation variant id: ${input.recipe.id}, option ${input.recipe.optionIndex + 1}, ${input.recipe.stage}.`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
 const buildMarketingScenePrompt = (input: MarketingSceneInput): string => {
   if (input.recipe.type === 'printer-scene') {
     return buildPrinterScenePrompt(input);
+  }
+
+  if (input.recipe.type === 'flat-lay-scene') {
+    return buildFlatLayScenePrompt(input);
   }
 
   const imageReferenceLines =

@@ -55,6 +55,7 @@ type HomeWorkflowViewProps = {
   onGenerateMaskSheets: () => void;
   onGenerateChildrenScenePreviews: () => void;
   onGeneratePrinterScenePreviews: () => void;
+  onGenerateFlatLayScenePreviews: () => void;
   onDeleteFile: (fileId: string) => void;
   onCopyPrompt: (message: string) => void;
   onExportArchive: () => void;
@@ -92,6 +93,7 @@ export const HomeWorkflowView = ({
   onGenerateMaskSheets,
   onGenerateChildrenScenePreviews,
   onGeneratePrinterScenePreviews,
+  onGenerateFlatLayScenePreviews,
   onDeleteFile,
   onCopyPrompt,
   onExportArchive,
@@ -199,6 +201,7 @@ export const HomeWorkflowView = ({
                 onGenerateMaskSheets={onGenerateMaskSheets}
                 onGenerateChildrenScenePreviews={onGenerateChildrenScenePreviews}
                 onGeneratePrinterScenePreviews={onGeneratePrinterScenePreviews}
+                onGenerateFlatLayScenePreviews={onGenerateFlatLayScenePreviews}
                 onDeleteFile={onDeleteFile}
               />
               <StepAdvanceButton

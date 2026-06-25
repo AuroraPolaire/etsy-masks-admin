@@ -9,6 +9,7 @@ import {
   getMarketingAssetFiles,
   getMaskSheetPageSlices,
   getSelectedChildrenSceneMasks,
+  getSelectedFlatLaySceneMasks,
   getSelectedPrinterSceneMask,
   resolveMarketingPreviewSettings,
 } from '../lib/marketingAssets';
@@ -85,6 +86,10 @@ const getAssetVariant = (type: MarketingAssetType): ManagedFile['assetVariant'] 
 
   if (type === 'printer-scene') {
     return 'marketing-printer-scene';
+  }
+
+  if (type === 'flat-lay-scene') {
+    return 'marketing-flat-lay-scene';
   }
 
   return 'marketing-slogan';
@@ -433,10 +438,95 @@ export const useMarketingAssetGeneration = ({
     [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
   );
 
+  const generateFlatLayScenePreviews = useCallback(
+    async (context?: BusyActionContext) => {
+      const sourceMasks = getApprovedMarketingSourceMasks(project, filesRef.current);
+      const selectedMasks = getSelectedFlatLaySceneMasks(project, sourceMasks);
+      if (selectedMasks.length === 0) {
+        addActivity('marketing-generated', 'warning', 'Generate at least one color mask first.');
+        return;
+      }
+
+      try {
+        const settings: MarketingImageSettings = {
+          model: 'gpt-image-2',
+          size: '1024x1024',
+          quality: 'low',
+          background: 'opaque',
+          outputFormat: 'png',
+          coloringPageSize: '1024x1024',
+        };
+        const reservedNames = getReservedNames(filesRef.current);
+        const optionIndex = getExistingAssetCount(filesRef.current, 'flat-lay-scene');
+
+        if (context?.signal.aborted) {
+          throw new DOMException('Marketing generation cancelled', 'AbortError');
+        }
+
+        const orientationInfo = selectedMasks
+          .map((file, i) => {
+            const { width = 0, height = 0 } = file.imageMetadata ?? {};
+            const orientation =
+              width > height
+                ? 'landscape — print horizontally'
+                : width < height
+                  ? 'portrait — print vertically'
+                  : 'square';
+            return `Mask ${i + 1}: ${orientation}`;
+          })
+          .join('. ');
+
+        const recipe: MarketingGenerationRecipe = {
+          type: 'flat-lay-scene',
+          id: `flat-lay-scene-${optionIndex + 1}`,
+          optionIndex,
+          stage: 'final',
+          maskCount: selectedMasks.length,
+          customPrompt: orientationInfo,
+        };
+
+        context?.setProgress('Generating AI flat-lay scene...');
+        const file = await generateMarketingSceneFile(
+          settings,
+          project,
+          selectedMasks,
+          recipe,
+          context?.signal,
+        );
+        const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
+        const managedFile = await createAiMarketingFile({
+          file: uniqueFile,
+          project,
+          type: 'flat-lay-scene',
+          recipe,
+          sourceMasks: selectedMasks,
+          settings,
+          reviewState: 'approved',
+        });
+        appendVisibleMarketingFile(managedFile);
+
+        addActivity('marketing-generated', 'success', 'Generated flat-lay scene image.');
+      } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('marketing-generated', 'warning', 'Marketing generation was cancelled.');
+          return;
+        }
+
+        addActivity(
+          'error',
+          'error',
+          error instanceof Error ? error.message : 'Could not generate flat-lay scene image.',
+        );
+      }
+    },
+    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
+  );
+
   return {
     generateSloganPreviews,
     generateMaskSheets,
     generateChildrenScenePreviews,
     generatePrinterScenePreviews,
+    generateFlatLayScenePreviews,
   };
 };

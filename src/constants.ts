@@ -93,6 +93,7 @@ export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {
   additionalPrompt: '',
   maskSheetMasksPerImage: DEFAULT_MASK_SHEET_MASKS_PER_IMAGE,
   childrenSceneSubjectIds: [],
+  flatLaySceneSubjectIds: [],
 };
 
 export const PROMPT_NEGATIVE_REQUIREMENTS =

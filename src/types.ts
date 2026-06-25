@@ -10,13 +10,15 @@ export type FileAssetVariant =
   | 'marketing-slogan'
   | 'marketing-mask-sheet'
   | 'marketing-children-scene'
-  | 'marketing-printer-scene';
+  | 'marketing-printer-scene'
+  | 'marketing-flat-lay-scene';
 
 export type MarketingAssetType =
   | 'slogan-poster'
   | 'mask-sheet'
   | 'children-scene'
-  | 'printer-scene';
+  | 'printer-scene'
+  | 'flat-lay-scene';
 
 export type MarketingAssetStage = 'preview' | 'final';
 
@@ -310,6 +312,7 @@ export type MarketingSettings = {
   maskSheetMasksPerImage: number;
   childrenSceneSubjectIds: string[];
   printerSceneSubjectId?: string;
+  flatLaySceneSubjectIds: string[];
 };
 
 export type BrowserSupportResult = {

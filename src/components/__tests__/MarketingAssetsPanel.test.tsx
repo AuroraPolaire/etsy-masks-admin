@@ -57,6 +57,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
         onGeneratePrinterScenePreviews={vi.fn()}
+        onGenerateFlatLayScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -81,6 +82,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
         onGeneratePrinterScenePreviews={vi.fn()}
+        onGenerateFlatLayScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -105,6 +107,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
         onGeneratePrinterScenePreviews={vi.fn()}
+        onGenerateFlatLayScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -134,6 +137,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
         onGeneratePrinterScenePreviews={vi.fn()}
+        onGenerateFlatLayScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -163,6 +167,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
         onGeneratePrinterScenePreviews={vi.fn()}
+        onGenerateFlatLayScenePreviews={vi.fn()}
         onDeleteFile={vi.fn()}
       />,
     );
@@ -208,6 +213,7 @@ describe('MarketingAssetsPanel', () => {
         onGenerateMaskSheets={vi.fn()}
         onGenerateChildrenScenePreviews={vi.fn()}
         onGeneratePrinterScenePreviews={vi.fn()}
+        onGenerateFlatLayScenePreviews={vi.fn()}
         onDeleteFile={onDeleteFile}
       />,
     );
@@ -258,6 +264,7 @@ describe('MarketingAssetsPanel', () => {
           onGenerateMaskSheets={vi.fn()}
           onGenerateChildrenScenePreviews={vi.fn()}
           onGeneratePrinterScenePreviews={vi.fn()}
+          onGenerateFlatLayScenePreviews={vi.fn()}
           onDeleteFile={vi.fn()}
         />
       );

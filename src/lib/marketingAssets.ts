@@ -29,6 +29,7 @@ const MARKETING_ASSET_VARIANTS: FileAssetVariant[] = [
   'marketing-mask-sheet',
   'marketing-children-scene',
   'marketing-printer-scene',
+  'marketing-flat-lay-scene',
 ];
 
 export const CHILDREN_SCENE_RECIPES: ChildrenSceneRecipe[] = [
@@ -254,6 +255,18 @@ export const getSelectedPrinterSceneMask = (
   return sourceMasks[0];
 };
 
+export const getSelectedFlatLaySceneMasks = (
+  project: Project,
+  sourceMasks: ManagedFile[],
+): ManagedFile[] => {
+  const selectedIds = project.marketingSettings.flatLaySceneSubjectIds;
+  const selectedMasks = selectedIds
+    .map((subjectId) => sourceMasks.find((file) => file.mappedSubjectId === subjectId))
+    .filter((file): file is ManagedFile => Boolean(file));
+
+  return (selectedMasks.length > 0 ? selectedMasks : sourceMasks).slice(0, 3);
+};
+
 export const sanitizeMarketingSettings = (settings: MarketingSettings): MarketingSettings => ({
   ...settings,
   additionalPrompt: (settings.additionalPrompt ?? '').trimStart(),
@@ -263,4 +276,5 @@ export const sanitizeMarketingSettings = (settings: MarketingSettings): Marketin
     customSettings: normalizeMarketingImageSettings(settings.preview.customSettings),
   },
   childrenSceneSubjectIds: settings.childrenSceneSubjectIds.slice(0, 3),
+  flatLaySceneSubjectIds: (settings.flatLaySceneSubjectIds ?? []).slice(0, 3),
 });

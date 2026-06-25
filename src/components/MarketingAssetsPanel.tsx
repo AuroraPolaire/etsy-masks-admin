@@ -39,6 +39,7 @@ type MarketingAssetsPanelProps = {
   onGenerateMaskSheets: () => void;
   onGenerateChildrenScenePreviews: () => void;
   onGeneratePrinterScenePreviews: () => void;
+  onGenerateFlatLayScenePreviews: () => void;
   onDeleteFile: (fileId: string) => void;
 };
 
@@ -108,6 +109,7 @@ export const MarketingAssetsPanel = ({
   onGenerateMaskSheets,
   onGenerateChildrenScenePreviews,
   onGeneratePrinterScenePreviews,
+  onGenerateFlatLayScenePreviews,
   onDeleteFile,
 }: MarketingAssetsPanelProps) => {
   const sourceMasks = getApprovedMarketingSourceMasks(project, files);
@@ -124,6 +126,7 @@ export const MarketingAssetsPanel = ({
   const maskSheets = getSavedAssetFiles(files, 'mask-sheet', 20);
   const childrenAssets = getSavedAssetFiles(files, 'children-scene', 24);
   const printerSceneAssets = getSavedAssetFiles(files, 'printer-scene', 24);
+  const flatLaySceneAssets = getSavedAssetFiles(files, 'flat-lay-scene', 24);
   const sourceSubjectIds = new Set(
     sourceMasks
       .map((file) => file.mappedSubjectId)
@@ -133,6 +136,10 @@ export const MarketingAssetsPanel = ({
     (subjectId) => sourceSubjectIds.has(subjectId),
   );
   const selectedCount = selectedChildrenSubjectIds.length;
+  const selectedFlatLaySubjectIds = (project.marketingSettings.flatLaySceneSubjectIds ?? []).filter(
+    (subjectId) => sourceSubjectIds.has(subjectId),
+  );
+  const selectedFlatLayCount = selectedFlatLaySubjectIds.length;
 
   const toggleChildrenSubject = (subjectId: string, checked: boolean) => {
     const nextIds = checked
@@ -142,6 +149,17 @@ export const MarketingAssetsPanel = ({
     onMarketingSettingsChange({
       ...project.marketingSettings,
       childrenSceneSubjectIds: nextIds,
+    });
+  };
+
+  const toggleFlatLaySubject = (subjectId: string, checked: boolean) => {
+    const nextIds = checked
+      ? Array.from(new Set([...selectedFlatLaySubjectIds, subjectId])).slice(0, 3)
+      : selectedFlatLaySubjectIds.filter((id) => id !== subjectId);
+
+    onMarketingSettingsChange({
+      ...project.marketingSettings,
+      flatLaySceneSubjectIds: nextIds,
     });
   };
 
@@ -491,6 +509,94 @@ export const MarketingAssetsPanel = ({
                       key={file.id}
                       file={file}
                       label={`Printer scene ${index + 1}`}
+                      stale={isMarketingAssetStale(file, sourceMasks)}
+                    >
+                      <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>
+                        <Trash2 aria-hidden="true" className="mr-2" size={17} />
+                        Discard
+                      </Button>
+                    </MarketingFileCard>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+            <section className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-ink-strong">Flat-lay scene</h3>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    Generates a top-down craft desk scene with up to 3 selected masks arranged as
+                    printed sheets. Quality and size are fixed (low, 1024×1024).
+                  </p>
+                </div>
+                <AIButton disabled={!canGenerateWithAI} onClick={onGenerateFlatLayScenePreviews}>
+                  {willQueueGeneration ? 'Queue flat-lay scene' : 'Generate flat-lay scene'}
+                </AIButton>
+              </div>
+              {sourceMasks.length === 0 ? (
+                <EmptyState>
+                  Generate at least one color mask before generating a flat-lay scene.
+                </EmptyState>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {sourceMasks.map((file) => {
+                    const subject = project.subjects.find(
+                      (item) => item.id === file.mappedSubjectId,
+                    );
+                    const subjectLabel = subject?.name ?? file.name;
+                    const subjectId = file.mappedSubjectId ?? '';
+                    const checked = selectedFlatLaySubjectIds.includes(subjectId);
+                    const disabled = !checked && selectedFlatLayCount >= 3;
+
+                    return (
+                      <Surface
+                        key={file.id}
+                        variant="default"
+                        className={`min-w-0 p-3 transition ${checked ? 'ring-2 ring-brand/30' : ''} ${disabled ? 'opacity-70' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {file.objectUrl ? (
+                            <img
+                              src={file.objectUrl}
+                              alt=""
+                              className="size-16 shrink-0 rounded-control bg-white object-contain"
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-ink-strong">
+                              {subjectLabel}
+                            </p>
+                            <p className="text-xs text-ink-muted">Ready mask source</p>
+                          </div>
+                          <input
+                            id={`flat-lay-mask-${file.id}`}
+                            type="checkbox"
+                            className="mt-1 size-4 shrink-0 accent-brand focus:ring-brand/20"
+                            aria-label={subjectLabel}
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={(event) => {
+                              if (subjectId) {
+                                toggleFlatLaySubject(subjectId, event.target.checked);
+                              }
+                            }}
+                          />
+                        </div>
+                      </Surface>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-ink-muted">
+                Select up to 3 masks. If none are selected, the first ready masks are used.
+              </p>
+              {flatLaySceneAssets.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {flatLaySceneAssets.map((file, index) => (
+                    <MarketingFileCard
+                      key={file.id}
+                      file={file}
+                      label={`Flat-lay scene ${index + 1}`}
                       stale={isMarketingAssetStale(file, sourceMasks)}
                     >
                       <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>
