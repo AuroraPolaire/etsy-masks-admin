@@ -28,6 +28,7 @@ const MARKETING_ASSET_VARIANTS: FileAssetVariant[] = [
   'marketing-slogan',
   'marketing-mask-sheet',
   'marketing-children-scene',
+  'marketing-printer-scene',
 ];
 
 export const CHILDREN_SCENE_RECIPES: ChildrenSceneRecipe[] = [
@@ -239,6 +240,19 @@ export const createMarketingAssetMetadata = ({
 export const getChildrenSceneRecipe = (optionIndex: number): ChildrenSceneRecipe =>
   CHILDREN_SCENE_RECIPES[optionIndex % CHILDREN_SCENE_RECIPES.length] ??
   DEFAULT_CHILDREN_SCENE_RECIPE;
+
+export const getSelectedPrinterSceneMask = (
+  project: Project,
+  sourceMasks: ManagedFile[],
+): ManagedFile | undefined => {
+  if (project.marketingSettings.printerSceneSubjectId) {
+    const found = sourceMasks.find(
+      (file) => file.mappedSubjectId === project.marketingSettings.printerSceneSubjectId,
+    );
+    if (found) return found;
+  }
+  return sourceMasks[0];
+};
 
 export const sanitizeMarketingSettings = (settings: MarketingSettings): MarketingSettings => ({
   ...settings,

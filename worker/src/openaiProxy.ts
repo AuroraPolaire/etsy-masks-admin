@@ -34,7 +34,12 @@ const MARKETING_EDIT_IMAGE_MODELS = [
   'gpt-image-1',
   'gpt-image-1-mini',
 ] as const;
-const MARKETING_ASSET_TYPES = ['slogan-poster', 'mask-sheet', 'children-scene'] as const;
+const MARKETING_ASSET_TYPES = [
+  'slogan-poster',
+  'mask-sheet',
+  'children-scene',
+  'printer-scene',
+] as const;
 const MARKETING_ASSET_STAGES = ['preview', 'final'] as const;
 const MAX_BRIEF_REFERENCE_IMAGES = 3;
 const MAX_BRIEF_REFERENCE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -736,7 +741,24 @@ const getMarketingVariantDirection = ({ recipe }: MarketingSceneInput): string =
   ].join('\n');
 };
 
+const buildPrinterScenePrompt = (input: MarketingSceneInput): string =>
+  [
+    'A bright, airy craft scene on a pale wood desk bathed in soft natural morning light.',
+    'At the center, a white inkjet printer is mid-print, sliding out a sheet of paper showing the provided mask reference.',
+    "To the left, a clear glass vase holds pink peonies and baby's breath.",
+    'Nearby sit a roll of gold glitter washi tape, folded pink and gold craft paper, and envelopes.',
+    'In the foreground, three colored pencils (pink, gold, brown) rest on the desk, with white lilac blossoms and green leaves scattered around.',
+    'In the soft-focus background, a white bookshelf with pastel books, a framed pink floral print, a gold cup of pencils, and potted greenery.',
+    'Warm, cozy, feminine aesthetic, pastel color palette, shallow depth of field, dreamy and elegant lifestyle product photography, high detail, realistic.',
+    'Use the provided mask reference image exactly as it appears on the printed paper — preserve the design, colors, and all details at 100% fidelity. Do not alter, simplify, or reinterpret the mask design.',
+    `Generation variant id: ${input.recipe.id}, option ${input.recipe.optionIndex + 1}, ${input.recipe.stage}.`,
+  ].join('\n');
+
 const buildMarketingScenePrompt = (input: MarketingSceneInput): string => {
+  if (input.recipe.type === 'printer-scene') {
+    return buildPrinterScenePrompt(input);
+  }
+
   const imageReferenceLines =
     input.images.length > 0
       ? [

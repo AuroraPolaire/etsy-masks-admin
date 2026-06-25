@@ -38,6 +38,7 @@ type MarketingAssetsPanelProps = {
   onGenerateSloganPreviews: () => void;
   onGenerateMaskSheets: () => void;
   onGenerateChildrenScenePreviews: () => void;
+  onGeneratePrinterScenePreviews: () => void;
   onDeleteFile: (fileId: string) => void;
 };
 
@@ -106,6 +107,7 @@ export const MarketingAssetsPanel = ({
   onGenerateSloganPreviews,
   onGenerateMaskSheets,
   onGenerateChildrenScenePreviews,
+  onGeneratePrinterScenePreviews,
   onDeleteFile,
 }: MarketingAssetsPanelProps) => {
   const sourceMasks = getApprovedMarketingSourceMasks(project, files);
@@ -121,6 +123,7 @@ export const MarketingAssetsPanel = ({
   const sloganAssets = getSavedAssetFiles(files, 'slogan-poster', 24);
   const maskSheets = getSavedAssetFiles(files, 'mask-sheet', 20);
   const childrenAssets = getSavedAssetFiles(files, 'children-scene', 24);
+  const printerSceneAssets = getSavedAssetFiles(files, 'printer-scene', 24);
   const sourceSubjectIds = new Set(
     sourceMasks
       .map((file) => file.mappedSubjectId)
@@ -139,6 +142,13 @@ export const MarketingAssetsPanel = ({
     onMarketingSettingsChange({
       ...project.marketingSettings,
       childrenSceneSubjectIds: nextIds,
+    });
+  };
+
+  const selectPrinterSceneMask = (subjectId: string) => {
+    onMarketingSettingsChange({
+      ...project.marketingSettings,
+      printerSceneSubjectId: subjectId,
     });
   };
 
@@ -396,6 +406,91 @@ export const MarketingAssetsPanel = ({
                       key={file.id}
                       file={file}
                       label={getChildrenSceneLabel(file, index)}
+                      stale={isMarketingAssetStale(file, sourceMasks)}
+                    >
+                      <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>
+                        <Trash2 aria-hidden="true" className="mr-2" size={17} />
+                        Discard
+                      </Button>
+                    </MarketingFileCard>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+            <section className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-ink-strong">Printer scene</h3>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    Generates a lifestyle craft-desk scene with a printer sliding out the selected
+                    mask. Quality and size are fixed (low, 1024×1024).
+                  </p>
+                </div>
+                <AIButton disabled={!canGenerateWithAI} onClick={onGeneratePrinterScenePreviews}>
+                  {willQueueGeneration ? 'Queue printer scene' : 'Generate printer scene'}
+                </AIButton>
+              </div>
+              {sourceMasks.length === 0 ? (
+                <EmptyState>
+                  Generate at least one color mask before generating a printer scene.
+                </EmptyState>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {sourceMasks.map((file) => {
+                    const subject = project.subjects.find(
+                      (item) => item.id === file.mappedSubjectId,
+                    );
+                    const subjectLabel = subject?.name ?? file.name;
+                    const subjectId = file.mappedSubjectId ?? '';
+                    const isSelected = project.marketingSettings.printerSceneSubjectId
+                      ? project.marketingSettings.printerSceneSubjectId === subjectId
+                      : sourceMasks[0]?.id === file.id;
+
+                    return (
+                      <Surface
+                        key={file.id}
+                        variant="default"
+                        className={`min-w-0 cursor-pointer p-3 transition ${isSelected ? 'ring-2 ring-brand/30' : ''}`}
+                        onClick={() => subjectId && selectPrinterSceneMask(subjectId)}
+                      >
+                        <div className="flex items-start gap-3">
+                          {file.objectUrl ? (
+                            <img
+                              src={file.objectUrl}
+                              alt=""
+                              className="size-16 shrink-0 rounded-control bg-white object-contain"
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-ink-strong">
+                              {subjectLabel}
+                            </p>
+                            <p className="text-xs text-ink-muted">Ready mask source</p>
+                          </div>
+                          <input
+                            type="radio"
+                            className="mt-1 size-4 shrink-0 accent-brand"
+                            aria-label={subjectLabel}
+                            checked={isSelected}
+                            readOnly
+                          />
+                        </div>
+                      </Surface>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-ink-muted">
+                Select one mask to feature in the printer scene. If none selected, the first ready
+                mask is used.
+              </p>
+              {printerSceneAssets.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {printerSceneAssets.map((file, index) => (
+                    <MarketingFileCard
+                      key={file.id}
+                      file={file}
+                      label={`Printer scene ${index + 1}`}
                       stale={isMarketingAssetStale(file, sourceMasks)}
                     >
                       <Button variant="ghost" onClick={() => onDeleteFile(file.id)}>

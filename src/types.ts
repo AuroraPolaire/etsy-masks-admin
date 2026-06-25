@@ -9,9 +9,14 @@ export type FileAssetVariant =
   | 'coloring-page'
   | 'marketing-slogan'
   | 'marketing-mask-sheet'
-  | 'marketing-children-scene';
+  | 'marketing-children-scene'
+  | 'marketing-printer-scene';
 
-export type MarketingAssetType = 'slogan-poster' | 'mask-sheet' | 'children-scene';
+export type MarketingAssetType =
+  | 'slogan-poster'
+  | 'mask-sheet'
+  | 'children-scene'
+  | 'printer-scene';
 
 export type MarketingAssetStage = 'preview' | 'final';
 
@@ -267,7 +272,6 @@ export type OpenAIImageSize =
   | '1536x1536'
   | '1536x1024'
   | '1024x1536'
-  | '1536x1536'
   | '2048x2048'
   | '2048x1152'
   | '1152x2048'
@@ -305,6 +309,7 @@ export type MarketingSettings = {
   additionalPrompt: string;
   maskSheetMasksPerImage: number;
   childrenSceneSubjectIds: string[];
+  printerSceneSubjectId?: string;
 };
 
 export type BrowserSupportResult = {

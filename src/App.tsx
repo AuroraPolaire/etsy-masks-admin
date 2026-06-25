@@ -368,14 +368,18 @@ export const App = () => {
     generateImageFile,
     generateColoringPageFile,
   });
-  const { generateSloganPreviews, generateMaskSheets, generateChildrenScenePreviews } =
-    useMarketingAssetGeneration({
-      project,
-      filesRef,
-      appendGeneratedFiles,
-      addActivity,
-      generateMarketingSceneFile,
-    });
+  const {
+    generateSloganPreviews,
+    generateMaskSheets,
+    generateChildrenScenePreviews,
+    generatePrinterScenePreviews,
+  } = useMarketingAssetGeneration({
+    project,
+    filesRef,
+    appendGeneratedFiles,
+    addActivity,
+    generateMarketingSceneFile,
+  });
   const hasAIProvider = backendCache.canUseOpenAIProxy;
   const { ensureSavedRunsLoaded } = backendCache;
 
@@ -746,6 +750,10 @@ export const App = () => {
     void runQueuedBusyAction('marketing-generation', generateChildrenScenePreviews);
   }, [generateChildrenScenePreviews, runQueuedBusyAction]);
 
+  const handleGeneratePrinterScenePreviews = useCallback(() => {
+    void runQueuedBusyAction('marketing-generation', generatePrinterScenePreviews);
+  }, [generatePrinterScenePreviews, runQueuedBusyAction]);
+
   const renderOpenAIImagePanel = () => (
     <OpenAIImagePanel
       settings={openAISettings}
@@ -808,6 +816,7 @@ export const App = () => {
         onGenerateSloganPreviews={handleGenerateSloganPreviews}
         onGenerateMaskSheets={handleGenerateMaskSheets}
         onGenerateChildrenScenePreviews={handleGenerateChildrenScenePreviews}
+        onGeneratePrinterScenePreviews={handleGeneratePrinterScenePreviews}
         onDeleteFile={handleDeleteFile}
         onCopyPrompt={(message) => addActivity('prompt-copied', 'success', message)}
         onExportArchive={exportArchive}

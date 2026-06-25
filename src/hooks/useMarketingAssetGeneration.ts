@@ -9,6 +9,7 @@ import {
   getMarketingAssetFiles,
   getMaskSheetPageSlices,
   getSelectedChildrenSceneMasks,
+  getSelectedPrinterSceneMask,
   resolveMarketingPreviewSettings,
 } from '../lib/marketingAssets';
 import { createScriptedMaskSheetFile } from '../lib/scriptedMaskSheet';
@@ -80,6 +81,10 @@ const getAssetVariant = (type: MarketingAssetType): ManagedFile['assetVariant'] 
 
   if (type === 'children-scene') {
     return 'marketing-children-scene';
+  }
+
+  if (type === 'printer-scene') {
+    return 'marketing-printer-scene';
   }
 
   return 'marketing-slogan';
@@ -358,9 +363,80 @@ export const useMarketingAssetGeneration = ({
     [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
   );
 
+  const generatePrinterScenePreviews = useCallback(
+    async (context?: BusyActionContext) => {
+      const sourceMasks = getApprovedMarketingSourceMasks(project, filesRef.current);
+      const selectedMask = getSelectedPrinterSceneMask(project, sourceMasks);
+      if (!selectedMask) {
+        addActivity('marketing-generated', 'warning', 'Generate at least one color mask first.');
+        return;
+      }
+
+      try {
+        const settings: MarketingImageSettings = {
+          model: 'gpt-image-2',
+          size: '1024x1024',
+          quality: 'low',
+          background: 'opaque',
+          outputFormat: 'png',
+          coloringPageSize: '1024x1024',
+        };
+        const reservedNames = getReservedNames(filesRef.current);
+        const optionIndex = getExistingAssetCount(filesRef.current, 'printer-scene');
+
+        if (context?.signal.aborted) {
+          throw new DOMException('Marketing generation cancelled', 'AbortError');
+        }
+
+        const recipe: MarketingGenerationRecipe = {
+          type: 'printer-scene',
+          id: `printer-scene-${optionIndex + 1}`,
+          optionIndex,
+          stage: 'final',
+          maskCount: 1,
+        };
+
+        context?.setProgress('Generating AI printer scene...');
+        const file = await generateMarketingSceneFile(
+          settings,
+          project,
+          [selectedMask],
+          recipe,
+          context?.signal,
+        );
+        const uniqueFile = makeUniqueFileWithReservedNames(file, reservedNames);
+        const managedFile = await createAiMarketingFile({
+          file: uniqueFile,
+          project,
+          type: 'printer-scene',
+          recipe,
+          sourceMasks: [selectedMask],
+          settings,
+          reviewState: 'approved',
+        });
+        appendVisibleMarketingFile(managedFile);
+
+        addActivity('marketing-generated', 'success', 'Generated printer scene image.');
+      } catch (error) {
+        if (isAbortError(error)) {
+          addActivity('marketing-generated', 'warning', 'Marketing generation was cancelled.');
+          return;
+        }
+
+        addActivity(
+          'error',
+          'error',
+          error instanceof Error ? error.message : 'Could not generate printer scene image.',
+        );
+      }
+    },
+    [addActivity, appendVisibleMarketingFile, filesRef, generateMarketingSceneFile, project],
+  );
+
   return {
     generateSloganPreviews,
     generateMaskSheets,
     generateChildrenScenePreviews,
+    generatePrinterScenePreviews,
   };
 };
