@@ -773,9 +773,11 @@ const buildFlatLayScenePrompt = (input: MarketingSceneInput): string => {
 
   return [
     'A top-down flat-lay craft scene on a pale wood desk in soft natural light.',
-    `${maskCount === 3 ? 'Three' : maskCount === 2 ? 'Two' : 'One'} printed princess half-face mask sheets are arranged across the surface, each printed on a full A4 sheet of paper, each a detailed semi-realistic illustration with large eye cutouts.`,
+    `${maskCount === 3 ? 'Three' : maskCount === 2 ? 'Two' : 'One'} printed princess half-face mask sheets are arranged across the surface. All sheets are identical in format: each is a full standard A4 sheet of plain white paper, the same size, the same paper stock, the same flat lay on the desk — only the mask design printed on each sheet differs.`,
+    'Each sheet shows a detailed semi-realistic illustration with large eye cutouts, printed in full color, centered on the page.',
     ...maskLines,
     orientationNote,
+    'The three A4 sheets must look visually consistent with one another — same paper brightness, same shadow treatment, same perspective, same scale. Do not make any sheet look larger, thicker, glossier, or more prominent than the others.',
     'Surrounding the A4 mask sheets are crafting supplies: gold-handled scissors, a white cup of colored pencils, loose pink and green pencils, rolls of pink and gold glitter washi tape, and a small potted green plant in the corner.',
     'Warm, cheerful, feminine aesthetic, pastel and jewel-tone palette, soft shadows, dreamy elegant lifestyle product photography, high detail, realistic.',
     'All mask designs must be reproduced exactly as provided — 100% fidelity, no alterations, simplifications, or reinterpretations.',
